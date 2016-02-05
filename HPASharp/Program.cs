@@ -16,15 +16,15 @@ namespace HPASharp
             var obstaclePercentage = 0.20f;
             var clusterSize = 8;
             var maxLevel = 2;
-            Tiling tiling = new Tiling(tilingType, rows, columns);
-            tiling.setObstacles(obstaclePercentage);
+            var tiling = new Tiling(tilingType, columns, rows);
+            tiling.CreateObstacles(obstaclePercentage);
             tiling.printFormatted();
             
 
             var wizard = new AbsWizard(tiling, clusterSize, maxLevel, EntranceStyle.END_ENTRANCE);
             wizard.AbstractMaze();
             var absTiling = wizard.AbsTiling;
-            absTiling.printGraph();
+            absTiling.PrintGraph();
         }
     }
 }

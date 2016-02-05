@@ -23,7 +23,6 @@ namespace HPASharp
         public int Center1Id { get; set; }
         public int Center2Id { get; set; }
         public Orientation Orientation { get; set; }
-        
         public Position Center1 { get; set; }
 
         public Position Center2
@@ -208,7 +207,7 @@ namespace HPASharp
 
         public bool areConnected(int localIdx1, int localIdx2)
         {
-            return (Distances[localIdx1,localIdx2] != int.MaxValue);
+            return Distances[localIdx1,localIdx2] != int.MaxValue;
         }
 
         public int getNrEntrances()
@@ -239,13 +238,13 @@ namespace HPASharp
 //             return m_paths[idx1][idx2];
 //          }
 
-        public int getLocalCenter(int localIndex)
+        public int GetLocalCenter(int localIndex)
         {
             var entrance = Entrances[localIndex];
             return entrance.RelativePos.Y *Size.Width + entrance.CenterCol;
         }
 
-        public List<int> computePath(int start, int target)
+        public List<int> ComputePath(int start, int target)
         {
             ISearch search = new SearchImp();
             search.reset(new AStar(false));

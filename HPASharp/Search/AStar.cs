@@ -15,7 +15,7 @@ namespace HPASharp.Search
             //m_nodesVisited = 0;
             //m_env = &env;
             //m_target = target;
-            //m_path.clear();
+            //m_path.Clear();
             //m_visitedNodes.resize(env.getNumberNodes());
             //for (vector<char>::iterator i = m_visitedNodes.begin();
             //     i != m_visitedNodes.end(); ++i)

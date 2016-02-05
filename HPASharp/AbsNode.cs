@@ -12,17 +12,17 @@ namespace HPASharp
         public int ClusterId { get; set; }
         public int Id { get; set; }
         public Position Position { get; set; }
-        public int Center { get; set; }
+        public int CenterId { get; set; }
         public int LocalIdxCluster { get; set; }
         public int Level { get; set; }
 
-        public AbsNode(int id, int clusterId, Position position, int center)
+        public AbsNode(int id, int clusterId, Position position, int centerId)
         {
             Level = -1;
             ClusterId = clusterId;
             Id = id;
             Position = position;
-            Center = center;
+            this.CenterId = centerId;
         }
     }
 }

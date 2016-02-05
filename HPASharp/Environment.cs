@@ -10,9 +10,9 @@ namespace HPASharp
 
     public interface Environment
     {
-        int getHeuristic(int start, int target);
+        int GetHeuristic(int start, int target);
         
-        int getMinCost();
+        int GetMinCost();
 
         int NrAbsNodes { get; set; }
         
@@ -21,6 +21,6 @@ namespace HPASharp
             Can be used to prune nodes,
             (is set to NO_NODE in Search::checkPathExists).
         */
-        List<Successor> getSuccessors(int nodeId, int lastNodeId);
+        List<Neighbour> getSuccessors(int nodeId, int lastNodeId);
     }
 }
