@@ -20,7 +20,7 @@ namespace HPASharp
             IsInterEdge = inter;
         }
 
-        public void printInfo()
+        public void PrintInfo()
         {
             Console.WriteLine("cost: " + Cost + "; level: " + Level + "; inter: " + IsInterEdge);
         }
@@ -48,7 +48,7 @@ namespace HPASharp
             LocalIdxCluster = localIdxCluster;
         }
 
-        public void printInfo()
+        public void PrintInfo()
         {
             Console.Write("id: " + Id);
             Console.Write("; level: " + Level);

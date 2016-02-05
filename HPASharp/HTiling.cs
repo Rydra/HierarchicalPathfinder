@@ -433,7 +433,7 @@ namespace HPASharp
 
         #region Printing
 
-        public void printGraph()
+        public override void PrintGraph()
         {
             Console.WriteLine("Printing abstract graph:");
             for (int id = 0; id < NrAbsNodes; id++)
@@ -441,11 +441,11 @@ namespace HPASharp
                 var edges = Graph.GetOutEdges(id);
                 Console.WriteLine("Node " + id + "; BF "+ edges.Count);
                 var nodeInfo = Graph.GetNodeInfo(id);
-                nodeInfo.printInfo();
+                nodeInfo.PrintInfo();
                 foreach (var edge in edges)
                 {
                     Console.Write("Edge to node " + edge.TargetNodeId + ": ");
-                    edge.Info.printInfo();
+                    edge.Info.PrintInfo();
                 }
                 
                 Console.WriteLine();
