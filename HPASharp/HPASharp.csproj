@@ -46,7 +46,7 @@
     <Compile Include="AbsNode.cs" />
     <Compile Include="AbsTiling.cs" />
     <Compile Include="Position.cs" />
-    <Compile Include="Environment.cs" />
+    <Compile Include="IMap.cs" />
     <Compile Include="Cluster.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Experiments.cs" />
@@ -57,7 +57,7 @@
     <Compile Include="Search\AStar.cs" />
     <Compile Include="Search\ISearch.cs" />
     <Compile Include="LocalEntrance.cs" />
-    <Compile Include="AbsWizard.cs" />
+    <Compile Include="AbstractMapFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Search\SearchUtils.cs" />
     <Compile Include="Size.cs" />

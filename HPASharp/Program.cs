@@ -10,7 +10,7 @@ namespace HPASharp
     {
         public static void Main(string[] args)
         {
-            var tilingType = TileType.TILE;
+            var tilingType = TileType.OCTILE;
             var rows = 50;
             var columns = 50;
             var obstaclePercentage = 0.20f;
@@ -21,8 +21,8 @@ namespace HPASharp
             tiling.printFormatted();
             
 
-            var wizard = new AbsWizard(tiling, clusterSize, maxLevel, EntranceStyle.END_ENTRANCE);
-            wizard.AbstractMaze();
+            var wizard = new AbstractMapFactory(tiling, clusterSize, maxLevel, EntranceStyle.END_ENTRANCE);
+            wizard.CreateAbstractMap();
             var absTiling = wizard.AbsTiling;
             absTiling.PrintGraph();
         }

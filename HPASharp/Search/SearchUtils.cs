@@ -8,11 +8,11 @@ namespace HPASharp.Search
 {
     public class SearchUtils
     {
-        Environment m_env;
+        IMap m_env;
         bool[] closedList;
         int m_target;
 
-        public bool checkPathExists(Environment env, int start, int target)
+        public bool checkPathExists(IMap env, int start, int target)
         {
             m_env = env;
             m_target = target;
@@ -36,7 +36,7 @@ namespace HPASharp.Search
             if (m_successorStack.Count < depth + 1)
                 m_successorStack.Add(new List<Neighbour>());
             
-            m_successorStack[depth] = m_env.getSuccessors(node, Constants.NO_NODE);
+            m_successorStack[depth] = m_env.GetNeighbours(node, Constants.NO_NODE);
             int numberSuccessors = m_successorStack[depth].Count;
             for (int i = 0; i < numberSuccessors; ++i)
             {

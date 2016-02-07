@@ -10,8 +10,8 @@ namespace HPASharp
     {
         public int Id { get; set; } // id of the global abstract node
         public int AbsNodeId { get; set; }
-        public Position RelativePos { get; set; } // Relative position of entrance inside cluster
-        public int CenterCol { get; set; } // center col in local coordinates
+        // Relative position of entrance inside cluster
+        public Position RelativePos { get; set; }
         public int EntranceLocalIdx { get; set; } // local id
 
         public LocalEntrance(int nodeId, int absNodeId, int localIdx, Position relativePosition)

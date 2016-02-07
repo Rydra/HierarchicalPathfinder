@@ -48,7 +48,7 @@ namespace HPASharp
 
         public void AddNode(int nodeId, NODEINFO info)
         {
-            int size = nodeId + 1;
+            var size = nodeId + 1;
             if (Nodes.Count < size)
                 Nodes.Add(new Node(nodeId, info));
             else

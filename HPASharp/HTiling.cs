@@ -28,7 +28,7 @@ namespace HPASharp
         /// <summary>
         /// Gets the neighbours(successors) of the nodeId for the level set in the CurrentLevel
         /// </summary>
-        public override List<Neighbour> getSuccessors(int nodeId, int lastNodeId)
+        public override List<Neighbour> GetNeighbours(int nodeId, int lastNodeId)
         {
             var result = new List<Neighbour>();
             var node = Graph.GetNode(nodeId);

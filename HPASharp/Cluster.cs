@@ -108,7 +108,7 @@ namespace HPASharp
         const int MAX_CLENTRANCES = 50;
 
         public int Id { get; set; }
-        public int Row { get; set; } // abstract row of this cluster (e.g., 1 for the second clusters horizontally)
+        public int ClusterY { get; set; } // abstract row of this cluster (e.g., 1 for the second clusters horizontally)
         public int Column { get; set; } // abstract col of this cluster (e.g., 1 for the second clusters vertically)
         public int[,] Distances { get; set; }
         public bool[,] BoolPathMap { get; set; }
@@ -117,15 +117,12 @@ namespace HPASharp
         public Size Size { get; set; }
         public Position Origin { get; set; }
 
-        public Cluster(Tiling tiling, int id,
-                int row, int col,
-                Position origin,
-                Size size)
+        public Cluster(Tiling tiling, int id, int clusterX, int clusterY, Position origin, Size size)
         {
             Tiling = new Tiling(tiling, origin.X, origin.Y, size.Width, size.Height);
             Id = id;
-            Row = row;
-            Column = col;
+            ClusterY = clusterY;
+            Column = clusterX;
             Origin = origin;
             Size = size;
             Distances = new int[MAX_CLENTRANCES, MAX_CLENTRANCES];
@@ -137,28 +134,31 @@ namespace HPASharp
         /// Computes the paths that lie inside the cluster, 
         /// connecting the several entrances among them
         /// </summary>
-        public void computePaths()
+        public void ComputePaths()
         {
-            for (int i = 0; i < MAX_CLENTRANCES; i++)
-                for (int j = 0; j < MAX_CLENTRANCES; j++)
+            for (var i = 0; i < MAX_CLENTRANCES; i++)
+                for (var j = 0; j < MAX_CLENTRANCES; j++)
                     BoolPathMap[i,j] = false;
 
             foreach(var entrance1 in Entrances)
                 foreach (var entrance2 in Entrances)
-                    computeAddPath(entrance1, entrance2);
+                    ComputeAddPath(entrance1, entrance2);
         }
 
-        private int getEntranceCenter(LocalEntrance entrance)
+        /// <summary>
+        /// Gets the index of the entrance point inside this cluster
+        /// </summary>
+        private int GetEntrancePositionIndex(LocalEntrance entrance)
         {
-            return entrance.RelativePos.Y *Size.Width + entrance.RelativePos.X;
+            return entrance.RelativePos.Y * Size.Width + entrance.RelativePos.X;
         }
 
-        private void addNoPath(int startIdx, int targetIdx)
+        private void NoPath(int startIdx, int targetIdx)
         {
             Distances[startIdx,targetIdx] = Distances[targetIdx,startIdx] = int.MaxValue;
         }
 
-        private int computeDistance(int start, int target)
+        private int ComputeDistance(int start, int target)
         {
             ISearch search = new SearchImp();
             search.reset(new AStar(false));
@@ -166,12 +166,12 @@ namespace HPASharp
             return search.getPathCost();
         }
 
-        private void computeAddPath(LocalEntrance e1, LocalEntrance e2)
+        private void ComputeAddPath(LocalEntrance e1, LocalEntrance e2)
         {
-            int start = getEntranceCenter(e1);
-            int target = getEntranceCenter(e2);
-            int startIdx = e1.EntranceLocalIdx;
-            int targetIdx = e2.EntranceLocalIdx;
+            var start = GetEntrancePositionIndex(e1);
+            var target = GetEntrancePositionIndex(e2);
+            var startIdx = e1.EntranceLocalIdx;
+            var targetIdx = e2.EntranceLocalIdx;
 
             //If a path already existed, or both are the same node, just return
             if (BoolPathMap[startIdx,targetIdx] || startIdx == targetIdx)
@@ -179,53 +179,53 @@ namespace HPASharp
 
             var searchUtils = new SearchUtils();
             if (searchUtils.checkPathExists(Tiling, start, target))
-                Distances[startIdx,targetIdx] = Distances[targetIdx,startIdx] = computeDistance(start, target);
+                Distances[startIdx,targetIdx] = Distances[targetIdx,startIdx] = ComputeDistance(start, target);
             else
-                addNoPath(startIdx, targetIdx);
+                NoPath(startIdx, targetIdx);
 
             BoolPathMap[startIdx,targetIdx] = true;
             BoolPathMap[targetIdx,startIdx] = true;
         }
         
-        public void updatePaths(int entranceId)
+        public void UpdatePaths(int entranceId)
         {
             var entrance = Entrances[entranceId];
             foreach(var j in Entrances)
-                computeAddPath(entrance, j);
+                ComputeAddPath(entrance, j);
         }
 
         // Gets the abstract node Id that an entrance belong to
-        public int getGlobalAbsNodeId(int localIdx)
+        public int GetGlobalAbsNodeId(int localIdx)
         {
             return Entrances[localIdx].AbsNodeId;
         }
 
-        public int getDistance(int localIdx1, int localIdx2)
+        public int GetDistance(int localIdx1, int localIdx2)
         {
             return Distances[localIdx1,localIdx2];
         }
 
-        public bool areConnected(int localIdx1, int localIdx2)
+        public bool AreConnected(int localIdx1, int localIdx2)
         {
             return Distances[localIdx1,localIdx2] != int.MaxValue;
         }
 
-        public int getNrEntrances()
+        public int GetNrEntrances()
         {
             return Entrances.Count;
         }
 
-        public void addEntrance(LocalEntrance entrance)
+        public void AddEntrance(LocalEntrance entrance)
         {
             Entrances.Add(entrance);
             Entrances[Entrances.Count - 1].EntranceLocalIdx = Entrances.Count - 1;
         }
 
-        public void removeLastEntranceRecord()
+        public void RemoveLastEntranceRecord()
         {
             Entrances.RemoveAt(Entrances.Count - 1);
-            int idx = Entrances.Count;
-            for (int i = 0; i < MAX_CLENTRANCES; i++)
+            var idx = Entrances.Count;
+            for (var i = 0; i < MAX_CLENTRANCES; i++)
             {
                 BoolPathMap[idx,i] = BoolPathMap[i,idx] = false;
                 Distances[idx,i] = Distances[i,idx] = int.MaxValue;
@@ -241,7 +241,7 @@ namespace HPASharp
         public int GetLocalCenter(int localIndex)
         {
             var entrance = Entrances[localIndex];
-            return entrance.RelativePos.Y *Size.Width + entrance.CenterCol;
+            return entrance.RelativePos.Y *Size.Width + entrance.RelativePos.X;
         }
 
         public List<int> ComputePath(int start, int target)
@@ -252,7 +252,7 @@ namespace HPASharp
             return search.getPath();
         }
 
-        private int getPointId(int row, int col)
+        private int GetPointId(int row, int col)
         {
             return row *Size.Width + col;
         }

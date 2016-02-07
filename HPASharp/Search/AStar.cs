@@ -8,7 +8,7 @@ namespace HPASharp.Search
 {
     public class AStar2
     {
-        public bool findPath(Environment env, int start, int target)
+        public bool findPath(IMap env, int start, int target)
         {
             return true;
             //m_nodesExpanded = 0;

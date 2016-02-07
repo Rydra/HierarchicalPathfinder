@@ -109,35 +109,35 @@ namespace HPASharp.Smoother
                 case Direction.NORTH:
                     if (currentRow == 0)
                         return Constants.NO_NODE;
-                    return this.tiling.GetNodeId(currentRow - 1, currentCol);
+                    return this.tiling.GetNodeId(currentCol, currentRow - 1);
                 case Direction.EAST:
                     if (currentCol == this.tiling.Width - 1)
                         return Constants.NO_NODE;
-                    return this.tiling.GetNodeId(currentRow, currentCol + 1);
+                    return this.tiling.GetNodeId(currentCol + 1, currentRow);
                 case Direction.SOUTH:
                     if (currentRow == this.tiling.Height - 1)
                         return Constants.NO_NODE;
-                    return this.tiling.GetNodeId(currentRow + 1, currentCol);
+                    return this.tiling.GetNodeId(currentCol, currentRow + 1);
                 case Direction.WEST:
                     if (currentCol == 0)
                         return Constants.NO_NODE;
-                    return this.tiling.GetNodeId(currentRow, currentCol - 1);
+                    return this.tiling.GetNodeId(currentCol - 1, currentRow);
                 case Direction.NE:
                     if (currentRow == 0 || currentCol == this.tiling.Width - 1)
                         return Constants.NO_NODE;
-                    return this.tiling.GetNodeId(currentRow - 1, currentCol + 1);
+                    return this.tiling.GetNodeId(currentCol + 1, currentRow - 1);
                 case Direction.SE:
                     if (currentRow == this.tiling.Height - 1 || currentCol == this.tiling.Width - 1)
                         return Constants.NO_NODE;
-                    return this.tiling.GetNodeId(currentRow + 1, currentCol + 1);
+                    return this.tiling.GetNodeId(currentCol + 1, currentRow + 1);
                 case Direction.SW:
                     if (currentRow == this.tiling.Height - 1 || currentCol == 0)
                         return Constants.NO_NODE;
-                    return this.tiling.GetNodeId(currentRow + 1, currentCol - 1);
+                    return this.tiling.GetNodeId(currentCol - 1, currentRow + 1);
                 case Direction.NW:
                     if (currentRow == 0 || currentCol == 0)
                         return Constants.NO_NODE;
-                    return this.tiling.GetNodeId(currentRow - 1, currentCol - 1);
+                    return this.tiling.GetNodeId(currentCol - 1, currentRow - 1);
                 default:
                     return Constants.NO_NODE;
             }
