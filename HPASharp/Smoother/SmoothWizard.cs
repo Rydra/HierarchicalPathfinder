@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace HPASharp.Smoother
 {
@@ -35,9 +36,19 @@ namespace HPASharp.Smoother
             }
         }
 
+        private Position GetPosition(int nodeId)
+        {
+            return tiling.Graph.GetNode(nodeId).Info.Position;
+        }
+
         public void SmoothPath()
         {
-            if (this.tiling.GetPathCost(InitPath) == this.tiling.GetHeuristic(InitPath[0], InitPath[InitPath.Count - 1]))
+            var positionPath = InitPath.Select(GetPosition).ToList();
+
+            var pathcost = Helpers.GetPathCost(positionPath, tiling.TileType);
+            var heuristic = Helpers.GetHeuristic(GetPosition(InitPath[0]), GetPosition(InitPath[InitPath.Count - 1]), tiling.TileType);
+            if (pathcost == heuristic)
+                
             {
                 this.SmoothedPath = InitPath;
             }
@@ -82,7 +93,7 @@ namespace HPASharp.Smoother
                 nodeId = this.AdvanceNode(nodeId, direction);
                 if (nodeId == Constants.NO_NODE)
                     return Constants.NO_NODE;
-                if (!this.tiling.CanJump(nodeId, lastNodeId))
+                if (!this.tiling.CanJump(GetPosition(nodeId), GetPosition(lastNodeId)))
                     return Constants.NO_NODE;
                 if (this.pathMap[nodeId] != Constants.NO_INDEX && this.pathMap[nodeId] > this.pathMap[originId])
                 {
@@ -102,42 +113,42 @@ namespace HPASharp.Smoother
         private int AdvanceNode(int nodeId, int direction)
         {
             var nodeInfo = this.tiling.Graph.GetNodeInfo(nodeId);
-            var currentRow = nodeInfo.Row;
-            var currentCol = nodeInfo.Column;
+            var y = nodeInfo.Position.Y;
+            var x = nodeInfo.Position.X;
             switch ((Direction)direction)
             {
                 case Direction.NORTH:
-                    if (currentRow == 0)
+                    if (y == 0)
                         return Constants.NO_NODE;
-                    return this.tiling.GetNodeId(currentCol, currentRow - 1);
+                    return this.tiling[x, y - 1].NodeId;
                 case Direction.EAST:
-                    if (currentCol == this.tiling.Width - 1)
+                    if (x == this.tiling.Width - 1)
                         return Constants.NO_NODE;
-                    return this.tiling.GetNodeId(currentCol + 1, currentRow);
+                    return this.tiling[x + 1, y].NodeId;
                 case Direction.SOUTH:
-                    if (currentRow == this.tiling.Height - 1)
+                    if (y == this.tiling.Height - 1)
                         return Constants.NO_NODE;
-                    return this.tiling.GetNodeId(currentCol, currentRow + 1);
+                    return this.tiling[x, y + 1].NodeId;
                 case Direction.WEST:
-                    if (currentCol == 0)
+                    if (x == 0)
                         return Constants.NO_NODE;
-                    return this.tiling.GetNodeId(currentCol - 1, currentRow);
+                    return this.tiling[x - 1, y].NodeId;
                 case Direction.NE:
-                    if (currentRow == 0 || currentCol == this.tiling.Width - 1)
+                    if (y == 0 || x == this.tiling.Width - 1)
                         return Constants.NO_NODE;
-                    return this.tiling.GetNodeId(currentCol + 1, currentRow - 1);
+                    return this.tiling[x + 1, y - 1].NodeId;
                 case Direction.SE:
-                    if (currentRow == this.tiling.Height - 1 || currentCol == this.tiling.Width - 1)
+                    if (y == this.tiling.Height - 1 || x == this.tiling.Width - 1)
                         return Constants.NO_NODE;
-                    return this.tiling.GetNodeId(currentCol + 1, currentRow + 1);
+                    return this.tiling[x + 1, y + 1].NodeId;
                 case Direction.SW:
-                    if (currentRow == this.tiling.Height - 1 || currentCol == 0)
+                    if (y == this.tiling.Height - 1 || x == 0)
                         return Constants.NO_NODE;
-                    return this.tiling.GetNodeId(currentCol - 1, currentRow + 1);
+                    return this.tiling[x - 1, y + 1].NodeId;
                 case Direction.NW:
-                    if (currentRow == 0 || currentCol == 0)
+                    if (y == 0 || x == 0)
                         return Constants.NO_NODE;
-                    return this.tiling.GetNodeId(currentCol - 1, currentRow - 1);
+                    return this.tiling[x - 1, y - 1].NodeId;
                 default:
                     return Constants.NO_NODE;
             }

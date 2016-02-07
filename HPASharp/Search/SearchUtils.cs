@@ -16,7 +16,7 @@ namespace HPASharp.Search
         {
             m_env = env;
             m_target = target;
-            closedList = new bool[env.NrAbsNodes];
+            closedList = new bool[env.NrNodes];
             return searchPathExists(start, 0);
         }
 

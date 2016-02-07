@@ -16,9 +16,7 @@ namespace HPASharp
             var obstaclePercentage = 0.20f;
             var clusterSize = 8;
             var maxLevel = 2;
-            var tiling = new Tiling(tilingType, columns, rows);
-            tiling.CreateObstacles(obstaclePercentage);
-            tiling.printFormatted();
+            var tiling = TilingFactory.CreateTiling(tilingType, columns, rows, obstaclePercentage);
             
 
             var wizard = new AbstractMapFactory(tiling, clusterSize, maxLevel, EntranceStyle.END_ENTRANCE);

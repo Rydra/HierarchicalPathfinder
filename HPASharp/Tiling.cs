@@ -18,22 +18,13 @@ namespace HPASharp
     
     public class TilingNodeInfo
     {
-        public TilingNodeInfo()
-        {
-            IsObstacle = false;
-            Row = -1;
-            Column = -1;
-        }
-
-        public TilingNodeInfo(bool isObstacle, int row, int column)
+        public TilingNodeInfo(bool isObstacle, Position position)
         {
             IsObstacle = isObstacle;
-            Row = row;
-            Column = column;
+            Position = position;
         }
 
-        public int Column { get; set; }
-        public int Row { get; set; }
+        public Position Position { get; set; }
         public bool IsObstacle { get; set; }
     }
 
@@ -50,7 +41,15 @@ namespace HPASharp
         TILE
     }
 
-    public class Tiling : IMap
+    public interface IGrid
+    {
+        int Width { get; }
+        int Height { get; }
+        TileType TileType { get; }
+        Graph<TilingNodeInfo, TilingEdgeInfo> Graph { get; }
+    }
+
+    public class Tiling : IMap, IGrid
     {
         public TileType TileType { get; set; }
 
@@ -70,28 +69,12 @@ namespace HPASharp
         private void Init(TileType tileType, int width, int height)
         {
             this.TileType = tileType;
-            this.MaxEdges = GetMaxEdges(tileType);
+            this.MaxEdges = Helpers.GetMaxEdges(tileType);
             this.Height = height;
             this.Width = width;
             this.Graph = new Graph<TilingNodeInfo, TilingEdgeInfo>();
             this.CreateNodes();
             this.CreateEdges();
-        }
-
-        private static int GetMaxEdges(TileType tileType)
-        {
-            switch (tileType)
-            {
-                case TileType.HEX:
-                    return 6;
-                case TileType.OCTILE:
-                case TileType.OCTILE_UNICOST:
-                    return 8;
-                case TileType.TILE:
-                    return 4;
-            }
-
-            return 0;
         }
 
         // Create a new tiling as a copy of another tiling (just copying obstacles)
@@ -101,91 +84,23 @@ namespace HPASharp
             this.Init(tiling.TileType, width, height);
 
             // so we now put the obstacles in place
-            for (var col = 0; col < width; col++)
-            for (var row = 0; row < height; row++)
+            for (var x = 0; x < width; x++)
+            for (var y = 0; y < height; y++)
             {
                 // get the local node
-                var localNodeId = this.GetNodeId(col, row);
-                var localNodeInfo = Graph.GetNodeInfo(localNodeId);
+                var localNodeInfo = this[x, y].Info;
                 // get the initial tiling node
-                var nodeId = tiling.GetNodeId(horizOrigin + col, vertOrigin + row);
-                var nodeInfo = tiling.Graph.GetNodeInfo(nodeId);
+                var nodeInfo = tiling[horizOrigin + x, vertOrigin + y].Info;
                 // set obstacle for the local node
                 localNodeInfo.IsObstacle = nodeInfo.IsObstacle;
             }
         }
-
-        public void ClearObstacles()
-        {
-            var numberNodes = GetNumberNodes();
-            for (var nodeId = 0; nodeId < numberNodes; ++nodeId)
-            {
-                var nodeInfo = Graph.GetNodeInfo(nodeId);
-                nodeInfo.IsObstacle = false;
-            }
-        }
-
-        public int GetHeuristic(int start, int target)
-        {
-            int colStart = start % Width;
-            int colTarget = target % Width;
-            int rowStart = start / Width;
-            int rowTarget = target / Width;
-            int diffCol = Math.Abs(colTarget - colStart);
-            int diffRow = Math.Abs(rowTarget - rowStart);
-            switch (this.TileType)
-            {
-            case TileType.HEX:
-                // Vancouver distance
-                // See P.Yap: Grid-based Path-Finding (LNAI 2338 pp.44-55)
-                {
-                    int correction = 0;
-                    if (diffCol % 2 != 0)
-                    {
-                        if (rowTarget < rowStart)
-                            correction = colTarget % 2;
-                        else if (rowTarget > rowStart)
-                            correction = colStart % 2;
-                    }
-                    // Note: formula in paper is wrong, corrected below.  
-                    int dist = Math.Max(0, diffRow - diffCol / 2 - correction) + diffCol;
-                    return dist * 1;
-                }
-            case TileType.OCTILE_UNICOST:
-                return Math.Max(diffCol, diffRow) * 1;
-            case TileType.OCTILE:
-                int maxDiff;
-                int minDiff;
-                if (diffCol > diffRow)
-                {
-                    maxDiff = diffCol;
-                    minDiff = diffRow;
-                }
-                else
-                {
-                    maxDiff = diffRow;
-                    minDiff = diffCol;
-                }
-                return minDiff * 34/24 + (maxDiff - minDiff) * 1; // 34 / 24 is SQRT 2
-            case TileType.TILE:
-                return (diffCol + diffRow) * 1;
-            default:
-                //assert(false);
-                return 0;
-            }
-        }
         
-        public int NrAbsNodes => GetNumberNodes();
+        public int NrNodes => Width * Height;
 
-        public int GetNodeId(int x, int y)
-        {
-            return y * Width + x;
-        }
+        public Graph<TilingNodeInfo, TilingEdgeInfo>.Node this[int x, int y] => Graph.GetNode(GetNodeIdFromPos(x, y));
 
-        public int GetNumberNodes()
-        {
-            return Width * Height;
-        }
+        private int GetNodeIdFromPos(int x, int y) => y*Width + x;
 
         public List<Neighbour> GetNeighbours(int nodeId, int lastNodeId)
         {
@@ -203,12 +118,12 @@ namespace HPASharp
                 var targetNodeId = edge.TargetNodeId;
                 var targetNode = Graph.GetNode(targetNodeId);
                 var targetNodeInfo = targetNode.Info;
-                if (!this.CanJump(targetNodeId, nodeId))
+                if (!CanJump(targetNodeInfo.Position, nodeInfo.Position))
                     continue;
                 if (targetNodeInfo.IsObstacle)
                     continue;
                 if (lastNodeId != Constants.NO_NODE)
-                    if (pruneNode(targetNodeId, lastNodeId))
+                    if (PruneNode(targetNodeId, lastNodeId))
                         continue;
 
                 result.Add(new Neighbour(targetNodeId, edge.Info.Cost));
@@ -216,150 +131,74 @@ namespace HPASharp
 
             return result;
         }
-
-        public void CreateObstacles(float obstaclePercentage, bool avoidDiag = false)
+        
+        private bool PruneNode(int targetNodeId, int lastNodeId)
         {
-            var RAND_MAX = 0x7fff;
-            var random = new Random();
-
-            ClearObstacles();
-            int numberNodes = GetNumberNodes();
-            int numberObstacles = (int)(obstaclePercentage * numberNodes);
-            for (int count = 0; count < numberObstacles; )
-            {
-                int nodeId = random.Next() / (RAND_MAX / numberNodes + 1) % (Width * Height);
-                var nodeInfo = Graph.GetNodeInfo(nodeId);
-                if (!nodeInfo.IsObstacle)
-                {
-                    if (avoidDiag)
-                    {
-                        int row = nodeInfo.Row;
-                        int col = nodeInfo.Column;
-
-                        if ( !ConflictDiag(row,col,-1,-1) && 
-                             !ConflictDiag(row,col,-1,+1) &&
-                             !ConflictDiag(row,col,+1,-1) &&
-                             !ConflictDiag(row,col,+1,+1) )
-                        {
-                            nodeInfo.IsObstacle = true;
-                            ++count;
-                        }
-                    }
-                    else 
-                    {
-                        nodeInfo.IsObstacle = true;
-                        ++count;
-                    }
-                }
-            }
+            if (targetNodeId == lastNodeId)
+                return true;
+            if (TileType == TileType.TILE)
+                return false;
+            var lastNode = Graph.GetNode(lastNodeId);
+            var edges = lastNode.OutEdges;
+            return edges.Any(edge => edge.TargetNodeId == targetNodeId);
         }
 
-        public int GetPathCost(List<int> path)
+        public bool CanJump(Position p1, Position p2)
         {
-            int cost = 0;
-            switch (this.TileType)
-            {
-                case TileType.TILE:
-                case TileType.OCTILE_UNICOST:
-                    return Constants.COST_ONE*(path.Count - 1);
-                case TileType.OCTILE:
-                    for (var i = 0; i < path.Count - 1; i++)
-                    {
-                        if (AreAligned(path[i], path[i+1]))
-                            cost += Constants.COST_ONE;
-                        else
-                            cost += Constants.SQRT2;
-                    }
-
-                    break;
-                case TileType.HEX:
-                    //GetPathCost() is not implemented for HEX;
-                    return -1;
-            }
-
-            return cost;
-        }
-
-        public bool CanJump(int p1, int p2)
-        {
-            if (this.TileType != TileType.OCTILE && this.TileType != TileType.OCTILE_UNICOST)
+            if (TileType != TileType.OCTILE && this.TileType != TileType.OCTILE_UNICOST)
                 return true;
-            if (AreAligned(p1, p2))
+            if (Helpers.AreAligned(p1, p2))
                 return true;
-            int nodeId12 = this.GetNodeId(p2%Width, p1/Width);
-            int nodeId21 = this.GetNodeId(p1%Width, p2/Width);
-            var nodeInfo12 = Graph.GetNodeInfo(nodeId12);
-            var  nodeInfo21 = Graph.GetNodeInfo(nodeId21);
+            var nodeInfo12 = this[p2.X, p1.Y].Info;
+            var nodeInfo21 = this[p1.X, p2.Y].Info;
             if (nodeInfo12.IsObstacle && nodeInfo21.IsObstacle)
                 return false;
             return true;
         }
 
-        private void AddOutEdge(int nodeId, int row, int col, int cost)
+        private void AddOutEdge(int nodeId, int col, int row, int cost)
         {
             if (row < 0 || row >= Height || col < 0 || col >= Width)
                 return;
 
-            Graph.AddOutEdge(nodeId, this.GetNodeId(col, row), new TilingEdgeInfo(cost));
-        }
-
-        private bool ConflictDiag(int row, int col, int roff, int coff)
-        {
-            // Avoid generating cofigurations like:
-            //
-            //    @   or   @
-            //     @      @
-            //
-            // that favor one grid topology over another.
-            if ((row + roff < 0) || (row + roff >= Height) ||
-                 (col + coff < 0) || (col + coff >= Width))
-                return false;
-
-            if ((Graph.GetNodeInfo(this.GetNodeId(col + coff, row + roff))).IsObstacle)
-            {
-                if (!Graph.GetNodeInfo(this.GetNodeId(col + coff, row)).IsObstacle &&
-                     !Graph.GetNodeInfo(this.GetNodeId(col, row + roff)).IsObstacle)
-                    return true;
-            }
-
-            return false;
+            Graph.AddOutEdge(nodeId, this[col, row].NodeId, new TilingEdgeInfo(cost));
         }
 
         private void CreateEdges()
         {
-            for (int row = 0; row < Height; ++row)
-                for (int col = 0; col < Width; ++col)
+            for (var y = 0; y < Height; ++y)
+                for (var x = 0; x < Width; ++x)
                 {
-                    int nodeId = this.GetNodeId(col, row);
-                    this.AddOutEdge(nodeId, row - 1, col, Constants.COST_ONE);
-                    this.AddOutEdge(nodeId, row + 1, col, Constants.COST_ONE);
-                    this.AddOutEdge(nodeId, row, col - 1, Constants.COST_ONE);
-                    this.AddOutEdge(nodeId, row, col + 1, Constants.COST_ONE);
+                    var nodeId = this[x, y].NodeId;
+                    this.AddOutEdge(nodeId, x, y - 1, Constants.COST_ONE);
+                    this.AddOutEdge(nodeId, x, y + 1, Constants.COST_ONE);
+                    this.AddOutEdge(nodeId, x - 1, y, Constants.COST_ONE);
+                    this.AddOutEdge(nodeId, x + 1, y, Constants.COST_ONE);
                     if (this.TileType == TileType.OCTILE)
                     {
-                        this.AddOutEdge(nodeId, row + 1, col + 1, Constants.SQRT2);
-                        this.AddOutEdge(nodeId, row + 1, col - 1, Constants.SQRT2);
-                        this.AddOutEdge(nodeId, row - 1, col + 1, Constants.SQRT2);
-                        this.AddOutEdge(nodeId, row - 1, col - 1, Constants.SQRT2);
+                        this.AddOutEdge(nodeId, x + 1, y + 1, Constants.SQRT2);
+                        this.AddOutEdge(nodeId, x - 1, y + 1, Constants.SQRT2);
+                        this.AddOutEdge(nodeId, x + 1, y - 1, Constants.SQRT2);
+                        this.AddOutEdge(nodeId, x - 1, y - 1, Constants.SQRT2);
                     }
                     else if (this.TileType == TileType.OCTILE_UNICOST)
                     {
-                        this.AddOutEdge(nodeId, row + 1, col + 1, Constants.COST_ONE);
-                        this.AddOutEdge(nodeId, row + 1, col - 1, Constants.COST_ONE);
-                        this.AddOutEdge(nodeId, row - 1, col + 1, Constants.COST_ONE);
-                        this.AddOutEdge(nodeId, row - 1, col - 1, Constants.COST_ONE);
+                        this.AddOutEdge(nodeId, x + 1, y + 1, Constants.COST_ONE);
+                        this.AddOutEdge(nodeId, x - 1, y + 1, Constants.COST_ONE);
+                        this.AddOutEdge(nodeId, x + 1, y - 1, Constants.COST_ONE);
+                        this.AddOutEdge(nodeId, x - 1, y - 1, Constants.COST_ONE);
                     }
                     else if (this.TileType == TileType.HEX)
                     {
-                        if (col % 2 == 0)
+                        if (x % 2 == 0)
                         {
-                            this.AddOutEdge(nodeId, row - 1, col + 1, Constants.COST_ONE);
-                            this.AddOutEdge(nodeId, row - 1, col - 1, Constants.COST_ONE);
+                            this.AddOutEdge(nodeId, x + 1, y - 1, Constants.COST_ONE);
+                            this.AddOutEdge(nodeId, x - 1, y - 1, Constants.COST_ONE);
                         }
                         else
                         {
-                            this.AddOutEdge(nodeId, row + 1, col + 1, Constants.COST_ONE);
-                            this.AddOutEdge(nodeId, row + 1, col - 1, Constants.COST_ONE);
+                            this.AddOutEdge(nodeId, x + 1, y + 1, Constants.COST_ONE);
+                            this.AddOutEdge(nodeId, x - 1, y + 1, Constants.COST_ONE);
                         }
                     }
                 }
@@ -367,42 +206,38 @@ namespace HPASharp
 
         private void CreateNodes()
         {
-            for (int row = 0; row < Height; ++row)
-            for (int col = 0; col < Width; ++col)
+            for (var y = 0; y < Height; ++y)
+            for (var x = 0; x < Width; ++x)
             {
-                int nodeId = this.GetNodeId(col, row);
-                Graph.AddNode(nodeId, new TilingNodeInfo(false, row, col));
+                var nodeId = GetNodeIdFromPos(x, y);
+                Graph.AddNode(nodeId, new TilingNodeInfo(false, new Position(x, y)));
             }
         }
 
         #region Printing
 
-        List<char> getCharVector()
+        private List<char> GetCharVector()
         {
-            List<char> result = new List<char>();
-            int numberNodes = GetNumberNodes();
-            for (int i = 0; i < numberNodes; ++i)
-            {
-                if (Graph.GetNodeInfo(i).IsObstacle)
-                    result.Add('@');
-                else
-                    result.Add('.');
-            }
+            var result = new List<char>();
+            var numberNodes = NrNodes;
+            for (var i = 0; i < numberNodes; ++i)
+                result.Add(Graph.GetNodeInfo(i).IsObstacle ? '@' : '.');
+
             return result;
         }
 
-        public void printFormatted()
+        public void PrintFormatted()
         {
-            printFormatted(getCharVector());
+            PrintFormatted(GetCharVector());
         }
 
-        private void printFormatted(List<char> chars)
+        private void PrintFormatted(List<char> chars)
         {
             for (int row = 0; row < Height; ++row)
             {
                 for (int col = 0; col < Width; ++col)
                 {
-                    int nodeId = this.GetNodeId(col, row);
+                    int nodeId = this.GetNodeIdFromPos(col, row);
                     Console.Write(chars[nodeId]);
                 }
 
@@ -410,9 +245,9 @@ namespace HPASharp
             }
         }
 
-        public void printFormatted(List<int> path)
+        public void PrintFormatted(List<int> path)
         {
-            var chars = getCharVector();
+            var chars = GetCharVector();
             if (path.Count > 0)
             {
                 foreach (var i in path)
@@ -424,37 +259,9 @@ namespace HPASharp
                 chars[path.Last()] = 'S';
             }
 
-            printFormatted(chars);
+            PrintFormatted(chars);
         }
 
         #endregion
-
-        private bool pruneNode(int targetNodeId, int lastNodeId)
-        {
-            if (targetNodeId == lastNodeId)
-                return true;
-            if (this.TileType == TileType.TILE)
-                return false;
-            var lastNode = Graph.GetNode(lastNodeId);
-            var edges = lastNode.OutEdges;
-            foreach (var edge in edges)
-            {
-                if (edge.TargetNodeId == targetNodeId)
-                    return true;
-            }
-
-            return false;
-        }
-
-        private bool AreAligned(int p1, int p2)
-        {
-            if (p1 % Width == p2 % Width)
-                return true;
-            if (p1 / Width == p2 / Width)
-                return true;
-            return false;
-        }
-
-
     }
 }

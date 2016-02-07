@@ -436,7 +436,7 @@ namespace HPASharp
         public override void PrintGraph()
         {
             Console.WriteLine("Printing abstract graph:");
-            for (int id = 0; id < NrAbsNodes; id++)
+            for (int id = 0; id < NrNodes; id++)
             {
                 var edges = Graph.GetOutEdges(id);
                 Console.WriteLine("Node " + id + "; BF "+ edges.Count);

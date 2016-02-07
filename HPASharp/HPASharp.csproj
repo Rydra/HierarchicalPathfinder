@@ -45,6 +45,7 @@
   <ItemGroup>
     <Compile Include="AbsNode.cs" />
     <Compile Include="AbsTiling.cs" />
+    <Compile Include="Helpers.cs" />
     <Compile Include="Position.cs" />
     <Compile Include="IMap.cs" />
     <Compile Include="Cluster.cs" />
@@ -63,6 +64,7 @@
     <Compile Include="Size.cs" />
     <Compile Include="Smoother\SmoothWizard.cs" />
     <Compile Include="Tiling.cs" />
+    <Compile Include="TilingFactory.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

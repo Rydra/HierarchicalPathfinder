@@ -38,7 +38,7 @@ namespace HPASharp
         protected List<Cluster> Clusters { get; set; }
         protected List<Entrance> Entrances { get; set; }
 
-        public int NrAbsNodes => Graph.Nodes.Count;
+        public int NrNodes => Graph.Nodes.Count;
 
         protected int[] AbsNodeIds { get; set; }
         public AbsType Type { get; set; }
@@ -236,7 +236,7 @@ namespace HPASharp
             foreach (var absNode in absNodes.Select(kvp => kvp.Value))
             {
                 var n = new AbsTilingNodeInfo(absNode.Id, absNode.Level, absNode.ClusterId,
-                               absNode.Position, absNode.CenterId,
+                               absNode.Position, absNode.OriginNodeId,
                                absNode.LocalIdxCluster);
                 Graph.AddNode(absNode.Id, n);
             }
@@ -353,7 +353,7 @@ namespace HPASharp
                     pos.X < cl.Origin.X + cl.Size.Width);
 
             // create global entrance
-            absNodeId = NrAbsNodes;
+            absNodeId = NrNodes;
 
             // insert local entrance to cluster and updatePaths(cluster.getNrEntrances() - 1)
             cluster.AddEntrance(new LocalEntrance(nodeId, absNodeId, -1, new Position(pos.X - cluster.Origin.X, pos.Y - cluster.Origin.Y)));
@@ -387,7 +387,7 @@ namespace HPASharp
                 }
             }
 
-            AbsNodeIds[nodeId] = NrAbsNodes;
+            AbsNodeIds[nodeId] = NrNodes;
             return absNodeId;
         }
 

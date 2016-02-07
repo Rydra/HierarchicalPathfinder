@@ -10,9 +10,7 @@ namespace HPASharp
 
     public interface IMap
     {
-        int GetHeuristic(int start, int target);
-
-        int NrAbsNodes { get; }
+        int NrNodes { get; }
         
         /** Generate successor nodes for the search.
             @param lastNodeId

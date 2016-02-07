@@ -55,12 +55,19 @@ namespace HPASharp
                 Nodes[nodeId] = new Node(nodeId, info);
         }
 
+        #region Graph updating
+
         public void AddOutEdge(int sourceNodeId, int targetNodeId,
                         EDGEINFO info)
         {
             Nodes[sourceNodeId].OutEdges.Add(new Edge(targetNodeId, info));
         }
-
+        
+        public void RemoveOutEdge(int sourceNodeId, int targetNodeId)
+        {
+            Nodes[sourceNodeId].OutEdges.RemoveAll(e => e.TargetNodeId == targetNodeId);
+        }
+        
         public void RemoveNodeEdges(int nodeId)
         {
             foreach (var edge in Nodes[nodeId].OutEdges)
@@ -76,15 +83,12 @@ namespace HPASharp
             Nodes.RemoveAt(Nodes.Count - 1);
         }
 
-        public void RemoveOutEdge(int sourceNodeId, int targetNodeId)
-        {
-            Nodes[sourceNodeId].OutEdges.RemoveAll(e => e.TargetNodeId == targetNodeId);
-        }
-
         public void Clear()
         {
             Nodes.Clear();
         }
+
+        #endregion
 
         public Node GetNode(int nodeId)
         {

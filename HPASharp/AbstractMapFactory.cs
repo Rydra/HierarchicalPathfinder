@@ -11,7 +11,6 @@ namespace HPASharp
         MIDDLE_ENTRANCE, END_ENTRANCE
     }
     
-
     public class AbstractMapFactory
     {
         const int MAX_ENTRANCE_WIDTH = 6;
@@ -59,6 +58,9 @@ namespace HPASharp
                     if (i > 0)
                         entranceId = CreateVertEntrances(j, j + vertSize - 1, i - 1, AbsTiling.GetCluster(clusterX - 1, clusterY).Id, cluster.Id, entranceId);
 
+                    // NOTE: This piece of code creates diagonal entrances between 2 clusters placed in diagonal
+                    // against each other. Leaving this commented as a reminder until I make sure whether this
+                    // is useful or not.
                     //if (AbsTiling.Type ==  TileType.OCTILE)
                     //{
                     //    if (j > 0 && j < m_tiling.getHeight())
@@ -90,16 +92,14 @@ namespace HPASharp
             int clusterid2,
             int currId)
         {
-            var curreIdCounter = currId;
+            var currentIdCounter = currId;
 
             // rolls over the horizontal edge between x0 and x1 in order to find edges between
             // the top cluster (latitude marks the other cluster entrance line)
-            for (int i = x0; i <= x1; i++)
+            for (var i = x0; i <= x1; i++)
             {
-                var node1Id = Tiling.GetNodeId(i, y);
-                var node2Id = Tiling.GetNodeId(i, y + 1);
-                var node1isObstacle = Tiling.Graph.GetNodeInfo(node1Id).IsObstacle;
-                var node2isObstacle = Tiling.Graph.GetNodeInfo(node2Id).IsObstacle;
+                var node1isObstacle = Tiling[i, y].Info.IsObstacle;
+                var node2isObstacle = Tiling[i, y + 1].Info.IsObstacle;
                 // get the next communication spot
                 if (node1isObstacle || node2isObstacle)
                 {
@@ -107,16 +107,14 @@ namespace HPASharp
                 }
 
                 // start building and tracking the entrance
-                int entranceStart = i;
+                var entranceStart = i;
                 while (true)
                 {
                     i++;
                     if (i >= x1)
                         break;
-                    node1Id = Tiling.GetNodeId(i, y);
-                    node2Id = Tiling.GetNodeId(i, y + 1);
-                    node1isObstacle = Tiling.Graph.GetNodeInfo(node1Id).IsObstacle;
-                    node2isObstacle = Tiling.Graph.GetNodeInfo(node2Id).IsObstacle;
+                    node1isObstacle = Tiling[i, y].Info.IsObstacle;
+                    node2isObstacle = Tiling[i, y + 1].Info.IsObstacle;
                     if (node1isObstacle || node2isObstacle || i >= x1)
                         break;
                 }
@@ -125,26 +123,26 @@ namespace HPASharp
                 {
                     // If the tracked entrance is big, create 2 entrance points at the edges of the entrance.
                     // create two new entrances, one for each end
-                    var entrance1 = new Entrance((curreIdCounter)++, clusterid1, clusterid2, y, entranceStart,
-                                       this.Tiling.GetNodeId(entranceStart, y),
-                                       this.Tiling.GetNodeId(entranceStart, y + 1), Orientation.HORIZONTAL);
+                    var entrance1 = new Entrance(currentIdCounter++, clusterid1, clusterid2, y, entranceStart,
+                                       this.Tiling[entranceStart, y].NodeId,
+                                       this.Tiling[entranceStart, y + 1].NodeId, Orientation.HORIZONTAL);
                     AbsTiling.AddEntrance(entrance1);
-                    var entrance2 = new Entrance((curreIdCounter)++, clusterid1, clusterid2, y, (i - 1),
-                                       this.Tiling.GetNodeId(i - 1, y),
-                                       this.Tiling.GetNodeId(i - 1, y + 1), Orientation.HORIZONTAL);
+                    var entrance2 = new Entrance(currentIdCounter++, clusterid1, clusterid2, y, (i - 1),
+                                       this.Tiling[i - 1, y].NodeId,
+                                       this.Tiling[i - 1, y + 1].NodeId, Orientation.HORIZONTAL);
                     AbsTiling.AddEntrance(entrance2);
                 }
                 else
                 {
                     // if it is small, create one entrance in the middle 
-                    var entrance = new Entrance((curreIdCounter)++, clusterid1, clusterid2, y, ((i - 1) + entranceStart) / 2,
-                                      this.Tiling.GetNodeId(((i - 1) + entranceStart) / 2, y),
-                                      this.Tiling.GetNodeId(((i - 1) + entranceStart) / 2, y + 1), Orientation.HORIZONTAL);
+                    var entrance = new Entrance(currentIdCounter++, clusterid1, clusterid2, y, ((i - 1) + entranceStart) / 2,
+                                      this.Tiling[((i - 1) + entranceStart) / 2, y].NodeId,
+                                      this.Tiling[((i - 1) + entranceStart) / 2, y + 1].NodeId, Orientation.HORIZONTAL);
                     AbsTiling.AddEntrance(entrance);
                 }
             }
 
-            return curreIdCounter;
+            return currentIdCounter;
         }
 
         private int CreateVertEntrances(int y0, int y1, int x, int clusterid1,
@@ -152,53 +150,51 @@ namespace HPASharp
         {
             var curreIdCounter = currId;
 
-            for (int i = y0; i <= y1; i++)
+            for (var i = y0; i <= y1; i++)
             {
-                var node1Id = Tiling.GetNodeId(x, i);
-                var node2Id = Tiling.GetNodeId(x + 1, i);
-                var node1Info = Tiling.Graph.GetNodeInfo(node1Id);
-                var node2Info = Tiling.Graph.GetNodeInfo(node2Id);
+                var node1isObstacle = Tiling[x, i].Info.IsObstacle;
+                var node2isObstacle = Tiling[x + 1, i].Info.IsObstacle;
                 // get the next communication spot
-                if (node1Info.IsObstacle || node2Info.IsObstacle)
+                if (node1isObstacle || node2isObstacle)
                 {
                     continue;
                 }
+
                 // start building the entrance
-                int entranceStart = i;
+                var entranceStart = i;
                 while (true)
                 {
                     i++;
                     if (i >= y1)
                         break;
-                    node1Id = Tiling.GetNodeId(x, i);
-                    node2Id = Tiling.GetNodeId(x + 1, i);
-                    node1Info = Tiling.Graph.GetNodeInfo(node1Id);
-                    node2Info = Tiling.Graph.GetNodeInfo(node2Id);
-                    if ((node1Info.IsObstacle || node2Info.IsObstacle) || i >= y1)
+                    node1isObstacle = Tiling[x, i].Info.IsObstacle;
+                    node2isObstacle = Tiling[x + 1, i].Info.IsObstacle;
+                    if (node1isObstacle || node2isObstacle || i >= y1)
                         break;
                 }
+
                 if (EntranceStyle == EntranceStyle.END_ENTRANCE && (i - entranceStart) > MAX_ENTRANCE_WIDTH)
                 {
                     // create two entrances, one for each end
                     var entrance1 = new Entrance(curreIdCounter++, clusterid1, clusterid2, entranceStart, x,
-                                       this.Tiling.GetNodeId(x, entranceStart),
-                                       this.Tiling.GetNodeId(x + 1, entranceStart), Orientation.VERTICAL);
+                                       this.Tiling[x, entranceStart].NodeId,
+                                       this.Tiling[x + 1, entranceStart].NodeId, Orientation.VERTICAL);
                     AbsTiling.AddEntrance(entrance1);
 
                     // BEWARE! We are getting the tileNode for position i - 1. If clustersize was 8
                     // for example, and end would had finished at 7, you would set the entrance at 6.
                     // This seems to be intended.
                     var entrance2 = new Entrance(curreIdCounter++, clusterid1, clusterid2, (i - 1), x,
-                                       this.Tiling.GetNodeId(x, i - 1),
-                                       this.Tiling.GetNodeId(x + 1, i - 1), Orientation.VERTICAL);
+                                       this.Tiling[x, i - 1].NodeId,
+                                       this.Tiling[x + 1, i - 1].NodeId, Orientation.VERTICAL);
                     AbsTiling.AddEntrance(entrance2);
                 }
                 else
                 {
                     // create one entrance
                     var entrance = new Entrance(curreIdCounter++, clusterid1, clusterid2, ((i - 1) + entranceStart) / 2, x,
-                                      this.Tiling.GetNodeId(x, (i - 1 + entranceStart) / 2),
-                                      this.Tiling.GetNodeId(x + 1, (i - 1 + entranceStart) / 2), Orientation.VERTICAL);
+                                      this.Tiling[x, (i - 1 + entranceStart) / 2].NodeId,
+                                      this.Tiling[x + 1, (i - 1 + entranceStart) / 2].NodeId, Orientation.VERTICAL);
                     AbsTiling.AddEntrance(entrance);
                 }
             }

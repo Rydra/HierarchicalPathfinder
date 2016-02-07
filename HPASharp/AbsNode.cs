@@ -10,19 +10,20 @@ namespace HPASharp
     public class AbsNode
     {
         public int ClusterId { get; set; }
+        // The id is useful to have indexed arrays and look up based on them
         public int Id { get; set; }
         public Position Position { get; set; }
-        public int CenterId { get; set; }
+        public int OriginNodeId { get; set; }
         public int LocalIdxCluster { get; set; }
         public int Level { get; set; }
 
-        public AbsNode(int id, int clusterId, Position position, int centerId)
+        public AbsNode(int id, int clusterId, Position position, int originNodeId)
         {
             Level = -1;
             ClusterId = clusterId;
             Id = id;
             Position = position;
-            this.CenterId = centerId;
+            this.OriginNodeId = originNodeId;
         }
     }
 }
