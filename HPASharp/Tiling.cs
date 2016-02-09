@@ -65,18 +65,7 @@ namespace HPASharp
         {
             this.Init(tileType, width, height);
         }
-
-        private void Init(TileType tileType, int width, int height)
-        {
-            this.TileType = tileType;
-            this.MaxEdges = Helpers.GetMaxEdges(tileType);
-            this.Height = height;
-            this.Width = width;
-            this.Graph = new Graph<TilingNodeInfo, TilingEdgeInfo>();
-            this.CreateNodes();
-            this.CreateEdges();
-        }
-
+        
         // Create a new tiling as a copy of another tiling (just copying obstacles)
         public Tiling(Tiling tiling, int horizOrigin, int vertOrigin, int width, int height)
         {
@@ -95,6 +84,18 @@ namespace HPASharp
                 localNodeInfo.IsObstacle = nodeInfo.IsObstacle;
             }
         }
+
+        private void Init(TileType tileType, int width, int height)
+        {
+            this.TileType = tileType;
+            this.MaxEdges = Helpers.GetMaxEdges(tileType);
+            this.Height = height;
+            this.Width = width;
+            this.Graph = new Graph<TilingNodeInfo, TilingEdgeInfo>();
+            this.CreateNodes();
+            this.CreateEdges();
+        }
+
         
         public int NrNodes => Width * Height;
 
@@ -156,12 +157,12 @@ namespace HPASharp
             return true;
         }
 
-        private void AddOutEdge(int nodeId, int col, int row, int cost)
+        private void AddOutEdge(int nodeId, int x, int y, int cost)
         {
-            if (row < 0 || row >= Height || col < 0 || col >= Width)
+            if (y < 0 || y >= Height || x < 0 || x >= Width)
                 return;
 
-            Graph.AddOutEdge(nodeId, this[col, row].NodeId, new TilingEdgeInfo(cost));
+            Graph.AddOutEdge(nodeId, this[x, y].NodeId, new TilingEdgeInfo(cost));
         }
 
         private void CreateEdges()
@@ -233,11 +234,11 @@ namespace HPASharp
 
         private void PrintFormatted(List<char> chars)
         {
-            for (int row = 0; row < Height; ++row)
+            for (var y = 0; y < Height; ++y)
             {
-                for (int col = 0; col < Width; ++col)
+                for (var x = 0; x < Width; ++x)
                 {
-                    int nodeId = this.GetNodeIdFromPos(col, row);
+                    var nodeId = this.GetNodeIdFromPos(x, y);
                     Console.Write(chars[nodeId]);
                 }
 

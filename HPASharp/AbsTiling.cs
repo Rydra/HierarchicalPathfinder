@@ -162,7 +162,7 @@ namespace HPASharp
         public void AddAbstractNodes()
         {
             var nodeId = 0;
-            var absNodes = new Dictionary<int, AbsNode>();
+            var absNodes = new Dictionary<int, AbsTilingNodeInfo>();
             foreach (var entrance in Entrances)
             {
                 var cluster1 = Clusters[entrance.Cluster1Id];
@@ -184,21 +184,20 @@ namespace HPASharp
 
                 // use absNodes as a local var to check quickly if a node with the same centerId
                 // has been created before
-                AbsNode absNode;
+                AbsTilingNodeInfo absNode;
                 if (!absNodes.TryGetValue(entrance.Center1Id, out absNode))
                 {
-                    AbsNodeIds[entrance.Center1Id] = nodeId;
-                    var node = new AbsNode(nodeId,
-                                 entrance.Cluster1Id,
-                                 new Position(entrance.Center1.X, entrance.Center1.Y),
-                                 entrance.Center1Id);
-                    node.Level = level;
-                    absNodes[entrance.Center1Id] = node;
                     cluster1.AddEntrance(new LocalEntrance(entrance.Center1Id,
                                                nodeId,
                                                -1, // real value set in addEntrance()
                                                new Position(entrance.Center1.X - cluster1.Origin.X, entrance.Center1.Y - cluster1.Origin.Y)));
-                    absNodes[entrance.Center1Id].LocalIdxCluster = cluster1.GetNrEntrances() - 1;
+
+                    AbsNodeIds[entrance.Center1Id] = nodeId;
+                    var node = new AbsTilingNodeInfo(nodeId, level,
+                                 entrance.Cluster1Id,
+                                 new Position(entrance.Center1.X, entrance.Center1.Y),
+                                 entrance.Center1Id, cluster1.GetNrEntrances() - 1);
+                    absNodes[entrance.Center1Id] = node;
                     nodeId++;
                 }
                 else
@@ -209,18 +208,17 @@ namespace HPASharp
                 
                 if (!absNodes.TryGetValue(entrance.Center2Id, out absNode))
                 {
-                    AbsNodeIds[entrance.Center2Id] = nodeId;
-                    var node = new AbsNode(nodeId,
-                                 entrance.Cluster2Id,
-                                 new Position(entrance.Center2.X, entrance.Center2.Y),
-                                 entrance.Center2Id);
-                    node.Level = level;
-                    absNodes[entrance.Center2Id] = node;
                     cluster2.AddEntrance(new LocalEntrance(entrance.Center2Id,
                                                nodeId,
                                                -1, // real value set in addEntrance()
                                                new Position(entrance.Center2.X - cluster2.Origin.X, entrance.Center2.Y - cluster2.Origin.Y)));
-                    absNodes[entrance.Center2Id].LocalIdxCluster = cluster2.GetNrEntrances() - 1;
+
+                    AbsNodeIds[entrance.Center2Id] = nodeId;
+                    var node = new AbsTilingNodeInfo(nodeId, level,
+                                 entrance.Cluster2Id,
+                                 new Position(entrance.Center2.X, entrance.Center2.Y),
+                                 entrance.Center2Id, cluster2.GetNrEntrances() - 1);
+                    absNodes[entrance.Center2Id] = node;
                     nodeId++;
                 }
                 else
@@ -235,10 +233,7 @@ namespace HPASharp
             // add nodes to the graph
             foreach (var absNode in absNodes.Select(kvp => kvp.Value))
             {
-                var n = new AbsTilingNodeInfo(absNode.Id, absNode.Level, absNode.ClusterId,
-                               absNode.Position, absNode.OriginNodeId,
-                               absNode.LocalIdxCluster);
-                Graph.AddNode(absNode.Id, n);
+                Graph.AddNode(absNode.Id, absNode);
             }
         }
 
@@ -283,7 +278,7 @@ namespace HPASharp
 
                         foreach (var localPoint in localPath)
                         {
-                            int val = this.LocalId2GlobalId(localPoint, cluster, width);
+                            var val = this.LocalId2GlobalId(localPoint, cluster, width);
                             if (result[result.Count - 1] == val)
                             {
                                 continue;

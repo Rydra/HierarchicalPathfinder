@@ -111,7 +111,7 @@ namespace HPASharp
         public int ClusterY { get; set; } // abstract row of this cluster (e.g., 1 for the second clusters horizontally)
         public int Column { get; set; } // abstract col of this cluster (e.g., 1 for the second clusters vertically)
         public int[,] Distances { get; set; }
-        public bool[,] BoolPathMap { get; set; }
+        public bool[,] BoolPathMap { get; set; } // Tells whether a path has already been calculated for 2 node ids
         public List<LocalEntrance> Entrances { get; set; }
         public Tiling Tiling { get; set; }
         public Size Size { get; set; }
@@ -232,16 +232,15 @@ namespace HPASharp
             }
         }
 
-//          const vector<int>& getPath(int idx1, int idx2) const
-//          {
-//             assert(m_distances[idx1][idx2] != s_Infinity);
-//             return m_paths[idx1][idx2];
-//          }
-
+        /// <summary>
+        /// Gets the index of an entrance point of this cluster
+        /// </summary>
+        /// <param name="localIndex"></param>
+        /// <returns></returns>
         public int GetLocalCenter(int localIndex)
         {
             var entrance = Entrances[localIndex];
-            return entrance.RelativePos.Y *Size.Width + entrance.RelativePos.X;
+            return entrance.RelativePos.Y * Size.Width + entrance.RelativePos.X;
         }
 
         public List<int> ComputePath(int start, int target)
