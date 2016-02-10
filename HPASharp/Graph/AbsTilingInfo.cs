@@ -19,10 +19,14 @@ namespace HPASharp
             Level = level;
             IsInterEdge = inter;
         }
+        public override string ToString()
+        {
+            return ("cost: " + Cost + "; level: " + Level + "; inter: " + IsInterEdge);
+        }
 
         public void PrintInfo()
         {
-            Console.WriteLine("cost: " + Cost + "; level: " + Level + "; inter: " + IsInterEdge);
+            Console.WriteLine(this.ToString());
         }
     }
 

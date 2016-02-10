@@ -12,121 +12,51 @@ namespace HPASharp
         HORIZONTAL, VERTICAL, HDIAG1, HDIAG2, VDIAG1, VDIAG2
     }
 
-    /// <summary>
-    /// Represents an entrance point between 2 clusters
-    /// </summary>
-    public class Entrance
-    {
-        public int Id { get; set; }
-        public int Cluster1Id { get; set; }
-        public int Cluster2Id { get; set; }
-        public int Center1Id { get; set; }
-        public int Center2Id { get; set; }
-        public Orientation Orientation { get; set; }
-        public Position Center1 { get; set; }
+	public class LocalEntrance
+	{
+		public int AbsNodeId { get; set; } // id of the abstract node
 
-        public Position Center2
-        {
-            get
-            {
-                int x;
-                switch (Orientation)
-                {
-                    case Orientation.HORIZONTAL:
-                    case Orientation.HDIAG2:
-                        x = Center1.X;
-                        break;
-                    case Orientation.VERTICAL:
-                    case Orientation.VDIAG2:
-                    case Orientation.VDIAG1:
-                    case Orientation.HDIAG1:
-                        x = Center1.X + 1;
-                        break;
-                    default:
-                        //assert(false);
-                        x = - 1;
-                        break;
-                }
+		// Relative position of entrance inside cluster
+		public Position RelativePos { get; set; }
+		public int EntranceLocalIdx { get; set; } // local id
 
-                int y;
-                switch (Orientation)
-                {
-                    case Orientation.HORIZONTAL:
-                    case Orientation.HDIAG1:
-                    case Orientation.HDIAG2:
-                    case Orientation.VDIAG1:
-                        y = Center1.Y + 1;
-                        break;
-                    case Orientation.VERTICAL:
-                    case Orientation.VDIAG2:
-                        y = Center1.Y;
-                        break;
-                    default:
-                        //assert(false);
-                        y = - 1;
-                        break;
-                }
-
-                return new Position(x, y);
-            }
-        }
-
-        public Entrance(int id, int cl1Id, int cl2Id, int center1Row, int center1Col, int center1Id, int center2Id, Orientation orientation)
-        {
-            Id = id;
-            Cluster1Id = cl1Id;
-            Cluster2Id = cl2Id;
-
-            int center1y, center1x;
-            if (orientation == Orientation.HDIAG2)
-            {
-                center1x = center1Col + 1;
-            }
-            else
-            {
-                center1x = center1Col;
-            }
-
-            if (orientation == Orientation.VDIAG2)
-            {
-                center1y = center1Row + 1;
-            }
-            else
-            {
-                center1y = center1Row;
-            }
-            
-            Center1 = new Position(center1x, center1y);
-            Center1Id = center1Id;
-            Center2Id = center2Id;
-            Orientation = orientation;
-        }
-    }
+		public LocalEntrance(int absNodeId, int localIdx, Position relativePosition)
+		{
+			AbsNodeId = absNodeId;
+			EntranceLocalIdx = localIdx;
+			RelativePos = relativePosition;
+		}
+	}
 
     public class Cluster
     {
         const int MAX_CLENTRANCES = 50;
 
         public int Id { get; set; }
-        public int ClusterY { get; set; } // abstract row of this cluster (e.g., 1 for the second clusters horizontally)
-        public int Column { get; set; } // abstract col of this cluster (e.g., 1 for the second clusters vertically)
+        public int ClusterY { get; set; }
+        public int ClusterX { get; set; }
         public int[,] Distances { get; set; }
-        public bool[,] BoolPathMap { get; set; } // Tells whether a path has already been calculated for 2 node ids
-        public List<LocalEntrance> Entrances { get; set; }
+        public bool[,] DistanceCalculated { get; set; } // Tells whether a path has already been calculated for 2 node ids
+        
+		// A local entrance is a point inside this cluster
+		public List<LocalEntrance> Entrances { get; set; }
+		
+		// This tiling object contains the subregion of the main grid that this cluster contains.
+		// Necessary to do local search to find paths and distances between local entrances
         public Tiling Tiling { get; set; }
         public Size Size { get; set; }
-        public Position Origin { get; set; }
+        public Position Origin { get; set; } // The position where this cluster starts in the main grid
 
         public Cluster(Tiling tiling, int id, int clusterX, int clusterY, Position origin, Size size)
         {
             Tiling = new Tiling(tiling, origin.X, origin.Y, size.Width, size.Height);
             Id = id;
             ClusterY = clusterY;
-            Column = clusterX;
+            this.ClusterX = clusterX;
             Origin = origin;
             Size = size;
             Distances = new int[MAX_CLENTRANCES, MAX_CLENTRANCES];
-            BoolPathMap = new bool[MAX_CLENTRANCES, MAX_CLENTRANCES];
+            this.DistanceCalculated = new bool[MAX_CLENTRANCES, MAX_CLENTRANCES];
             Entrances = new List<LocalEntrance>();
         }
 
@@ -138,7 +68,7 @@ namespace HPASharp
         {
             for (var i = 0; i < MAX_CLENTRANCES; i++)
                 for (var j = 0; j < MAX_CLENTRANCES; j++)
-                    BoolPathMap[i,j] = false;
+                    this.DistanceCalculated[i,j] = false;
 
             foreach(var entrance1 in Entrances)
                 foreach (var entrance2 in Entrances)
@@ -174,7 +104,7 @@ namespace HPASharp
             var targetIdx = e2.EntranceLocalIdx;
 
             //If a path already existed, or both are the same node, just return
-            if (BoolPathMap[startIdx,targetIdx] || startIdx == targetIdx)
+            if (this.DistanceCalculated[startIdx,targetIdx] || startIdx == targetIdx)
                 return;
 
             var searchUtils = new SearchUtils();
@@ -183,8 +113,8 @@ namespace HPASharp
             else
                 NoPath(startIdx, targetIdx);
 
-            BoolPathMap[startIdx,targetIdx] = true;
-            BoolPathMap[targetIdx,startIdx] = true;
+            this.DistanceCalculated[startIdx,targetIdx] = true;
+            this.DistanceCalculated[targetIdx,startIdx] = true;
         }
         
         public void UpdatePaths(int entranceId)
@@ -227,7 +157,7 @@ namespace HPASharp
             var idx = Entrances.Count;
             for (var i = 0; i < MAX_CLENTRANCES; i++)
             {
-                BoolPathMap[idx,i] = BoolPathMap[i,idx] = false;
+                this.DistanceCalculated[idx,i] = this.DistanceCalculated[i,idx] = false;
                 Distances[idx,i] = Distances[i,idx] = int.MaxValue;
             }
         }

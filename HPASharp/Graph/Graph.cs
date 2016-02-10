@@ -24,18 +24,18 @@ namespace HPASharp
         {
             public int NodeId { get; set; }
             public NODEINFO Info { get; set; }
-            public List<Edge> OutEdges { get; set; }
+            public List<Edge> Edges { get; set; }
 
             public Node(int nodeId, NODEINFO info)
             {
                 NodeId = nodeId;
                 Info = info;
-                OutEdges = new List<Edge>();
+                this.Edges = new List<Edge>();
             }
 
             public void RemoveOutEdge(int targetNodeId)
             {
-                OutEdges.RemoveAll(e => e.TargetNodeId == targetNodeId);
+                this.Edges.RemoveAll(e => e.TargetNodeId == targetNodeId);
             }
         }
 
@@ -57,25 +57,25 @@ namespace HPASharp
 
         #region Graph updating
 
-        public void AddOutEdge(int sourceNodeId, int targetNodeId,
+        public void AddEdge(int sourceNodeId, int targetNodeId,
                         EDGEINFO info)
         {
-            Nodes[sourceNodeId].OutEdges.Add(new Edge(targetNodeId, info));
+            Nodes[sourceNodeId].Edges.Add(new Edge(targetNodeId, info));
         }
         
         public void RemoveOutEdge(int sourceNodeId, int targetNodeId)
         {
-            Nodes[sourceNodeId].OutEdges.RemoveAll(e => e.TargetNodeId == targetNodeId);
+            Nodes[sourceNodeId].Edges.RemoveAll(e => e.TargetNodeId == targetNodeId);
         }
         
         public void RemoveNodeEdges(int nodeId)
         {
-            foreach (var edge in Nodes[nodeId].OutEdges)
+            foreach (var edge in Nodes[nodeId].Edges)
             {
                 Nodes[edge.TargetNodeId].RemoveOutEdge(nodeId);
             }
 
-            Nodes[nodeId].OutEdges.Clear();
+            Nodes[nodeId].Edges.Clear();
         }
 
         public void RemoveLastNode()
@@ -102,7 +102,7 @@ namespace HPASharp
         
         public List<Edge> GetOutEdges(int nodeId)
         {
-            return Nodes[nodeId].OutEdges;
+            return Nodes[nodeId].Edges;
         }
     }
 }

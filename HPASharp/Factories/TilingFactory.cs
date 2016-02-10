@@ -15,7 +15,6 @@ namespace HPASharp
         {
             var tiling = new Tiling(tilingType, width, height);
             CreateObstacles(tiling, obstaclePercentage);
-            tiling.PrintFormatted();
             return tiling;
         }
         

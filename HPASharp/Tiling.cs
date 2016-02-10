@@ -96,12 +96,76 @@ namespace HPASharp
             this.CreateEdges();
         }
 
-        
-        public int NrNodes => Width * Height;
+	    public int NrNodes
+	    {
+		    get
+		    {
+			    return Width * Height;
+		    }
+	    }
 
-        public Graph<TilingNodeInfo, TilingEdgeInfo>.Node this[int x, int y] => Graph.GetNode(GetNodeIdFromPos(x, y));
+	    public Graph<TilingNodeInfo, TilingEdgeInfo>.Node this[int x, int y]
+	    {
+		    get
+		    {
+			    return Graph.GetNode(GetNodeIdFromPos(x, y));
+		    }
+	    }
 
-        private int GetNodeIdFromPos(int x, int y) => y*Width + x;
+	    public int GetNodeIdFromPos(int x, int y)
+	    {
+		    return y*Width + x;
+	    }
+
+        public int GetHeuristic(Position start, Position target)
+        {
+            var startX = start.X;
+            var targetX = target.X;
+            var startY = start.Y;
+            var targetY = target.Y;
+            var diffCol = Math.Abs(targetX - startX);
+            var diffRow = Math.Abs(targetY - startY);
+            switch (TileType)
+            {
+                case TileType.HEX:
+                    // Vancouver distance
+                    // See P.Yap: Grid-based Path-Finding (LNAI 2338 pp.44-55)
+                    {
+                        var correction = 0;
+                        if (diffCol % 2 != 0)
+                        {
+                            if (targetY < startY)
+                                correction = targetX % 2;
+                            else if (targetY > startY)
+                                correction = startX % 2;
+                        }
+                        // Note: formula in paper is wrong, corrected below.  
+                        var dist = Math.Max(0, diffRow - diffCol / 2 - correction) + diffCol;
+                        return dist * 1;
+                    }
+                case TileType.OCTILE_UNICOST:
+                    return Math.Max(diffCol, diffRow) * Constants.COST_ONE;
+                case TileType.OCTILE:
+                    int maxDiff;
+                    int minDiff;
+                    if (diffCol > diffRow)
+                    {
+                        maxDiff = diffCol;
+                        minDiff = diffRow;
+                    }
+                    else
+                    {
+                        maxDiff = diffRow;
+                        minDiff = diffCol;
+                    }
+                    return minDiff * Constants.SQRT2 + (maxDiff - minDiff) * Constants.COST_ONE;
+                case TileType.TILE:
+                    return (diffCol + diffRow) * Constants.COST_ONE;
+                default:
+                    //assert(false);
+                    return 0;
+            }
+        }
 
         public List<Neighbour> GetNeighbours(int nodeId, int lastNodeId)
         {
@@ -113,8 +177,7 @@ namespace HPASharp
                 return result;
             }
 
-            var edges = node.OutEdges;
-            foreach (var edge in edges)
+            foreach (var edge in node.Edges)
             {
                 var targetNodeId = edge.TargetNodeId;
                 var targetNode = Graph.GetNode(targetNodeId);
@@ -140,7 +203,7 @@ namespace HPASharp
             if (TileType == TileType.TILE)
                 return false;
             var lastNode = Graph.GetNode(lastNodeId);
-            var edges = lastNode.OutEdges;
+            var edges = lastNode.Edges;
             return edges.Any(edge => edge.TargetNodeId == targetNodeId);
         }
 
@@ -157,12 +220,12 @@ namespace HPASharp
             return true;
         }
 
-        private void AddOutEdge(int nodeId, int x, int y, int cost)
+        private void AddEdge(int nodeId, int x, int y, int cost)
         {
             if (y < 0 || y >= Height || x < 0 || x >= Width)
                 return;
 
-            Graph.AddOutEdge(nodeId, this[x, y].NodeId, new TilingEdgeInfo(cost));
+            Graph.AddEdge(nodeId, this[x, y].NodeId, new TilingEdgeInfo(cost));
         }
 
         private void CreateEdges()
@@ -171,35 +234,35 @@ namespace HPASharp
                 for (var x = 0; x < Width; ++x)
                 {
                     var nodeId = this[x, y].NodeId;
-                    this.AddOutEdge(nodeId, x, y - 1, Constants.COST_ONE);
-                    this.AddOutEdge(nodeId, x, y + 1, Constants.COST_ONE);
-                    this.AddOutEdge(nodeId, x - 1, y, Constants.COST_ONE);
-                    this.AddOutEdge(nodeId, x + 1, y, Constants.COST_ONE);
+                    this.AddEdge(nodeId, x, y - 1, Constants.COST_ONE);
+                    this.AddEdge(nodeId, x, y + 1, Constants.COST_ONE);
+                    this.AddEdge(nodeId, x - 1, y, Constants.COST_ONE);
+                    this.AddEdge(nodeId, x + 1, y, Constants.COST_ONE);
                     if (this.TileType == TileType.OCTILE)
                     {
-                        this.AddOutEdge(nodeId, x + 1, y + 1, Constants.SQRT2);
-                        this.AddOutEdge(nodeId, x - 1, y + 1, Constants.SQRT2);
-                        this.AddOutEdge(nodeId, x + 1, y - 1, Constants.SQRT2);
-                        this.AddOutEdge(nodeId, x - 1, y - 1, Constants.SQRT2);
+                        this.AddEdge(nodeId, x + 1, y + 1, Constants.SQRT2);
+                        this.AddEdge(nodeId, x - 1, y + 1, Constants.SQRT2);
+                        this.AddEdge(nodeId, x + 1, y - 1, Constants.SQRT2);
+                        this.AddEdge(nodeId, x - 1, y - 1, Constants.SQRT2);
                     }
                     else if (this.TileType == TileType.OCTILE_UNICOST)
                     {
-                        this.AddOutEdge(nodeId, x + 1, y + 1, Constants.COST_ONE);
-                        this.AddOutEdge(nodeId, x - 1, y + 1, Constants.COST_ONE);
-                        this.AddOutEdge(nodeId, x + 1, y - 1, Constants.COST_ONE);
-                        this.AddOutEdge(nodeId, x - 1, y - 1, Constants.COST_ONE);
+                        this.AddEdge(nodeId, x + 1, y + 1, Constants.COST_ONE);
+                        this.AddEdge(nodeId, x - 1, y + 1, Constants.COST_ONE);
+                        this.AddEdge(nodeId, x + 1, y - 1, Constants.COST_ONE);
+                        this.AddEdge(nodeId, x - 1, y - 1, Constants.COST_ONE);
                     }
                     else if (this.TileType == TileType.HEX)
                     {
                         if (x % 2 == 0)
                         {
-                            this.AddOutEdge(nodeId, x + 1, y - 1, Constants.COST_ONE);
-                            this.AddOutEdge(nodeId, x - 1, y - 1, Constants.COST_ONE);
+                            this.AddEdge(nodeId, x + 1, y - 1, Constants.COST_ONE);
+                            this.AddEdge(nodeId, x - 1, y - 1, Constants.COST_ONE);
                         }
                         else
                         {
-                            this.AddOutEdge(nodeId, x + 1, y + 1, Constants.COST_ONE);
-                            this.AddOutEdge(nodeId, x - 1, y + 1, Constants.COST_ONE);
+                            this.AddEdge(nodeId, x + 1, y + 1, Constants.COST_ONE);
+                            this.AddEdge(nodeId, x - 1, y + 1, Constants.COST_ONE);
                         }
                     }
                 }

@@ -34,7 +34,7 @@ namespace HPASharp
         {
             var result = new List<Neighbour>();
             var node = Graph.GetNode(nodeId);
-            var edges = node.OutEdges;
+            var edges = node.Edges;
             foreach (var edge in edges)
             {
                 if (edge.Info.IsInterEdge)
@@ -80,7 +80,8 @@ namespace HPASharp
         private void InsertStalHEdges(int nodeId)
         {
             var search = new AStar(false);
-            var nodeInfo = Graph.GetNodeInfo(AbsNodeIds[nodeId]);
+            var abstractNodeId = AbsNodeIds[nodeId];
+            var nodeInfo = Graph.GetNodeInfo(abstractNodeId);
             var oldLevel = nodeInfo.Level;
             nodeInfo.Level = MaxLevel;
             for (var level = oldLevel + 1; level <= MaxLevel; level++)
@@ -90,26 +91,27 @@ namespace HPASharp
                 for (var y = this.currentClusterY0; y <= this.currentClusterY1; y++)
                 for (var x = this.currentClusterX0; x <= this.currentClusterX1; x++)
                 {
-                    var abstractNodeId = y * this.Width + x;
-                    if (AbsNodeIds[abstractNodeId] == Constants.NO_NODE)
+                    var nodeId2 = y * this.Width + x;
+                    var abstractNodeId2 = AbsNodeIds[nodeId2];
+                    if (abstractNodeId2 == Constants.NO_NODE)
                         // No abstract node in this position
                         continue;
-                    if (nodeId == abstractNodeId)
+                    if (nodeId == nodeId2)
                         // Do not link oneself...
                         continue;
-                    var nodeInfo2 = Graph.GetNodeInfo(AbsNodeIds[abstractNodeId]);
+                    var nodeInfo2 = Graph.GetNodeInfo(abstractNodeId2);
                     if (nodeInfo2.Level < level)
                         // Do not link with lower level nodes
                         continue;
                     {
-                        search.FindPath(this, AbsNodeIds[nodeId], AbsNodeIds[abstractNodeId]);
+                        search.FindPath(this, abstractNodeId, abstractNodeId2);
                         if (search.PathCost >= 0)
                         {
-                            AddOutEdge(AbsNodeIds[nodeId],
-                                       AbsNodeIds[abstractNodeId],
+                            AddEdge(abstractNodeId,
+                                       abstractNodeId2,
                                        search.PathCost, level, false);
-                            AddOutEdge(AbsNodeIds[abstractNodeId],
-                               AbsNodeIds[nodeId],
+                            AddEdge(abstractNodeId2,
+                               abstractNodeId,
                                search.PathCost, level, false);
                         }
                     }
@@ -180,7 +182,7 @@ namespace HPASharp
 
         public int GetHierarchicalWidth(int level)
         {
-            int offset = GetOffset(level);
+            var offset = GetOffset(level);
             var result = this.Width / offset;
             if (this.Width % offset > 0)
                 result++;
@@ -189,9 +191,8 @@ namespace HPASharp
 
         public int GetHierarchicalHeight(int level)
         {
-            int result;
-            int offset = GetOffset(level);
-            result = this.Height / offset;
+	        var offset = GetOffset(level);
+            var result = this.Height / offset;
             if (this.Height % offset > 0)
                 result++;
             return result;
@@ -225,7 +226,7 @@ namespace HPASharp
         public void DoHierarchicalSearch(int startNodeId, int targetNodeId, out List<int> result, int maxSearchLevel)
         {
             var path = this.PerformSearch(startNodeId, targetNodeId, maxSearchLevel, true);
-            for (int level = maxSearchLevel; level > 1; level--)
+            for (var level = maxSearchLevel; level > 1; level--)
             {
                 path = this.RefineAbstractPath(path, level);
             }
@@ -294,28 +295,28 @@ namespace HPASharp
         public override void CreateEdges()
         {
             CreateClusterEdges();
-            this.CreateHierarchicalEdges();
+            CreateHierarchicalEdges();
         }
 
         private void CreateHierarchicalEdges()
         {
-            for (int level = 2; level <= MaxLevel; level++)
+            for (var level = 2; level <= MaxLevel; level++)
             {
                 // The offset determines the distances that will separate clusters in this new level
                 int offset = GetOffset(level);
                 this.currentLevel = level - 1;
 
                 // for each cluster
-                for (int y = 0; y < this.Height; y += offset)
-                    for (int x = 0; x < this.Width; x += offset)
-                    {
-                        // define the bounding box of the current cluster we want to analize to create HEdges
-                        this.SetCurrentCluster(x, y, offset);
+                for (var y = 0; y < this.Height; y += offset)
+                for (var x = 0; x < this.Width; x += offset)
+                {
+                    // define the bounding box of the current cluster we want to analize to create HEdges
+                    this.SetCurrentCluster(x, y, offset);
 
-                        this.ConstructVerticalToVerticalEdges(level);
-                        this.ConstructHorizontalToHorizontalEdges(level);
-                        this.ConstructHorizontalToVerticalEdges(level);
-                    }
+                    this.ConstructVerticalToVerticalEdges(level);
+                    this.ConstructHorizontalToHorizontalEdges(level);
+                    this.ConstructHorizontalToVerticalEdges(level);
+                }
             }
         }
 
@@ -326,22 +327,23 @@ namespace HPASharp
             for (int i1 = this.currentClusterY0; i1 <= this.currentClusterY1; i1 += (this.currentClusterY1 - this.currentClusterY0))
             for (int j1 = this.currentClusterX0 + 1; j1 < this.currentClusterX1; j1++)
             {
-                if (this.AbsNodeIds[i1 * this.Width + j1] == Constants.NO_NODE)
+                var absNodeId = this.AbsNodeIds[i1 * this.Width + j1];
+
+                if (absNodeId == Constants.NO_NODE)
                 {
                     continue;
                 }
 
-                var nodeInfo1 = this.Graph.GetNodeInfo(this.AbsNodeIds[i1 * this.Width + j1]);
+                var nodeInfo1 = this.Graph.GetNodeInfo(absNodeId);
                 if (nodeInfo1.Level < level)
                 {
                     continue;
                 }
+
                 for (int i2 = this.currentClusterY0 + 1; i2 < this.currentClusterY1; i2++)
+                for (int j2 = this.currentClusterX0; j2 <= this.currentClusterX1; j2 += (this.currentClusterX1 - this.currentClusterX0))
                 {
-                    for (int j2 = this.currentClusterX0; j2 <= this.currentClusterX1; j2 += (this.currentClusterX1 - this.currentClusterX0))
-                    {
-                        this.AddOutEdgesBetween(j1, i1, j2, i2, level);
-                    }
+                    this.AddOutEdgesBetween(j1, i1, j2, i2, level);
                 }
             }
         }
@@ -352,29 +354,28 @@ namespace HPASharp
             // This runs over each cell of the 2 horizontal edges against itself (therefore trying to establish
             // edges on only horizontal edges)
             for (int i1 = this.currentClusterY0; i1 <= this.currentClusterY1; i1 += (this.currentClusterY1 - this.currentClusterY0))
+            for (int j1 = this.currentClusterX0; j1 <= this.currentClusterX1; j1++)
             {
-                for (int j1 = this.currentClusterX0; j1 <= this.currentClusterX1; j1++)
+                var absNodeId = this.AbsNodeIds[i1 * this.Width + j1];
+
+                if (absNodeId == Constants.NO_NODE)
                 {
-                    if (this.AbsNodeIds[i1 * this.Width + j1] == Constants.NO_NODE)
+                    continue;
+                }
+                var nodeInfo1 = this.Graph.GetNodeInfo(absNodeId);
+                if (nodeInfo1.Level < level)
+                {
+                    continue;
+                }
+
+                for (int i2 = this.currentClusterY0; i2 <= this.currentClusterY1; i2 += (this.currentClusterY1 - this.currentClusterY0))
+                for (int j2 = this.currentClusterX0; j2 <= this.currentClusterX1; j2++)
+                {
+                    if (i1 * this.Width + j1 >= i2 * this.Width + j2)
                     {
                         continue;
                     }
-                    var nodeInfo1 = this.Graph.GetNodeInfo(this.AbsNodeIds[i1 * this.Width + j1]);
-                    if (nodeInfo1.Level < level)
-                    {
-                        continue;
-                    }
-                    for (int i2 = this.currentClusterY0; i2 <= this.currentClusterY1; i2 += (this.currentClusterY1 - this.currentClusterY0))
-                    {
-                        for (int j2 = this.currentClusterX0; j2 <= this.currentClusterX1; j2++)
-                        {
-                            if (i1 * this.Width + j1 >= i2 * this.Width + j2)
-                            {
-                                continue;
-                            }
-                            this.AddOutEdgesBetween(j1, i1, j2, i2, level);
-                        }
-                    }
+                    this.AddOutEdgesBetween(j1, i1, j2, i2, level);
                 }
             }
         }
@@ -384,55 +385,57 @@ namespace HPASharp
             // combine nodes on vertical edges:
             // This runs over each cell of the 2 vertical edges
             for (int i1 = this.currentClusterY0; i1 <= this.currentClusterY1; i1++)
+            for (int j1 = this.currentClusterX0; j1 <= this.currentClusterX1; j1 += (this.currentClusterX1 - this.currentClusterX0))
             {
-                for (int j1 = this.currentClusterX0; j1 <= this.currentClusterX1; j1 += (this.currentClusterX1 - this.currentClusterX0))
+                var absNodeId = this.AbsNodeIds[i1 * this.Width + j1];
+
+                if (absNodeId == Constants.NO_NODE)
                 {
-                    if (this.AbsNodeIds[i1 * this.Width + j1] == Constants.NO_NODE)
+                    continue;
+                }
+
+                var nodeInfo1 = this.Graph.GetNodeInfo(absNodeId);
+                if (nodeInfo1.Level < level)
+                {
+                    continue;
+                }
+
+                for (var i2 = this.currentClusterY0; i2 <= this.currentClusterY1; i2++)
+                for (var j2 = this.currentClusterX0; j2 <= this.currentClusterX1; j2 += (this.currentClusterX1 - this.currentClusterX0))
+                {
+                    // Only analize the points that lie forward to the current point we are analizing (in front of y1,x1)
+                    if (i1 * this.Width + j1 >= i2 * this.Width + j2)
                     {
                         continue;
                     }
 
-                    var nodeInfo1 = this.Graph.GetNodeInfo(this.AbsNodeIds[i1 * this.Width + j1]);
-                    if (nodeInfo1.Level < level)
-                    {
-                        continue;
-                    }
-
-                    for (int i2 = this.currentClusterY0; i2 <= this.currentClusterY1; i2++)
-                    {
-                        for (int j2 = this.currentClusterX0; j2 <= this.currentClusterX1; j2 += (this.currentClusterX1 - this.currentClusterX0))
-                        {
-                            // Only analize the points that lie forward to the current point we are analizing (in front of y1,x1)
-                            if (i1 * this.Width + j1 >= i2 * this.Width + j2)
-                            {
-                                continue;
-                            }
-                            this.AddOutEdgesBetween(j1, i1, j2, i2, level);
-                        }
-                    }
+                    this.AddOutEdgesBetween(j1, i1, j2, i2, level);
                 }
             }
         }
 
         private void AddOutEdgesBetween(int x1, int y1, int x2, int y2, int level)
         {
-            if (this.AbsNodeIds[y2 * this.Width + x2] == Constants.NO_NODE)
+            var absNodeId2 = this.AbsNodeIds[y2 * this.Width + x2];
+            var absNodeId1 = this.AbsNodeIds[y1 * this.Width + x1];
+
+            if (absNodeId2 == Constants.NO_NODE)
             {
                 return;
             }
 
-            var nodeInfo2 = this.Graph.GetNodeInfo(this.AbsNodeIds[y2 * this.Width + x2]);
+            var nodeInfo2 = this.Graph.GetNodeInfo(absNodeId2);
             if (nodeInfo2.Level < level)
             {
                 return;
             }
 
             var search = new AStar(false);
-            search.FindPath(this, this.AbsNodeIds[y1 * this.Width + x1], this.AbsNodeIds[y2 * this.Width + x2]);
+            search.FindPath(this, absNodeId1, absNodeId2);
             if (search.PathCost >= 0)
             {
-                this.AddOutEdge(this.AbsNodeIds[y1 * this.Width + x1], this.AbsNodeIds[y2 * this.Width + x2], search.PathCost, level, false);
-                this.AddOutEdge(this.AbsNodeIds[y2 * this.Width + x2], this.AbsNodeIds[y1 * this.Width + x1], search.PathCost, level, false);
+                this.AddEdge(absNodeId1, absNodeId2, search.PathCost, level, false);
+                this.AddEdge(absNodeId2, absNodeId1, search.PathCost, level, false);
             }
         }
 

@@ -46,7 +46,7 @@ namespace HPASharp.Smoother
             var positionPath = InitPath.Select(GetPosition).ToList();
 
             var pathcost = Helpers.GetPathCost(positionPath, tiling.TileType);
-            var heuristic = Helpers.GetHeuristic(GetPosition(InitPath[0]), GetPosition(InitPath[InitPath.Count - 1]), tiling.TileType);
+            var heuristic = tiling.GetHeuristic(GetPosition(InitPath[0]), GetPosition(InitPath[InitPath.Count - 1]));
             if (pathcost == heuristic)
                 
             {

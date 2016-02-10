@@ -18,5 +18,7 @@ namespace HPASharp
             (is set to NO_NODE in Search::checkPathExists).
         */
         List<Neighbour> GetNeighbours(int nodeId, int lastNodeId);
+
+        int GetHeuristic(Position start, Position target);
     }
 }
