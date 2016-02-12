@@ -18,14 +18,17 @@ namespace HPASharp
     
     public class TilingNodeInfo
     {
-        public TilingNodeInfo(bool isObstacle, Position position)
+        public TilingNodeInfo(bool isObstacle, int cost, Position position)
         {
             IsObstacle = isObstacle;
             Position = position;
+            Cost = cost;
         }
 
         public Position Position { get; set; }
         public bool IsObstacle { get; set; }
+
+	    public int Cost { get; set; }
     }
 
     public enum TileType
@@ -51,7 +54,9 @@ namespace HPASharp
 
     public class Tiling : IMap, IGrid
     {
-        public TileType TileType { get; set; }
+		public IPassability Passability { get; set; }
+
+	    public TileType TileType { get; set; }
 
         public int Height { get; set; }
 
@@ -61,14 +66,17 @@ namespace HPASharp
 
         public Graph<TilingNodeInfo, TilingEdgeInfo> Graph { get; set; }
 
-        public Tiling(TileType tileType, int width, int height)
+        public Tiling(TileType tileType, int width, int height, IPassability passability)
         {
+            Passability = passability;
             this.Init(tileType, width, height);
         }
         
         // Create a new tiling as a copy of another tiling (just copying obstacles)
-        public Tiling(Tiling tiling, int horizOrigin, int vertOrigin, int width, int height)
+        public Tiling(Tiling tiling, int horizOrigin, int vertOrigin, int width, int height, IPassability passability)
         {
+	        this.Passability = passability;
+
             // init builds everything, except for the obstacles...
             this.Init(tiling.TileType, width, height);
 
@@ -82,6 +90,7 @@ namespace HPASharp
                 var nodeInfo = tiling[horizOrigin + x, vertOrigin + y].Info;
                 // set obstacle for the local node
                 localNodeInfo.IsObstacle = nodeInfo.IsObstacle;
+                localNodeInfo.Cost = nodeInfo.Cost;
             }
         }
 
@@ -117,12 +126,15 @@ namespace HPASharp
 		    return y*Width + x;
 	    }
 
-        public int GetHeuristic(Position start, Position target)
+        public int GetHeuristic(int start, int target)
         {
-            var startX = start.X;
-            var targetX = target.X;
-            var startY = start.Y;
-            var targetY = target.Y;
+            var startPos = Graph.GetNodeInfo(start).Position;
+            var targetPos = Graph.GetNodeInfo(target).Position;
+
+            var startX = startPos.X;
+            var targetX = targetPos.X;
+            var startY = startPos.Y;
+            var targetY = targetPos.Y;
             var diffCol = Math.Abs(targetX - startX);
             var diffRow = Math.Abs(targetY - startY);
             switch (TileType)
@@ -220,11 +232,13 @@ namespace HPASharp
             return true;
         }
 
-        private void AddEdge(int nodeId, int x, int y, int cost)
+        private void AddEdge(int nodeId, int x, int y, bool isDiag = false)
         {
             if (y < 0 || y >= Height || x < 0 || x >= Width)
                 return;
 
+            var cost = Graph.GetNodeInfo(this[x, y].NodeId).Cost;
+            cost = isDiag ? (cost*34)/24 : cost;
             Graph.AddEdge(nodeId, this[x, y].NodeId, new TilingEdgeInfo(cost));
         }
 
@@ -234,35 +248,36 @@ namespace HPASharp
                 for (var x = 0; x < Width; ++x)
                 {
                     var nodeId = this[x, y].NodeId;
-                    this.AddEdge(nodeId, x, y - 1, Constants.COST_ONE);
-                    this.AddEdge(nodeId, x, y + 1, Constants.COST_ONE);
-                    this.AddEdge(nodeId, x - 1, y, Constants.COST_ONE);
-                    this.AddEdge(nodeId, x + 1, y, Constants.COST_ONE);
+
+					this.AddEdge(nodeId, x, y - 1);
+					this.AddEdge(nodeId, x, y + 1);
+					this.AddEdge(nodeId, x - 1, y);
+					this.AddEdge(nodeId, x + 1, y);
                     if (this.TileType == TileType.OCTILE)
                     {
-                        this.AddEdge(nodeId, x + 1, y + 1, Constants.SQRT2);
-                        this.AddEdge(nodeId, x - 1, y + 1, Constants.SQRT2);
-                        this.AddEdge(nodeId, x + 1, y - 1, Constants.SQRT2);
-                        this.AddEdge(nodeId, x - 1, y - 1, Constants.SQRT2);
+						this.AddEdge(nodeId, x + 1, y + 1, true);
+						this.AddEdge(nodeId, x - 1, y + 1, true);
+						this.AddEdge(nodeId, x + 1, y - 1, true);
+						this.AddEdge(nodeId, x - 1, y - 1, true);
                     }
                     else if (this.TileType == TileType.OCTILE_UNICOST)
                     {
-                        this.AddEdge(nodeId, x + 1, y + 1, Constants.COST_ONE);
-                        this.AddEdge(nodeId, x - 1, y + 1, Constants.COST_ONE);
-                        this.AddEdge(nodeId, x + 1, y - 1, Constants.COST_ONE);
-                        this.AddEdge(nodeId, x - 1, y - 1, Constants.COST_ONE);
+						this.AddEdge(nodeId, x + 1, y + 1);
+						this.AddEdge(nodeId, x - 1, y + 1);
+						this.AddEdge(nodeId, x + 1, y - 1);
+						this.AddEdge(nodeId, x - 1, y - 1);
                     }
                     else if (this.TileType == TileType.HEX)
                     {
                         if (x % 2 == 0)
                         {
-                            this.AddEdge(nodeId, x + 1, y - 1, Constants.COST_ONE);
-                            this.AddEdge(nodeId, x - 1, y - 1, Constants.COST_ONE);
+							this.AddEdge(nodeId, x + 1, y - 1);
+							this.AddEdge(nodeId, x - 1, y - 1);
                         }
                         else
                         {
-                            this.AddEdge(nodeId, x + 1, y + 1, Constants.COST_ONE);
-                            this.AddEdge(nodeId, x - 1, y + 1, Constants.COST_ONE);
+							this.AddEdge(nodeId, x + 1, y + 1);
+							this.AddEdge(nodeId, x - 1, y + 1);
                         }
                     }
                 }
@@ -274,7 +289,12 @@ namespace HPASharp
             for (var x = 0; x < Width; ++x)
             {
                 var nodeId = GetNodeIdFromPos(x, y);
-                Graph.AddNode(nodeId, new TilingNodeInfo(false, new Position(x, y)));
+                var position = new Position(x, y);
+                int movementCost;
+                var isObstacle = !Passability.CanEnter(position, out movementCost);
+                var info = new TilingNodeInfo(isObstacle, movementCost, new Position(x, y));
+                    
+                Graph.AddNode(nodeId, info);
             }
         }
 

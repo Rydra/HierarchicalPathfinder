@@ -182,18 +182,20 @@ namespace HPASharp
             switch (Type)
             {
                 case AbsType.ABSTRACT_TILE:
-                    return (diffY + diffX) * 1;
+                    return (diffY + diffX) * Constants.COST_ONE;
                 case AbsType.ABSTRACT_OCTILE:
                     {
                         var diagonal = Math.Min(diffY, diffX);
                         var straight = Math.Max(diffY, diffX) - diagonal;
-                        return straight * Constants.COST_ONE + diagonal * Constants.SQRT2; // The 2 should be 1.41...
+                        return straight * Constants.COST_ONE + (diagonal * 34) / 24; // The 2 should be 1.41...
                     }
                 default:
                     //assert(false);
                     return 0;
             }
         }
+
+        public abstract List<int> DoHierarchicalSearch(int startNodeId, int targetNodeId, int maxSearchLevel);
 
         public int GetMinCost()
         {
@@ -329,29 +331,6 @@ namespace HPASharp
             }
         }
 
-        public int GetHeuristic(Position start, Position target)
-        {
-            var startX = start.X;
-            var targetX = target.X;
-            var startY = start.Y;
-            var targetY = target.Y;
-            var diffCol = Math.Abs(targetX - startX);
-            var diffRow = Math.Abs(targetY - startY);
-            switch (Type)
-            {
-                case AbsType.ABSTRACT_TILE:
-                    return (diffCol + diffRow) * Constants.COST_ONE;
-                case AbsType.ABSTRACT_OCTILE:
-                    {
-                        var diagonal = Math.Min(diffCol, diffRow);
-                        var straight = Math.Max(diffCol, diffRow) - diagonal;
-                        return straight * Constants.COST_ONE + diagonal * Constants.SQRT2;
-                    }
-                default:
-                    return 0;
-            }
-        }
-
         /// <summary>
         /// Computes the paths that lie inside every cluster, 
         /// connecting the several entrances among them
@@ -392,11 +371,6 @@ namespace HPASharp
                         foreach (var localPoint in localPath)
                         {
                             var val = this.LocalId2GlobalId(localPoint, cluster, width);
-                            if (result[result.Count - 1] == val)
-                            {
-                                continue;
-                            }
-
                             result.Add(val);
                         }
                     }
@@ -405,7 +379,7 @@ namespace HPASharp
                 {
                     var lastVal = lastNodeInfo.CenterId;
                     var currentVal = currentNodeInfo.CenterId;
-                    if (result[result.Count] != lastVal)
+                    if (result[result.Count - 1] != lastVal)
                         result.Add(lastVal);
                     result.Add(currentVal);
                 }
@@ -435,6 +409,12 @@ namespace HPASharp
         int[] m_stalLevel = new int[2];
         bool[] m_stalUsed = new bool[2];
         List<Graph<AbsTilingNodeInfo, AbsTilingEdgeInfo>.Edge>[] m_stalEdges = new List<Graph<AbsTilingNodeInfo, AbsTilingEdgeInfo>.Edge>[2];
+
+        /// <summary>
+        /// Inserts an abstract node in the position pos and returns 
+        /// the Abstract node id of that inserted node
+        /// </summary>
+	    public abstract int InsertSTAL(Position pos, int start);
 
         // insert a new node, such as start or target, to the abstract graph and
         // returns the id of the newly created node in the abstract graph
@@ -468,6 +448,8 @@ namespace HPASharp
             cluster.AddEntrance(new LocalEntrance(absNodeId, -1, new Position(pos.X - cluster.Origin.X, pos.Y - cluster.Origin.Y)));
             cluster.UpdatePaths(cluster.GetNrEntrances() - 1);
 
+			AbsNodeIds[nodeId] = NrNodes;
+
             // create new node to the abstract graph (to the level 1)
             Graph.AddNode(absNodeId,
                 new AbsTilingNodeInfo(absNodeId, 1,
@@ -496,7 +478,6 @@ namespace HPASharp
                 }
             }
 
-            AbsNodeIds[nodeId] = NrNodes;
             return absNodeId;
         }
 

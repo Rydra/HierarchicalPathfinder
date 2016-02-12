@@ -49,7 +49,7 @@ namespace HPASharp
 
         public Cluster(Tiling tiling, int id, int clusterX, int clusterY, Position origin, Size size)
         {
-            Tiling = new Tiling(tiling, origin.X, origin.Y, size.Width, size.Height);
+            Tiling = new Tiling(tiling, origin.X, origin.Y, size.Width, size.Height, tiling.Passability);
             Id = id;
             ClusterY = clusterY;
             this.ClusterX = clusterX;
@@ -90,10 +90,9 @@ namespace HPASharp
 
         private int ComputeDistance(int start, int target)
         {
-            ISearch search = new SearchImp();
-            search.reset(new AStar(false));
-            search.findPath(Tiling, target, start);
-            return search.getPathCost();
+            var search = new AStar();
+            search.FindPath(Tiling, target, start);
+            return search.PathCost;
         }
 
         private void ComputeAddPath(LocalEntrance e1, LocalEntrance e2)
@@ -175,10 +174,9 @@ namespace HPASharp
 
         public List<int> ComputePath(int start, int target)
         {
-            ISearch search = new SearchImp();
-            search.reset(new AStar(false));
-            search.findPath(Tiling, target, start);
-            return search.getPath();
+            var search = new AStar();
+            search.FindPath(Tiling, target, start);
+            return search.Path;
         }
 
         private int GetPointId(int row, int col)

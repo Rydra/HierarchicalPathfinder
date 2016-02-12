@@ -79,7 +79,6 @@ namespace HPASharp
         /// <param name="nodeId"></param>
         private void InsertStalHEdges(int nodeId)
         {
-            var search = new AStar(false);
             var abstractNodeId = AbsNodeIds[nodeId];
             var nodeInfo = Graph.GetNodeInfo(abstractNodeId);
             var oldLevel = nodeInfo.Level;
@@ -104,6 +103,7 @@ namespace HPASharp
                         // Do not link with lower level nodes
                         continue;
                     {
+                        var search = new AStar();
                         search.FindPath(this, abstractNodeId, abstractNodeId2);
                         if (search.PathCost >= 0)
                         {
@@ -119,8 +119,9 @@ namespace HPASharp
             }
         }
 
-        public int InsertSTAL(int nodeId, Position pos, int start)
+        public override int InsertSTAL(Position pos, int start)
         {
+	        var nodeId = pos.Y * Width + pos.X;
             var result = InsertStal(nodeId, pos, start);
             InsertStalHEdges(nodeId);
             return result;
@@ -223,7 +224,7 @@ namespace HPASharp
 
         #region Search
 
-        public void DoHierarchicalSearch(int startNodeId, int targetNodeId, out List<int> result, int maxSearchLevel)
+        public override List<int> DoHierarchicalSearch(int startNodeId, int targetNodeId, int maxSearchLevel)
         {
             var path = this.PerformSearch(startNodeId, targetNodeId, maxSearchLevel, true);
             for (var level = maxSearchLevel; level > 1; level--)
@@ -231,13 +232,12 @@ namespace HPASharp
                 path = this.RefineAbstractPath(path, level);
             }
 
-            result = path;
+            return path;
         }
 
         public List<int> PerformSearch(int startNodeId, int targetNodeId, int level, bool mainSearch)
         {
-            ISearch search = new SearchImp();
-            search.reset(new AStar(mainSearch));
+            var search = new AStar();
             this.currentLevel = level;
             var nodeInfo = Graph.GetNodeInfo(startNodeId);
             if (mainSearch)
@@ -245,15 +245,15 @@ namespace HPASharp
             else
                 this.SetCurrentCluster(nodeInfo.Position, level + 1);
 
-            search.findPath(this, startNodeId, targetNodeId);
-            if (search.getPathCost() == -1)
+            search.FindPath(this, startNodeId, targetNodeId);
+            if (search.PathCost == -1)
             {
                 // No path found
                 return new List<int>();
             }
             else
             {
-                var result = search.getPath();
+                var result = search.Path;
                 result.Reverse();
                 return result;
             }
@@ -430,7 +430,7 @@ namespace HPASharp
                 return;
             }
 
-            var search = new AStar(false);
+            var search = new AStar();
             search.FindPath(this, absNodeId1, absNodeId2);
             if (search.PathCost >= 0)
             {

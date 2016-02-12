@@ -19,6 +19,6 @@ namespace HPASharp
         */
         List<Neighbour> GetNeighbours(int nodeId, int lastNodeId);
 
-        int GetHeuristic(Position start, Position target);
+        int GetHeuristic(int start, int target);
     }
 }

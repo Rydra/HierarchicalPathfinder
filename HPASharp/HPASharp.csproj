@@ -52,9 +52,9 @@
     <Compile Include="Graph\AbsTilingInfo.cs" />
     <Compile Include="Graph\Graph.cs" />
     <Compile Include="HTiling.cs" />
-    <Compile Include="Infrastructure\Rectangle.cs" />
+    <Compile Include="Infrastructure\PriorityQueue.cs" />
+    <Compile Include="IPassability.cs" />
     <Compile Include="Program.cs" />
-    <Compile Include="Search\AStar.cs" />
     <Compile Include="Search\ISearch.cs" />
     <Compile Include="Factories\AbstractMapFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

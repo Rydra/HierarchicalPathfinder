@@ -1,44 +1,54 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace HPASharp.Search
 {
+    public class AStarNode : IComparable<AStarNode>
+    {
+        public int CompareTo(AStarNode other)
+        {
+            int f1 = this.F;
+            int f2 = other.F;
+            if (f1 != f2) return f1.CompareTo(f2); //(f1 < f2);
+            int g1 = this.G;
+            int g2 = other.G;
+            return g1.CompareTo(g2); //(g1 > g2);
+        }
 
+        public AStarNode(int nodeId, AStarNode parent, int g, int h)
+        {
+            NodeId = nodeId;
+            Parent = parent;
+            G = g;
+            H = h;
+        }
+        
+        public int NodeId { get; set; }
+        public AStarNode Parent { get; set; }
+        public int H { get; set; }
+        public int G { get; set; }
+        public int F { get { return G + H; } }
+    }
 
     public class AStar
     {
-        private class AStarNode : IComparable<AStarNode>
-        {
-            public int CompareTo(AStarNode other)
-            {
-                int f1 = this.F;
-                int f2 = other.F;
-                if (f1 != f2) return f1.CompareTo(f2); //(f1 < f2);
-                int g1 = this.G;
-                int g2 = other.G;
-                return g1.CompareTo(g2); //(g1 > g2);
-            }
-
-            public int G { get; set; }
-
-            public int F { get; set; }
-        }
-
         private IMap map;
 
         private int target;
 
         public int PathCost { get; set; }
 
-        public AStar(bool y)
+        private HashSet<int> closedList;
+        private SortedSet<AStarNode> openList;
+
+        public AStar()
         {
-            
+            closedList = new HashSet<int>();
+            openList = new SortedSet<AStarNode>();
         }
 
-        private List<int> path;
+        public List<int> Path { get; set; }
 
         private int nodesExpanded;
         private int nodesVisited;
@@ -49,98 +59,74 @@ namespace HPASharp.Search
             this.nodesVisited = 0;
             this.map = map;
             this.target = target;
-            path = new List<int>();
+            Path = new List<int>();
             findPathAstar(start);
             return true;
         }
 
+        public AStarNode findNodeInOpenList(int nodeId)
+        {
+            AStarNode result = null;
+            result = openList.FirstOrDefault(n => n.NodeId == nodeId);
+            return result;
+        }
+
+        private void finishSearch(int start, AStarNode node)
+        {
+            closedList.Add(node.NodeId);
+            Path = new List<int>();
+            PathCost = node.F;
+            var currnode = node;
+            while (currnode.NodeId != start)
+            {
+                Path.Add(currnode.NodeId);
+                currnode = currnode.Parent;
+            }
+
+            Path.Add(currnode.NodeId);
+        }
+
         public void findPathAstar(int start)
         {
-            //var maxopen = 0;
-            ////    int closedsize = 0;
-            //var numberNodes = this.map.NrNodes;
-            //m_closed->init(numberNodes);
-            //m_open.init(numberNodes);
-            //int heuristic = map.GetHeuristic(start, target);
-            //m_pathCost = NO_COST;
-            //AStarNode startNode(start, NO_NODE, 0, heuristic);
-            //m_open.insert(startNode);
-            //var successors = new List<Neighbour>();
-            //while (! m_open.isEmpty())
-            //{
-            //    AStarNode node = getBestNodeFromOpen();
-            //    if (node.m_nodeId == m_target)
-            //    {
-            //        finishSearch(start, node);
-            //        return;
-            //    }
-            //    ++this.nodesExpanded;
-            //    m_env->getSuccessors(node.m_nodeId, NO_NODE, successors);
-            //    m_branchingFactor.add(successors.size());
-            //    for (vector<Environment::Successor>::const_iterator i
-            //             = successors.begin(); i != successors.end(); ++i)
-            //    {
-            //        int newg = node.m_g + i->m_cost;
-            //        int target = i->m_target;
-            //        const AStarNode* targetAStarNode = findNode(target);
-            //        if (targetAStarNode != 0)
-            //        {
-            //            if (newg >= targetAStarNode->m_g)
-            //                continue;
-            //            if (! m_open.remove(target))
-            //                m_closed->remove(target);
-            //        }
+            var heuristic = map.GetHeuristic(start, target);
+            PathCost = Constants.NO_COST;
+            var startNode = new AStarNode(start, null, 0, heuristic);
+            openList.Add(startNode);
+            while (openList.Count != 0)
+            {
+                var node = openList.Min;
+                openList.Remove(node);
 
-            //        int newHeuristic = map.GetHeuristic(target, m_target);
-            //        AStarNode newAStarNode(target, node.m_nodeId, newg, newHeuristic);
-            //        m_open.insert(newAStarNode);
-            //    }
-            //    //        closedsize++;
-            //    m_closed->add(node);
-            //    //        m_statistics.get("closed_length").add(m_closed.size());
-            //    //closed->print(cout);
-            //}
-        }
-    }
+                if (closedList.Contains(node.NodeId))
+                    continue;
 
-    public interface ISearch
-    {
-        void reset(AStar aStar);
+                if (node.NodeId == target)
+                {
+                    finishSearch(start, node);
+                    return;
+                }
+                
+                var successors = map.GetNeighbours(node.NodeId, Constants.NO_NODE);
+                foreach (var successor in successors)
+                {
+                    var newg = node.G + successor.Cost;
+                    var successorTarget = successor.Target;
+                    var targetAStarNode = findNodeInOpenList(successorTarget);
+                    if (targetAStarNode != null)
+                    {
+                        if (newg >= targetAStarNode.G)
+                            continue;
 
-        void findPath(object tiling, int target, int start);
+                        openList.RemoveWhere(n => n.NodeId == successorTarget);
+                    }
 
-        List<int> getPath();
+                    var newHeuristic = map.GetHeuristic(successorTarget, this.target);
+                    var newAStarNode = new AStarNode(successorTarget, node, newg, newHeuristic);
+                    openList.Add(newAStarNode);
+                }
 
-        int getPathCost();
-
-        bool checkPathExists(object tiling, int start, int target);
-    }
-
-    public class SearchImp : ISearch
-    {
-        public void reset(AStar aStar)
-        {
-            
-        }
-
-        public void findPath(object tiling, int target, int start)
-        {
-            
-        }
-
-        public List<int> getPath()
-        {
-            return null;
-        }
-
-        public int getPathCost()
-        {
-            return 0;
-        }
-
-        public bool checkPathExists(object tiling, int start, int target)
-        {
-            return true;
+                closedList.Add(node.NodeId);
+            }
         }
     }
 }
