@@ -219,6 +219,11 @@ namespace HPASharp
             return edges.Any(edge => edge.TargetNodeId == targetNodeId);
         }
 
+        /// <summary>
+        /// Tells whether we can move from p1 to p2 in line. Bear in mind
+        /// this function does not consider intermediate points (it is
+        /// assumed you can jump between intermediate points)
+        /// </summary>
         public bool CanJump(Position p1, Position p2)
         {
             if (TileType != TileType.OCTILE && this.TileType != TileType.OCTILE_UNICOST)

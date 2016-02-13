@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using HPASharp.Search;
 
 namespace HPASharp.Smoother
 {
@@ -21,15 +23,16 @@ namespace HPASharp.Smoother
         public List<int> SmoothedPath { get; set; }
 
         private Tiling tiling;
-        // TODO: Study the reason of why it was initialized so high -> private int[] pathMap = new int[1000000];//262144];
-        private int[] pathMap;
+        // This is a dictionary, indexed by nodeId, that tells in which order does this node occupy in the path
+        private Dictionary<int, int> pathMap;
 
         public SmoothWizard(Tiling tiling, List<int> path)
         {
             InitPath = path;
+            SmoothedPath = new List<int>();
             this.tiling = tiling;
 
-            this.pathMap = new int[InitPath.Count];
+            this.pathMap = new Dictionary<int, int>();
             for (var i = 0; i < InitPath.Count; i++)
             {
                 this.pathMap[InitPath[i]] = i + 1;
@@ -48,32 +51,54 @@ namespace HPASharp.Smoother
             var pathcost = Helpers.GetPathCost(positionPath, tiling.TileType);
             var heuristic = tiling.GetHeuristic(InitPath[0], InitPath[InitPath.Count - 1]);
             if (pathcost == heuristic)
-                
-            {
                 this.SmoothedPath = InitPath;
-            }
             else
             {
                 for (var j = 0; j < InitPath.Count; j++)
                 {
-                    // add this node to the smoothed path
                     if (this.SmoothedPath.Count == 0)
+                    {
                         this.SmoothedPath.Add(InitPath[j]);
-                    if (this.SmoothedPath.Count > 0 && this.SmoothedPath[this.SmoothedPath.Count - 1] != InitPath[j])
+                    }
+
+                    // add this node to the smoothed path
+                    if (this.SmoothedPath[this.SmoothedPath.Count - 1] != InitPath[j])
+                    {
+                        // It's possible that, when smoothing, the next node that will be put in the path
+                        // will not be adjacent. In those cases, since OpenRA requires a continuous path
+                        // without breakings, we should calculate a new path for that section
+                        var lastNodeInSmoothedPath = this.SmoothedPath[this.SmoothedPath.Count - 1];
+                        var currentNodeInPath = InitPath[j];
+
+                        if (!AreAdjacent(GetPosition(lastNodeInSmoothedPath), GetPosition(currentNodeInPath)))
+                        {
+                            var intrapath = GenerateInternodes(SmoothedPath[this.SmoothedPath.Count - 1], InitPath[j]);
+                            this.SmoothedPath.AddRange(intrapath.Skip(1));
+                        }
+                        
                         this.SmoothedPath.Add(InitPath[j]);
+                    }
+
+                    // This loops decides which is the next node of the path to consider in the next iteration (the j)
                     for (var dir = (int)Direction.NORTH; dir <= (int)Direction.NW; dir++)
                     {
                         if (this.tiling.TileType == TileType.TILE && dir > (int)Direction.WEST)
                             break;
 
                         var seenPathNode = this.GetPathNodeId(InitPath[j], dir);
+                            
                         if (seenPathNode == Constants.NO_NODE)
+                            // No node in advance in that direction, just continue
                             continue;
                         if (j > 0 && seenPathNode == InitPath[j - 1])
+                            // If the point we are advancing is the same as the previous one, we didn't
+                            // improve at all. Just continue looking other directions
                             continue;
                         if (j < InitPath.Count - 1 && seenPathNode == InitPath[j + 1])
+                            // If the point we are advancing is the same as a next node in the path,
+                            // we didn't improve either. Continue next direction
                             continue;
-
+                        
                         j = this.pathMap[seenPathNode] - 2;
 
                         // count the path reduction (e.g., 2)
@@ -83,6 +108,24 @@ namespace HPASharp.Smoother
             }
         }
 
+        private bool AreAdjacent(Position a, Position b)
+        {
+            // if the Manhattan distance between a and b is > 2, then they are not 
+            // (At least on OCTILE)
+            return Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y) <= 2;
+        }
+
+        public List<int> GenerateInternodes(int nodeid1, int nodeid2)
+        {
+            var search = new AStar();
+            search.FindPath(tiling, nodeid1, nodeid2);
+            return search.Path;
+        }
+
+        /// <summary>
+        /// Returns the next node in the init path in a straight line that
+        /// lies in the same direction as the origin node
+        /// </summary>
         private int GetPathNodeId(int originId, int direction)
         {
             var nodeId = originId;
@@ -91,20 +134,23 @@ namespace HPASharp.Smoother
             {
                 // advance in the given direction
                 nodeId = this.AdvanceNode(nodeId, direction);
-                if (nodeId == Constants.NO_NODE)
+
+                // If in the direction we advanced there was an invalid node or we cannot enter the node,
+                // just return that no node was found
+                if (nodeId == Constants.NO_NODE || !this.tiling.CanJump(GetPosition(nodeId), GetPosition(lastNodeId)))
                     return Constants.NO_NODE;
-                if (!this.tiling.CanJump(GetPosition(nodeId), GetPosition(lastNodeId)))
-                    return Constants.NO_NODE;
-                if (this.pathMap[nodeId] != Constants.NO_INDEX && this.pathMap[nodeId] > this.pathMap[originId])
+
+                // Otherwise, if the node we advanced was contained in the original path, and
+                // it was positioned after the node we are analyzing, return it
+                if (this.pathMap.ContainsKey(nodeId) && this.pathMap[nodeId] > this.pathMap[originId])
                 {
                     return nodeId;
                 }
 
+                // If we have found an obstacle, just return that no next node to advance was found
                 var newNodeInfo = this.tiling.Graph.GetNodeInfo(nodeId);
                 if (newNodeInfo.IsObstacle)
-                {
                     return Constants.NO_NODE;
-                }
 
                 lastNodeId = nodeId;
             }

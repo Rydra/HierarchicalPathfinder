@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HPASharp.Smoother;
 
 namespace HPASharp
 {
@@ -102,7 +103,7 @@ namespace HPASharp
             wizard.CreateAbstractMap();
             var absTiling = wizard.AbsTiling;
 	        var startAbsNode = absTiling.InsertSTAL(new Position(13, 20), 0);
-            var targetAbsNode = absTiling.InsertSTAL(new Position(40, 37), 1);
+            var targetAbsNode = absTiling.InsertSTAL(new Position(40, 47), 1);
             PrintFormatted(tiling, absTiling, clusterSize, new List<int>());
             Console.WriteLine();
             Console.WriteLine();
@@ -111,7 +112,13 @@ namespace HPASharp
             var path = absTiling.AbstractPathToLowLevelPath(abstractPath, absTiling.Width);
             PrintFormatted(tiling, absTiling, clusterSize, path);
             Console.WriteLine();
-			Console.WriteLine("Press any key to quit...");
+            Console.WriteLine();
+            Console.WriteLine();
+            var smoother = new SmoothWizard(tiling, path);
+            smoother.SmoothPath();
+            path = smoother.SmoothedPath;
+            PrintFormatted(tiling, absTiling, clusterSize, path);
+            Console.WriteLine("Press any key to quit...");
 	        Console.ReadKey();
         }
 
