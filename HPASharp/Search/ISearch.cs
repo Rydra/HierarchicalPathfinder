@@ -23,23 +23,33 @@ namespace HPASharp.Search
             G = g;
             H = h;
         }
-        
+
         public int NodeId { get; set; }
         public AStarNode Parent { get; set; }
+        public CellStatus Status { get; set; }
         public int H { get; set; }
         public int G { get; set; }
         public int F { get { return G + H; } }
+    }
+
+    public enum CellStatus
+    {
+        Unexplored,
+        Open,
+        Closed
     }
 
     public class AStar
     {
         private IMap map;
 
-        private int target;
+        private Func<int, bool> isGoal;
+        private Func<int, int> getHeuristic;
 
         public int PathCost { get; set; }
-
+        
         private HashSet<int> closedList;
+        private AStarNode[] openListLookup; 
         private SortedSet<AStarNode> openList;
 
         public AStar()
@@ -50,30 +60,27 @@ namespace HPASharp.Search
 
         public List<int> Path { get; set; }
 
-        private int nodesExpanded;
-        private int nodesVisited;
-
         public bool FindPath(IMap map, int start, int target)
         {
-            this.nodesExpanded = 0;
-            this.nodesVisited = 0;
             this.map = map;
-            this.target = target;
+            this.isGoal = nodeId => nodeId == target;
+            this.getHeuristic = nodeId => map.GetHeuristic(nodeId, target);
             Path = new List<int>();
-            findPathAstar(start);
+            FindPathAstar(start);
             return true;
         }
 
-        public AStarNode findNodeInOpenList(int nodeId)
+        /// <summary>
+        /// Finds a node in the openqueue. A faster (though more memory consuming)
+        /// alternative could be use an array indexed by nodeId to assess the status of that node
+        /// </summary>
+        private AStarNode FindNodeInOpenQueue(int nodeId)
         {
-            AStarNode result = null;
-            result = openList.FirstOrDefault(n => n.NodeId == nodeId);
-            return result;
+            return openListLookup[nodeId];
         }
 
-        private void finishSearch(int start, AStarNode node)
+        private void ReconstructPath(int start, AStarNode node)
         {
-            closedList.Add(node.NodeId);
             Path = new List<int>();
             PathCost = node.F;
             var currnode = node;
@@ -86,43 +93,51 @@ namespace HPASharp.Search
             Path.Add(currnode.NodeId);
         }
 
-        public void findPathAstar(int start)
+        private void FindPathAstar(int start)
         {
-            var heuristic = map.GetHeuristic(start, target);
+            openListLookup = new AStarNode[map.NrNodes];
+
+            var heuristic = getHeuristic(start);
             PathCost = Constants.NO_COST;
             var startNode = new AStarNode(start, null, 0, heuristic);
             openList.Add(startNode);
+            openListLookup[start] = startNode;
+
             while (openList.Count != 0)
             {
                 var node = openList.Min;
                 openList.Remove(node);
+                openListLookup[node.NodeId] = null;
 
                 if (closedList.Contains(node.NodeId))
                     continue;
 
-                if (node.NodeId == target)
+                if (isGoal(node.NodeId))
                 {
-                    finishSearch(start, node);
+                    ReconstructPath(start, node);
                     return;
                 }
-                
+
                 var successors = map.GetNeighbours(node.NodeId, Constants.NO_NODE);
                 foreach (var successor in successors)
                 {
                     var newg = node.G + successor.Cost;
                     var successorTarget = successor.Target;
-                    var targetAStarNode = findNodeInOpenList(successorTarget);
+                    var targetAStarNode = FindNodeInOpenQueue(successorTarget);
                     if (targetAStarNode != null)
                     {
                         if (newg >= targetAStarNode.G)
                             continue;
 
-                        openList.RemoveWhere(n => n.NodeId == successorTarget);
+                        // NOTE: I comment this temporarily
+                        openListLookup[successorTarget] = null;
+                        //openList.RemoveWhere(n => n.NodeId == successorTarget);
                     }
 
-                    var newHeuristic = map.GetHeuristic(successorTarget, this.target);
+                    var newHeuristic = getHeuristic(successorTarget);
                     var newAStarNode = new AStarNode(successorTarget, node, newg, newHeuristic);
                     openList.Add(newAStarNode);
+                    openListLookup[successorTarget] = newAStarNode;
                 }
 
                 closedList.Add(node.NodeId);

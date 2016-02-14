@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HPASharp.Search;
 using HPASharp.Smoother;
 
 namespace HPASharp
@@ -88,41 +89,72 @@ namespace HPASharp
 				return false;
 			}
 		}
-
+        
         public static void Main(string[] args)
         {
-            var height = 50;
-            var width = 50;
+            var height = 70;
+            var width = 70;
             var clusterSize = 8;
             var maxLevel = 2;
 
+            // Prepare the abstract graph beforehand
 			IPassability passability = new Passability(width, height);
             var tiling = TilingFactory.CreateTiling(width, height, passability);
-
             var wizard = new AbstractMapFactory(tiling, clusterSize, maxLevel, EntranceStyle.END_ENTRANCE);
             wizard.CreateAbstractMap();
             var absTiling = wizard.AbsTiling;
-	        var startAbsNode = absTiling.InsertSTAL(new Position(13, 20), 0);
-            var targetAbsNode = absTiling.InsertSTAL(new Position(40, 47), 1);
-            PrintFormatted(tiling, absTiling, clusterSize, new List<int>());
-            Console.WriteLine();
-            Console.WriteLine();
-            Console.WriteLine();
-            var abstractPath = absTiling.DoHierarchicalSearch(startAbsNode, targetAbsNode, 2);
-            var path = absTiling.AbstractPathToLowLevelPath(abstractPath, absTiling.Width);
-            PrintFormatted(tiling, absTiling, clusterSize, path);
-            Console.WriteLine();
-            Console.WriteLine();
-            Console.WriteLine();
-            var smoother = new SmoothWizard(tiling, path);
-            smoother.SmoothPath();
-            path = smoother.SmoothedPath;
-            PrintFormatted(tiling, absTiling, clusterSize, path);
+
+            RegularSearch(tiling, absTiling, clusterSize);
+            HierarchicalSearch(absTiling, maxLevel, tiling, clusterSize);
+
             Console.WriteLine("Press any key to quit...");
-	        Console.ReadKey();
+            Console.ReadKey();
         }
 
-        private static List<char> GetCharVector(Tiling tiling)
+	    private static void HierarchicalSearch(AbsTiling absTiling, int maxLevel, Tiling tiling, int clusterSize)
+	    {
+            // Hierarchical pathfinding
+	        var sw = Stopwatch.StartNew();
+	        var startAbsNode = absTiling.InsertSTAL(new Position(14, 20), 0);
+	        var targetAbsNode = absTiling.InsertSTAL(new Position(69, 69), 1);
+	        //PrintFormatted(tiling, absTiling, clusterSize, new List<int>());
+	        //Console.WriteLine();
+	        //Console.WriteLine();
+	        //Console.WriteLine();
+	        var abstractPath = absTiling.DoHierarchicalSearch(startAbsNode, targetAbsNode, maxLevel);
+	        var path = absTiling.AbstractPathToLowLevelPath(abstractPath, absTiling.Width);
+	        //PrintFormatted(tiling, absTiling, clusterSize, path);
+
+	        //Console.WriteLine();
+	        //Console.WriteLine();
+	        //Console.WriteLine();
+
+	        var smoother = new SmoothWizard(tiling, path);
+	        path = smoother.SmoothPath();
+	        Console.WriteLine(sw.ElapsedTicks + " ticks!");
+            PrintFormatted(tiling, absTiling, clusterSize, path);
+
+            Console.WriteLine();
+	        Console.WriteLine();
+	        Console.WriteLine();
+	    }
+
+	    private static void RegularSearch(Tiling tiling, AbsTiling absTiling, int clusterSize)
+	    {
+            // Regular pathfinding
+	        var sw2 = Stopwatch.StartNew();
+	        var searcher = new AStar();
+	        searcher.FindPath(tiling, tiling[14, 20].NodeId, tiling[69, 69].NodeId);
+	        var path2 = searcher.Path;
+	        Console.WriteLine(sw2.ElapsedTicks + " ticks!");
+	        PrintFormatted(tiling, absTiling, clusterSize, path2);
+
+	        Console.WriteLine();
+	        Console.WriteLine();
+	        Console.WriteLine();
+	    }
+
+	    private static List<char> GetCharVector(Tiling tiling)
         {
             var result = new List<char>();
             var numberNodes = tiling.NrNodes;

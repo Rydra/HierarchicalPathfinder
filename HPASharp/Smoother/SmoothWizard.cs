@@ -19,8 +19,7 @@ namespace HPASharp.Smoother
 
     public class SmoothWizard
     {
-        public List<int> InitPath { get; set; } 
-        public List<int> SmoothedPath { get; set; }
+        public List<int> InitPath { get; set; }
 
         private Tiling tiling;
         // This is a dictionary, indexed by nodeId, that tells in which order does this node occupy in the path
@@ -29,14 +28,11 @@ namespace HPASharp.Smoother
         public SmoothWizard(Tiling tiling, List<int> path)
         {
             InitPath = path;
-            SmoothedPath = new List<int>();
             this.tiling = tiling;
 
-            this.pathMap = new Dictionary<int, int>();
+            pathMap = new Dictionary<int, int>();
             for (var i = 0; i < InitPath.Count; i++)
-            {
                 this.pathMap[InitPath[i]] = i + 1;
-            }
         }
 
         private Position GetPosition(int nodeId)
@@ -44,39 +40,38 @@ namespace HPASharp.Smoother
             return tiling.Graph.GetNode(nodeId).Info.Position;
         }
 
-        public void SmoothPath()
+        public List<int> SmoothPath()
         {
+            var smoothedPath = new List<int>();
             var positionPath = InitPath.Select(GetPosition).ToList();
 
             var pathcost = Helpers.GetPathCost(positionPath, tiling.TileType);
             var heuristic = tiling.GetHeuristic(InitPath[0], InitPath[InitPath.Count - 1]);
             if (pathcost == heuristic)
-                this.SmoothedPath = InitPath;
+                smoothedPath = InitPath;
             else
             {
                 for (var j = 0; j < InitPath.Count; j++)
                 {
-                    if (this.SmoothedPath.Count == 0)
-                    {
-                        this.SmoothedPath.Add(InitPath[j]);
-                    }
+                    if (smoothedPath.Count == 0)
+                        smoothedPath.Add(InitPath[j]);
 
                     // add this node to the smoothed path
-                    if (this.SmoothedPath[this.SmoothedPath.Count - 1] != InitPath[j])
+                    if (smoothedPath[smoothedPath.Count - 1] != InitPath[j])
                     {
                         // It's possible that, when smoothing, the next node that will be put in the path
                         // will not be adjacent. In those cases, since OpenRA requires a continuous path
                         // without breakings, we should calculate a new path for that section
-                        var lastNodeInSmoothedPath = this.SmoothedPath[this.SmoothedPath.Count - 1];
+                        var lastNodeInSmoothedPath = smoothedPath[smoothedPath.Count - 1];
                         var currentNodeInPath = InitPath[j];
 
                         if (!AreAdjacent(GetPosition(lastNodeInSmoothedPath), GetPosition(currentNodeInPath)))
                         {
-                            var intrapath = GenerateInternodes(SmoothedPath[this.SmoothedPath.Count - 1], InitPath[j]);
-                            this.SmoothedPath.AddRange(intrapath.Skip(1));
+                            var intrapath = GenerateIntermediateNodes(smoothedPath[smoothedPath.Count - 1], InitPath[j]);
+                            smoothedPath.AddRange(intrapath.Skip(1));
                         }
-                        
-                        this.SmoothedPath.Add(InitPath[j]);
+
+                        smoothedPath.Add(InitPath[j]);
                     }
 
                     // This loops decides which is the next node of the path to consider in the next iteration (the j)
@@ -85,7 +80,7 @@ namespace HPASharp.Smoother
                         if (this.tiling.TileType == TileType.TILE && dir > (int)Direction.WEST)
                             break;
 
-                        var seenPathNode = this.GetPathNodeId(InitPath[j], dir);
+                        var seenPathNode = AdvanceThroughDirection(InitPath[j], dir);
                             
                         if (seenPathNode == Constants.NO_NODE)
                             // No node in advance in that direction, just continue
@@ -99,23 +94,25 @@ namespace HPASharp.Smoother
                             // we didn't improve either. Continue next direction
                             continue;
                         
-                        j = this.pathMap[seenPathNode] - 2;
+                        j = pathMap[seenPathNode] - 2;
 
                         // count the path reduction (e.g., 2)
                         break;
                     }
                 }
             }
+
+            return smoothedPath;
         }
 
-        private bool AreAdjacent(Position a, Position b)
+        private static bool AreAdjacent(Position a, Position b)
         {
             // if the Manhattan distance between a and b is > 2, then they are not 
             // (At least on OCTILE)
             return Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y) <= 2;
         }
 
-        public List<int> GenerateInternodes(int nodeid1, int nodeid2)
+        private List<int> GenerateIntermediateNodes(int nodeid1, int nodeid2)
         {
             var search = new AStar();
             search.FindPath(tiling, nodeid1, nodeid2);
@@ -126,7 +123,7 @@ namespace HPASharp.Smoother
         /// Returns the next node in the init path in a straight line that
         /// lies in the same direction as the origin node
         /// </summary>
-        private int GetPathNodeId(int originId, int direction)
+        private int AdvanceThroughDirection(int originId, int direction)
         {
             var nodeId = originId;
             var lastNodeId = originId;

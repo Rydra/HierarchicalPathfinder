@@ -170,7 +170,8 @@ namespace HPASharp
                         maxDiff = diffRow;
                         minDiff = diffCol;
                     }
-                    return minDiff * Constants.SQRT2 + (maxDiff - minDiff) * Constants.COST_ONE;
+                    return (minDiff * Constants.COST_ONE * 34) / 24 + (maxDiff - minDiff) * Constants.COST_ONE;
+
                 case TileType.TILE:
                     return (diffCol + diffRow) * Constants.COST_ONE;
                 default:
@@ -184,10 +185,10 @@ namespace HPASharp
             var result = new List<Neighbour>();
             var node = Graph.GetNode(nodeId);
             var nodeInfo = node.Info;
-            if (nodeInfo.IsObstacle)
-            {
-                return result;
-            }
+            //if (nodeInfo.IsObstacle)
+            //{
+            //    return result;
+            //}
 
             foreach (var edge in node.Edges)
             {

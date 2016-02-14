@@ -187,7 +187,7 @@ namespace HPASharp
                     {
                         var diagonal = Math.Min(diffY, diffX);
                         var straight = Math.Max(diffY, diffX) - diagonal;
-                        return straight * Constants.COST_ONE + (diagonal * 34) / 24; // The 2 should be 1.41...
+                        return straight * Constants.COST_ONE + (diagonal * Constants.COST_ONE * 34) / 24;
                     }
                 default:
                     //assert(false);
