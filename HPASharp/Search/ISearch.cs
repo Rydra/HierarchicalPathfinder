@@ -13,15 +13,17 @@ namespace HPASharp.Search
             if (f1 != f2) return f1.CompareTo(f2); //(f1 < f2);
             int g1 = this.G;
             int g2 = other.G;
-            return g1.CompareTo(g2); //(g1 > g2);
+            if (g1 != g2) return g1.CompareTo(g2); //(g1 > g2);
+            return this.NodeId.CompareTo(other.NodeId);
         }
 
-        public AStarNode(int nodeId, AStarNode parent, int g, int h)
+        public AStarNode(int nodeId, AStarNode parent, int g, int h, CellStatus status)
         {
             NodeId = nodeId;
             Parent = parent;
             G = g;
             H = h;
+            Status = status;
         }
 
         public int NodeId { get; set; }
@@ -48,13 +50,11 @@ namespace HPASharp.Search
 
         public int PathCost { get; set; }
         
-        private HashSet<int> closedList;
         private AStarNode[] openListLookup; 
         private SortedSet<AStarNode> openList;
 
         public AStar()
         {
-            closedList = new HashSet<int>();
             openList = new SortedSet<AStarNode>();
         }
 
@@ -99,17 +99,16 @@ namespace HPASharp.Search
 
             var heuristic = getHeuristic(start);
             PathCost = Constants.NO_COST;
-            var startNode = new AStarNode(start, null, 0, heuristic);
+            var startNode = new AStarNode(start, null, 0, heuristic, CellStatus.Open);
             openList.Add(startNode);
             openListLookup[start] = startNode;
 
             while (openList.Count != 0)
             {
-                var node = openList.Min;
-                openList.Remove(node);
-                openListLookup[node.NodeId] = null;
-
-                if (closedList.Contains(node.NodeId))
+                var node = openListLookup[openList.Min.NodeId];
+                openList.RemoveWhere(n => n.NodeId == node.NodeId);
+                //var pos = ((HTiling) map).Graph.GetNodeInfo(node.NodeId).Position;
+                if (node.Status == CellStatus.Closed)
                     continue;
 
                 if (isGoal(node.NodeId))
@@ -126,7 +125,7 @@ namespace HPASharp.Search
                     var targetAStarNode = FindNodeInOpenQueue(successorTarget);
                     if (targetAStarNode != null)
                     {
-                        if (newg >= targetAStarNode.G)
+                        if (targetAStarNode.Status == CellStatus.Closed || newg >= targetAStarNode.G)
                             continue;
 
                         // NOTE: I comment this temporarily
@@ -135,12 +134,12 @@ namespace HPASharp.Search
                     }
 
                     var newHeuristic = getHeuristic(successorTarget);
-                    var newAStarNode = new AStarNode(successorTarget, node, newg, newHeuristic);
+                    var newAStarNode = new AStarNode(successorTarget, node, newg, newHeuristic, CellStatus.Open);
                     openList.Add(newAStarNode);
                     openListLookup[successorTarget] = newAStarNode;
                 }
 
-                closedList.Add(node.NodeId);
+                node.Status = CellStatus.Closed;
             }
         }
     }

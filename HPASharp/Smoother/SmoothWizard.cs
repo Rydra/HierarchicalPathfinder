@@ -19,20 +19,20 @@ namespace HPASharp.Smoother
 
     public class SmoothWizard
     {
-        public List<int> InitPath { get; set; }
+        public List<Node> InitPath { get; set; }
 
         private Tiling tiling;
         // This is a dictionary, indexed by nodeId, that tells in which order does this node occupy in the path
         private Dictionary<int, int> pathMap;
 
-        public SmoothWizard(Tiling tiling, List<int> path)
+        public SmoothWizard(Tiling tiling, List<Node> path)
         {
             InitPath = path;
             this.tiling = tiling;
 
             pathMap = new Dictionary<int, int>();
             for (var i = 0; i < InitPath.Count; i++)
-                this.pathMap[InitPath[i]] = i + 1;
+                this.pathMap[InitPath[i].Id] = i + 1;
         }
 
         private Position GetPosition(int nodeId)
@@ -40,65 +40,66 @@ namespace HPASharp.Smoother
             return tiling.Graph.GetNode(nodeId).Info.Position;
         }
 
-        public List<int> SmoothPath()
+        public List<Node> SmoothPath()
         {
-            var smoothedPath = new List<int>();
-            var positionPath = InitPath.Select(GetPosition).ToList();
-
-            var pathcost = Helpers.GetPathCost(positionPath, tiling.TileType);
-            var heuristic = tiling.GetHeuristic(InitPath[0], InitPath[InitPath.Count - 1]);
-            if (pathcost == heuristic)
-                smoothedPath = InitPath;
-            else
+            var smoothedPath = new List<Node>();
+            for (var j = 0; j < InitPath.Count; j++)
             {
-                for (var j = 0; j < InitPath.Count; j++)
+                var pathPoint = InitPath[j];
+
+                // Only process for smoothing points which belong to lvl 0. Anything above that is an abstract
+                // path that cannot be smoothed.
+                if (pathPoint.Level > 0)
                 {
-                    if (smoothedPath.Count == 0)
-                        smoothedPath.Add(InitPath[j]);
+                    smoothedPath.Add(pathPoint);
+                    continue;
+                }
 
-                    // add this node to the smoothed path
-                    if (smoothedPath[smoothedPath.Count - 1] != InitPath[j])
+                if (smoothedPath.Count == 0)
+                    smoothedPath.Add(InitPath[j]);
+
+                // add this node to the smoothed path
+                if (smoothedPath[smoothedPath.Count - 1].Id != InitPath[j].Id)
+                {
+                    // It's possible that, when smoothing, the next node that will be put in the path
+                    // will not be adjacent. In those cases, since OpenRA requires a continuous path
+                    // without breakings, we should calculate a new path for that section
+                    var lastNodeInSmoothedPath = smoothedPath[smoothedPath.Count - 1];
+                    var currentNodeInPath = InitPath[j];
+
+                    if (!AreAdjacent(GetPosition(lastNodeInSmoothedPath.Id), GetPosition(currentNodeInPath.Id)))
                     {
-                        // It's possible that, when smoothing, the next node that will be put in the path
-                        // will not be adjacent. In those cases, since OpenRA requires a continuous path
-                        // without breakings, we should calculate a new path for that section
-                        var lastNodeInSmoothedPath = smoothedPath[smoothedPath.Count - 1];
-                        var currentNodeInPath = InitPath[j];
-
-                        if (!AreAdjacent(GetPosition(lastNodeInSmoothedPath), GetPosition(currentNodeInPath)))
-                        {
-                            var intrapath = GenerateIntermediateNodes(smoothedPath[smoothedPath.Count - 1], InitPath[j]);
-                            smoothedPath.AddRange(intrapath.Skip(1));
-                        }
-
-                        smoothedPath.Add(InitPath[j]);
+                        var intrapath = GenerateIntermediateNodes(smoothedPath[smoothedPath.Count - 1].Id, InitPath[j].Id);
+                        smoothedPath.AddRange(intrapath.Skip(1).Select(n => new Node(n, 0)));
                     }
 
-                    // This loops decides which is the next node of the path to consider in the next iteration (the j)
-                    for (var dir = (int)Direction.NORTH; dir <= (int)Direction.NW; dir++)
-                    {
-                        if (this.tiling.TileType == TileType.TILE && dir > (int)Direction.WEST)
-                            break;
+                    smoothedPath.Add(InitPath[j]);
+                }
 
-                        var seenPathNode = AdvanceThroughDirection(InitPath[j], dir);
-                            
-                        if (seenPathNode == Constants.NO_NODE)
-                            // No node in advance in that direction, just continue
-                            continue;
-                        if (j > 0 && seenPathNode == InitPath[j - 1])
-                            // If the point we are advancing is the same as the previous one, we didn't
-                            // improve at all. Just continue looking other directions
-                            continue;
-                        if (j < InitPath.Count - 1 && seenPathNode == InitPath[j + 1])
-                            // If the point we are advancing is the same as a next node in the path,
-                            // we didn't improve either. Continue next direction
-                            continue;
-                        
-                        j = pathMap[seenPathNode] - 2;
-
-                        // count the path reduction (e.g., 2)
+                // This loops decides which is the next node of the path to consider in the next iteration (the j)
+                for (var dir = (int)Direction.NORTH; dir <= (int)Direction.NW; dir++)
+                {
+                    if (this.tiling.TileType == TileType.TILE && dir > (int)Direction.WEST)
                         break;
-                    }
+
+                    var seenPathNode = AdvanceThroughDirection(InitPath[j].Id, dir);
+                            
+                    if (seenPathNode == Constants.NO_NODE)
+                        // No node in advance in that direction, just continue
+                        continue;
+                    if (j > 0 && seenPathNode == InitPath[j - 1].Id)
+                        // If the point we are advancing is the same as the previous one, we didn't
+                        // improve at all. Just continue looking other directions
+                        continue;
+                    if (j < InitPath.Count - 1 && seenPathNode == InitPath[j + 1].Id)
+                        // If the point we are advancing is the same as a next node in the path,
+                        // we didn't improve either. Continue next direction
+                        continue;
+                        
+                    j = pathMap[seenPathNode] - 2;
+
+                    // count the path reduction (e.g., 2)
+                    break;
                 }
             }
 

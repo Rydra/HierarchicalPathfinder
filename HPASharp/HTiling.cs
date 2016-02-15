@@ -37,16 +37,17 @@ namespace HPASharp
             var edges = node.Edges;
             foreach (var edge in edges)
             {
-                if (edge.Info.IsInterEdge)
+                var edgeInfo = edge.Info;
+                if (edgeInfo.IsInterEdge)
                 {
                     // If the node is an interCluster edge and the edge is of a lower level than
                     // the current level, we have to ignore it
-                    if (edge.Info.Level < this.currentLevel) continue;
+                    if (edgeInfo.Level < this.currentLevel) continue;
                 }
                 else
                 {
                     // If it is NOT an interCluster edge (local edge for example) but that edge belongs to another level... ignore it
-                    if (edge.Info.Level != this.currentLevel) continue;
+                    if (edgeInfo.Level != this.currentLevel) continue;
                 }
 
                 var targetNodeId = edge.TargetNodeId;
@@ -66,7 +67,7 @@ namespace HPASharp
                     }
                 }
 
-                result.Add(new Neighbour(targetNodeId, edge.Info.Cost));
+                result.Add(new Neighbour(targetNodeId, edgeInfo.Cost));
             }
 
             return result;
@@ -223,16 +224,14 @@ namespace HPASharp
 
         #region Search
 
-        public override List<int> DoHierarchicalSearch(int startNodeId, int targetNodeId, int maxSearchLevel)
+        public override List<Node> DoHierarchicalSearch(int startNodeId, int targetNodeId, int maxSearchLevel, int maxPathsToRefine = int.MaxValue)
         {
-            var path = this.PerformSearch(startNodeId, targetNodeId, maxSearchLevel, true);
+            var path = this.PerformSearch(startNodeId, targetNodeId, maxSearchLevel, true).Select(n => new Node(n, maxSearchLevel)).ToList();
 
             if (path.Count == 0) return path;
 
             for (var level = maxSearchLevel; level > 1; level--)
-            {
-                path = this.RefineAbstractPath(path, level);
-            }
+                path = this.RefineAbstractPath(path, level, maxPathsToRefine);
 
             return path;
         }
@@ -261,30 +260,39 @@ namespace HPASharp
             }
         }
 
-        public List<int> RefineAbstractPath(List<int> path, int level)
+        /// <summary>
+        /// Refines all the nodes that belong to a certain level to a lower level
+        /// </summary>
+        public override List<Node> RefineAbstractPath(List<Node> path, int level, int maxPathsToRefine = int.MaxValue)
         {
-            var result = new List<int>();
-
-            // add first elem
-            result.Add(path[0]);
+            var result = new List<Node>();
+            var calculatedPaths = 0;
 
             for (int i = 0; i < path.Count - 1; i++)
             {
                 // if the two consecutive points belong to the same cluster, compute the path between them and
                 // add the resulting nodes of that path to the list
-                if (this.BelongToSameCluster(path[i], path[i+1], level))
+                if (path[i].Level == path[i + 1].Level && path[i].Level == level &&
+                    this.BelongToSameCluster(path[i].Id, path[i + 1].Id, level) && calculatedPaths < maxPathsToRefine)
                 {
-                    var tmp = this.PerformSearch(path[i], path[i+1], level - 1, false);
-                    for (var k = 0; k < tmp.Count; k++)
-                    {
-                        if (result[result.Count - 1] != tmp[k])
-                            result.Add(tmp[k]);
-                    }
+                    var tmp = this.PerformSearch(path[i].Id, path[i + 1].Id, level - 1, false)
+                        .Select(n => new Node(n, level - 1))
+                        .ToList();
+                    result.AddRange(tmp);
+
+                    calculatedPaths++;
+
+                    // When we have calculated a path between 2 nodes, the next path in the search
+                    // will be an interEdge node. We can safely skip it
+                    i++;
                 }
+                else
+                    result.Add(path[i]);
+                    
             }
 
             // make sure last elem is added
-            if (result[result.Count - 1] != path[path.Count - 1])
+            if (result[result.Count - 1].Id != path[path.Count - 1].Id)
                 result.Add(path[path.Count - 1]);
 
             return result;

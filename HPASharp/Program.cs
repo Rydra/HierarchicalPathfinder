@@ -106,7 +106,8 @@ namespace HPASharp
 
             RegularSearch(tiling, absTiling, clusterSize);
             HierarchicalSearch(absTiling, maxLevel, tiling, clusterSize);
-
+            
+            
             Console.WriteLine("Press any key to quit...");
             Console.ReadKey();
         }
@@ -121,18 +122,23 @@ namespace HPASharp
 	        //Console.WriteLine();
 	        //Console.WriteLine();
 	        //Console.WriteLine();
-	        var abstractPath = absTiling.DoHierarchicalSearch(startAbsNode, targetAbsNode, maxLevel);
-	        var path = absTiling.AbstractPathToLowLevelPath(abstractPath, absTiling.Width);
+	        var maxPathsToRefine = 2;
+            var abstractPath = absTiling.DoHierarchicalSearch(startAbsNode, targetAbsNode, maxLevel, maxPathsToRefine);
+            var path = absTiling.AbstractPathToLowLevelPath(abstractPath, absTiling.Width, maxPathsToRefine);
+            
+            //absTiling.RemoveStal();
+
 	        //PrintFormatted(tiling, absTiling, clusterSize, path);
 
 	        //Console.WriteLine();
 	        //Console.WriteLine();
 	        //Console.WriteLine();
 
-	        var smoother = new SmoothWizard(tiling, path);
-	        path = smoother.SmoothPath();
+            var smoother = new SmoothWizard(tiling, path);
+            path = smoother.SmoothPath();
 	        Console.WriteLine(sw.ElapsedTicks + " ticks!");
-            PrintFormatted(tiling, absTiling, clusterSize, path);
+            PrintFormatted(tiling, absTiling, clusterSize,
+                path.Select(n => n.Level == 0 ? tiling.Graph.GetNodeInfo(n.Id).Position : absTiling.Graph.GetNodeInfo(n.Id).Position).ToList());
 
             Console.WriteLine();
 	        Console.WriteLine();
@@ -147,7 +153,7 @@ namespace HPASharp
 	        searcher.FindPath(tiling, tiling[14, 20].NodeId, tiling[69, 69].NodeId);
 	        var path2 = searcher.Path;
 	        Console.WriteLine(sw2.ElapsedTicks + " ticks!");
-	        PrintFormatted(tiling, absTiling, clusterSize, path2);
+            PrintFormatted(tiling, absTiling, clusterSize, path2.Select(n => tiling.Graph.GetNodeInfo(n).Position).ToList());
 
 	        Console.WriteLine();
 	        Console.WriteLine();
@@ -166,12 +172,12 @@ namespace HPASharp
             return result;
         }
 
-        public static void PrintFormatted(Tiling tiling, AbsTiling abstractGraph, int clusterSize, List<int> path)
+        public static void PrintFormatted(Tiling tiling, AbsTiling abstractGraph, int clusterSize, List<Position> path)
         {
             PrintFormatted(GetCharVector(tiling), tiling, abstractGraph, clusterSize, path);
         }
 
-        private static void PrintFormatted(List<char> chars, Tiling tiling, AbsTiling abstractGraph, int clusterSize, List<int> path)
+        private static void PrintFormatted(List<char> chars, Tiling tiling, AbsTiling abstractGraph, int clusterSize, List<Position> path)
         {
             for (var y = 0; y < tiling.Height; ++y)
             {
@@ -193,7 +199,7 @@ namespace HPASharp
                                 break;
                         }
                         
-                    Console.Write(path.Any(n => n == nodeId) ? 'X' : chars[nodeId]);
+                    Console.Write(path.Any(n => n.X == x && n.Y == y) ? 'X' : chars[nodeId]);
                 }
 
                 Console.WriteLine();

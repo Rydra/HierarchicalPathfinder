@@ -54,6 +54,7 @@
     <Compile Include="HTiling.cs" />
     <Compile Include="Infrastructure\PriorityQueue.cs" />
     <Compile Include="IPassability.cs" />
+    <Compile Include="Nodes.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Search\ISearch.cs" />
     <Compile Include="Factories\AbstractMapFactory.cs" />
@@ -65,7 +66,9 @@
     <Compile Include="Factories\TilingFactory.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
+    <None Include="App.config">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

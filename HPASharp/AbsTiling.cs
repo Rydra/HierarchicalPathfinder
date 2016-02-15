@@ -7,10 +7,10 @@ using System.Threading.Tasks;
 
 namespace HPASharp
 {
-    public class Neighbour
+    public struct Neighbour
     {
-        public int Target { get; set; }
-        public int Cost { get; set; }
+        public int Target;
+        public int Cost;
 
         public Neighbour(int target, int cost)
         {
@@ -172,12 +172,10 @@ namespace HPASharp
         {
             var startNodeInfo = Graph.GetNodeInfo(start);
             var targetNodeInfo = Graph.GetNodeInfo(target);
-            var colStart = startNodeInfo.Position.X;
-            var colTarget = targetNodeInfo.Position.X;
-            var rowStart = startNodeInfo.Position.Y;
-            var rowTarget = targetNodeInfo.Position.Y;
-            var diffY = Math.Abs(colTarget - colStart);
-            var diffX = Math.Abs(rowTarget - rowStart);
+            var startPos = startNodeInfo.Position;
+            var targetPos = targetNodeInfo.Position;
+            var diffY = Math.Abs(startPos.Y - targetPos.Y);
+            var diffX = Math.Abs(startPos.X - targetPos.X);
 
             switch (Type)
             {
@@ -185,9 +183,13 @@ namespace HPASharp
                     return (diffY + diffX) * Constants.COST_ONE;
                 case AbsType.ABSTRACT_OCTILE:
                     {
-                        var diagonal = Math.Min(diffY, diffX);
-                        var straight = Math.Max(diffY, diffX) - diagonal;
-                        return straight * Constants.COST_ONE + (diagonal * Constants.COST_ONE * 34) / 24;
+                        var diag = Math.Min(diffX, diffY);
+                        var straight = diffX + diffY;
+
+                        // According to the information link, this is the shape of the function.
+                        // We just extract factors to simplify.
+                        // Possible simplification: var h = Constants.CellCost * (straight + (Constants.Sqrt2 - 2) * diag);
+                        return Constants.COST_ONE * straight + (Constants.COST_ONE * 34 / 24 - 2 * Constants.COST_ONE) * diag;
                     }
                 default:
                     //assert(false);
@@ -195,7 +197,9 @@ namespace HPASharp
             }
         }
 
-        public abstract List<int> DoHierarchicalSearch(int startNodeId, int targetNodeId, int maxSearchLevel);
+        public abstract List<Node> DoHierarchicalSearch(int startNodeId, int targetNodeId, int maxSearchLevel, int maxPathsToRefine = int.MaxValue);
+
+        public abstract List<Node> RefineAbstractPath(List<Node> path, int level, int maxPathsToRefine = int.MaxValue);
 
         public int GetMinCost()
         {
@@ -341,47 +345,60 @@ namespace HPASharp
                 cluster.ComputePaths();
         }
 
-        public List<int> AbstractPathToLowLevelPath(List<int> absPath, int width)
+        public List<Node> AbstractPathToLowLevelPath(List<Node> absPath, int width, int maxPathsToCalculate = int.MaxValue)
         {
-            var result = new List<int>();
+            var result = new List<Node>();
             if (absPath.Count == 0) return result;
 
-            var lastAbsNodeId = absPath[0];
+            var calculatedPaths = 0;
+            var lastAbsNodeId = absPath[0].Id;
 
             for (var j = 1; j < absPath.Count; j++)
             {
-                var currentAbsNodeId = absPath[j];
+                var currentAbsNodeId = absPath[j].Id;
                 var currentNodeInfo = Graph.GetNodeInfo(currentAbsNodeId);
                 var lastNodeInfo = Graph.GetNodeInfo(lastAbsNodeId);
 
+                // We cannot compute a low level path from a level which is higher than lvl 1
+                // (obvious...) therefore, ignore any non-refined path
+                if (absPath[j].Level > 1)
+                {
+                    result.Add(absPath[j]);
+                    continue;
+                }
+
                 var eClusterId = currentNodeInfo.ClusterId;
                 var leClusterId = lastNodeInfo.ClusterId;
-                var index2 = currentNodeInfo.LocalIdxCluster;
-                var index1 = lastNodeInfo.LocalIdxCluster;
-                if (eClusterId == leClusterId)
+                
+                if (eClusterId == leClusterId && calculatedPaths < maxPathsToCalculate)
                 {
                     // insert the local solution into the global one
                     var cluster = this.GetCluster(eClusterId);
-                    if (cluster.GetLocalCenter(index1) != cluster.GetLocalCenter(index2))
+                    var localpos1 = cluster.GetLocalPosition(lastNodeInfo.LocalIdxCluster);
+                    var localpos2 = cluster.GetLocalPosition(currentNodeInfo.LocalIdxCluster);
+                    if (localpos1 != localpos2)
                     {
-                        var localPath =
-                            cluster.ComputePath(cluster.GetLocalCenter(index1),
-                                cluster.GetLocalCenter(index2));
+                        var localPath = cluster.ComputePath(localpos1, localpos2)
+                            .Select(
+                                lp =>
+                                    {
+                                        var localPoint = this.LocalId2GlobalId(lp, cluster, width);
+                                        return new Node(localPoint, 0);
+                                    });
 
-                        foreach (var localPoint in localPath)
-                        {
-                            var val = this.LocalId2GlobalId(localPoint, cluster, width);
-                            result.Add(val);
-                        }
+                        result.AddRange(localPath);
+
+                        calculatedPaths++;
                     }
                 }
                 else
                 {
                     var lastVal = lastNodeInfo.CenterId;
                     var currentVal = currentNodeInfo.CenterId;
-                    if (result[result.Count - 1] != lastVal)
-                        result.Add(lastVal);
-                    result.Add(currentVal);
+                    if (result[result.Count - 1].Id != lastVal)
+                        result.Add(new Node(lastVal, 0));
+
+                    result.Add(new Node(currentVal, 0));
                 }
 
                 lastAbsNodeId = currentAbsNodeId;
