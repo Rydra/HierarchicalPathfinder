@@ -170,10 +170,8 @@ namespace HPASharp
 
         public int GetHeuristic(int start, int target)
         {
-            var startNodeInfo = Graph.GetNodeInfo(start);
-            var targetNodeInfo = Graph.GetNodeInfo(target);
-            var startPos = startNodeInfo.Position;
-            var targetPos = targetNodeInfo.Position;
+            var startPos = Graph.GetNodeInfo(start).Position;
+            var targetPos = Graph.GetNodeInfo(target).Position;
             var diffY = Math.Abs(startPos.Y - targetPos.Y);
             var diffX = Math.Abs(startPos.X - targetPos.X);
 
@@ -347,7 +345,7 @@ namespace HPASharp
 
         public List<Node> AbstractPathToLowLevelPath(List<Node> absPath, int width, int maxPathsToCalculate = int.MaxValue)
         {
-            var result = new List<Node>();
+            var result = new List<Node>(absPath.Count * 10);
             if (absPath.Count == 0) return result;
 
             var calculatedPaths = 0;
@@ -441,7 +439,9 @@ namespace HPASharp
             var absNodeId = AbsNodeIds[nodeId];
             if (absNodeId != Constants.NO_NODE)
             {
-                // If the node already existed, just track it into our lists
+                // If the node already existed (for instance, it was the an entrance point already
+				// existing in the graph, we need to keep track of the previous status in order
+				// to be able to restore it once we delete this STAL
                 m_stalLevel[start] = Graph.GetNodeInfo(AbsNodeIds[nodeId]).Level;
                 m_stalEdges[start] = GetNodeEdges(nodeId);
                 m_stalUsed[start] = true;
@@ -502,13 +502,15 @@ namespace HPASharp
         {
             if (m_stalUsed[stal])
             {
+				// The node was an existing entrance point in the graph. Restore it with
+				// the information we kept when inserting
                 var nodeInfo = Graph.GetNodeInfo(nodeId);
                 nodeInfo.Level = m_stalLevel[stal];
                 Graph.RemoveNodeEdges(nodeId);
                 Graph.AddNode(nodeId, nodeInfo);
                 foreach (var edge in m_stalEdges[stal])
                 {
-                    int targetNodeId = edge.TargetNodeId;
+                    var targetNodeId = edge.TargetNodeId;
 
                     this.AddEdge(nodeId, targetNodeId, edge.Info.Cost,
                                edge.Info.Level, edge.Info.IsInterEdge);
@@ -518,6 +520,7 @@ namespace HPASharp
             }
             else
             {
+				// Just delete the node from the graph
                 var currentNodeInfo = Graph.GetNodeInfo(nodeId);
                 var clusterId = currentNodeInfo.ClusterId;
                 var cluster = Clusters[clusterId];

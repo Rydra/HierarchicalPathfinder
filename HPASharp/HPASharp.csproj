@@ -33,6 +33,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Priority Queue, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\OptimizedPriorityQueue.2.0.0\lib\net45\Priority Queue.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -52,7 +56,6 @@
     <Compile Include="Graph\AbsTilingInfo.cs" />
     <Compile Include="Graph\Graph.cs" />
     <Compile Include="HTiling.cs" />
-    <Compile Include="Infrastructure\PriorityQueue.cs" />
     <Compile Include="IPassability.cs" />
     <Compile Include="Nodes.cs" />
     <Compile Include="Program.cs" />
@@ -69,6 +72,7 @@
     <None Include="App.config">
       <SubType>Designer</SubType>
     </None>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -42,7 +42,7 @@ namespace HPASharp.Smoother
 
         public List<Node> SmoothPath()
         {
-            var smoothedPath = new List<Node>();
+            var smoothedPath = new List<Node>(InitPath.Count * 2);
             for (var j = 0; j < InitPath.Count; j++)
             {
                 var pathPoint = InitPath[j];

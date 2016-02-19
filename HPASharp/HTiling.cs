@@ -32,9 +32,9 @@ namespace HPASharp
         /// </summary>
         public override List<Neighbour> GetNeighbours(int nodeId, int lastNodeId)
         {
-            var result = new List<Neighbour>();
             var node = Graph.GetNode(nodeId);
             var edges = node.Edges;
+            var result = new List<Neighbour>(edges.Count);
             foreach (var edge in edges)
             {
                 var edgeInfo = edge.Info;
@@ -60,12 +60,8 @@ namespace HPASharp
                     continue;
 
                 if (lastNodeId != Constants.NO_NODE)
-                {
                     if (PruneNode(targetNodeId, nodeId, lastNodeId))
-                    {
                         continue;
-                    }
-                }
 
                 result.Add(new Neighbour(targetNodeId, edgeInfo.Cost));
             }
@@ -210,14 +206,10 @@ namespace HPASharp
             var currentCol2 = node2Pos.X - (node2Pos.X % offset);
 
             if (currentRow1 != currentRow2)
-            {
                 return false;
-            }
 
             if (currentCol1 != currentCol2)
-            {
                 return false;
-            }
 
             return true;
         }
@@ -268,7 +260,7 @@ namespace HPASharp
             var result = new List<Node>();
             var calculatedPaths = 0;
 
-            for (int i = 0; i < path.Count - 1; i++)
+            for (var i = 0; i < path.Count - 1; i++)
             {
                 // if the two consecutive points belong to the same cluster, compute the path between them and
                 // add the resulting nodes of that path to the list
@@ -322,7 +314,6 @@ namespace HPASharp
                 {
                     // define the bounding box of the current cluster we want to analize to create HEdges
                     this.SetCurrentCluster(x, y, offset);
-
                     this.ConstructVerticalToVerticalEdges(level);
                     this.ConstructHorizontalToHorizontalEdges(level);
                     this.ConstructHorizontalToVerticalEdges(level);
@@ -338,23 +329,16 @@ namespace HPASharp
             for (int j1 = this.currentClusterX0 + 1; j1 < this.currentClusterX1; j1++)
             {
                 var absNodeId = this.AbsNodeIds[i1 * this.Width + j1];
-
                 if (absNodeId == Constants.NO_NODE)
-                {
                     continue;
-                }
 
                 var nodeInfo1 = this.Graph.GetNodeInfo(absNodeId);
                 if (nodeInfo1.Level < level)
-                {
                     continue;
-                }
 
                 for (int i2 = this.currentClusterY0 + 1; i2 < this.currentClusterY1; i2++)
                 for (int j2 = this.currentClusterX0; j2 <= this.currentClusterX1; j2 += (this.currentClusterX1 - this.currentClusterX0))
-                {
                     this.AddEdgesBetween(j1, i1, j2, i2, level);
-                }
             }
         }
 
@@ -367,24 +351,18 @@ namespace HPASharp
             for (int j1 = this.currentClusterX0; j1 <= this.currentClusterX1; j1++)
             {
                 var absNodeId = this.AbsNodeIds[i1 * this.Width + j1];
-
                 if (absNodeId == Constants.NO_NODE)
-                {
                     continue;
-                }
+
                 var nodeInfo1 = this.Graph.GetNodeInfo(absNodeId);
                 if (nodeInfo1.Level < level)
-                {
                     continue;
-                }
 
                 for (int i2 = this.currentClusterY0; i2 <= this.currentClusterY1; i2 += (this.currentClusterY1 - this.currentClusterY0))
                 for (int j2 = this.currentClusterX0; j2 <= this.currentClusterX1; j2++)
                 {
                     if (i1 * this.Width + j1 >= i2 * this.Width + j2)
-                    {
                         continue;
-                    }
                     this.AddEdgesBetween(j1, i1, j2, i2, level);
                 }
             }
@@ -398,27 +376,19 @@ namespace HPASharp
             for (int j1 = this.currentClusterX0; j1 <= this.currentClusterX1; j1 += (this.currentClusterX1 - this.currentClusterX0))
             {
                 var absNodeId = this.AbsNodeIds[i1 * this.Width + j1];
-
                 if (absNodeId == Constants.NO_NODE)
-                {
                     continue;
-                }
 
                 var nodeInfo1 = this.Graph.GetNodeInfo(absNodeId);
                 if (nodeInfo1.Level < level)
-                {
                     continue;
-                }
 
                 for (var i2 = this.currentClusterY0; i2 <= this.currentClusterY1; i2++)
                 for (var j2 = this.currentClusterX0; j2 <= this.currentClusterX1; j2 += (this.currentClusterX1 - this.currentClusterX0))
                 {
                     // Only analize the points that lie forward to the current point we are analizing (in front of y1,x1)
                     if (i1 * this.Width + j1 >= i2 * this.Width + j2)
-                    {
                         continue;
-                    }
-
                     this.AddEdgesBetween(j1, i1, j2, i2, level);
                 }
             }
@@ -454,7 +424,7 @@ namespace HPASharp
             Console.WriteLine("Printing abstract graph:");
             for (int id = 0; id < NrNodes; id++)
             {
-                var edges = Graph.GetOutEdges(id);
+                var edges = Graph.GetEdges(id);
                 Console.WriteLine("Node " + id + "; BF "+ edges.Count);
                 var nodeInfo = Graph.GetNodeInfo(id);
                 nodeInfo.PrintInfo();

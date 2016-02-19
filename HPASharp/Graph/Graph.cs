@@ -33,7 +33,7 @@ namespace HPASharp
                 this.Edges = new List<Edge>();
             }
 
-            public void RemoveOutEdge(int targetNodeId)
+            public void RemoveEdge(int targetNodeId)
             {
                 this.Edges.RemoveAll(e => e.TargetNodeId == targetNodeId);
             }
@@ -63,7 +63,7 @@ namespace HPASharp
             Nodes[sourceNodeId].Edges.Add(new Edge(targetNodeId, info));
         }
         
-        public void RemoveOutEdge(int sourceNodeId, int targetNodeId)
+        public void RemoveEdge(int sourceNodeId, int targetNodeId)
         {
             Nodes[sourceNodeId].Edges.RemoveAll(e => e.TargetNodeId == targetNodeId);
         }
@@ -72,7 +72,7 @@ namespace HPASharp
         {
             foreach (var edge in Nodes[nodeId].Edges)
             {
-                Nodes[edge.TargetNodeId].RemoveOutEdge(nodeId);
+                Nodes[edge.TargetNodeId].RemoveEdge(nodeId);
             }
 
             Nodes[nodeId].Edges.Clear();
@@ -100,7 +100,7 @@ namespace HPASharp
             return GetNode(nodeId).Info;
         }
         
-        public List<Edge> GetOutEdges(int nodeId)
+        public List<Edge> GetEdges(int nodeId)
         {
             return Nodes[nodeId].Edges;
         }

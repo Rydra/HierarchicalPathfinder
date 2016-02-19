@@ -185,10 +185,6 @@ namespace HPASharp
             var result = new List<Neighbour>();
             var node = Graph.GetNode(nodeId);
             var nodeInfo = node.Info;
-            //if (nodeInfo.IsObstacle)
-            //{
-            //    return result;
-            //}
 
             foreach (var edge in node.Edges)
             {

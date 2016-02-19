@@ -1,36 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Priority_Queue;
 
 namespace HPASharp.Search
 {
-    public class AStarNode : IComparable<AStarNode>
+    public struct AStarNode
     {
-        public int CompareTo(AStarNode other)
+        public AStarNode(int parent, int g, int h, CellStatus status)
         {
-            int f1 = this.F;
-            int f2 = other.F;
-            if (f1 != f2) return f1.CompareTo(f2); //(f1 < f2);
-            int g1 = this.G;
-            int g2 = other.G;
-            if (g1 != g2) return g1.CompareTo(g2); //(g1 > g2);
-            return this.NodeId.CompareTo(other.NodeId);
-        }
-
-        public AStarNode(int nodeId, AStarNode parent, int g, int h, CellStatus status)
-        {
-            NodeId = nodeId;
             Parent = parent;
             G = g;
             H = h;
             Status = status;
         }
 
-        public int NodeId { get; set; }
-        public AStarNode Parent { get; set; }
-        public CellStatus Status { get; set; }
-        public int H { get; set; }
-        public int G { get; set; }
+        public int Parent;
+        public CellStatus Status;
+        public int H;
+        public int G;
         public int F { get { return G + H; } }
     }
 
@@ -50,18 +38,15 @@ namespace HPASharp.Search
 
         public int PathCost { get; set; }
         
-        private AStarNode[] openListLookup; 
-        private SortedSet<AStarNode> openList;
-
-        public AStar()
-        {
-            openList = new SortedSet<AStarNode>();
-        }
+        private AStarNode?[] openListLookup;
+        private IPriorityQueue<int> openList;
 
         public List<int> Path { get; set; }
 
         public bool FindPath(IMap map, int start, int target)
         {
+            openList = new SimplePriorityQueue<int>();
+            openListLookup = new AStarNode?[map.NrNodes];
             this.map = map;
             this.isGoal = nodeId => nodeId == target;
             this.getHeuristic = nodeId => map.GetHeuristic(nodeId, target);
@@ -69,77 +54,70 @@ namespace HPASharp.Search
             FindPathAstar(start);
             return true;
         }
-
-        /// <summary>
-        /// Finds a node in the openqueue. A faster (though more memory consuming)
-        /// alternative could be use an array indexed by nodeId to assess the status of that node
-        /// </summary>
-        private AStarNode FindNodeInOpenQueue(int nodeId)
-        {
-            return openListLookup[nodeId];
-        }
-
-        private void ReconstructPath(int start, AStarNode node)
+        
+        private void ReconstructPath(int destination)
         {
             Path = new List<int>();
-            PathCost = node.F;
-            var currnode = node;
-            while (currnode.NodeId != start)
+            PathCost = openListLookup[destination].Value.F;
+            var currnode = destination;
+            while (openListLookup[currnode].Value.Parent != currnode)
             {
-                Path.Add(currnode.NodeId);
-                currnode = currnode.Parent;
+                Path.Add(currnode);
+                currnode = openListLookup[currnode].Value.Parent;
             }
 
-            Path.Add(currnode.NodeId);
+            Path.Add(currnode);
         }
 
         private void FindPathAstar(int start)
         {
-            openListLookup = new AStarNode[map.NrNodes];
-
             var heuristic = getHeuristic(start);
             PathCost = Constants.NO_COST;
-            var startNode = new AStarNode(start, null, 0, heuristic, CellStatus.Open);
-            openList.Add(startNode);
+            var startNode = new AStarNode(start, 0, heuristic, CellStatus.Open);
+
+            openList.Enqueue(start, startNode.F);
             openListLookup[start] = startNode;
 
             while (openList.Count != 0)
             {
-                var node = openListLookup[openList.Min.NodeId];
-                openList.RemoveWhere(n => n.NodeId == node.NodeId);
-                //var pos = ((HTiling) map).Graph.GetNodeInfo(node.NodeId).Position;
+                var nodeId = openList.Dequeue();
+                var node = openListLookup[nodeId].Value;
+
+                //var pos = ((HTiling) map).Graph.GetNodeInfo(nodeId).Position;
                 if (node.Status == CellStatus.Closed)
                     continue;
 
-                if (isGoal(node.NodeId))
+                openListLookup[nodeId] = new AStarNode(node.Parent, node.G, node.H, CellStatus.Closed);
+
+                if (isGoal(nodeId))
                 {
-                    ReconstructPath(start, node);
+                    ReconstructPath(nodeId);
                     return;
                 }
 
-                var successors = map.GetNeighbours(node.NodeId, Constants.NO_NODE);
+                var successors = map.GetNeighbours(nodeId, Constants.NO_NODE);
                 foreach (var successor in successors)
                 {
                     var newg = node.G + successor.Cost;
                     var successorTarget = successor.Target;
-                    var targetAStarNode = FindNodeInOpenQueue(successorTarget);
-                    if (targetAStarNode != null)
+                    var targetAStarNode = openListLookup[successorTarget];
+                    if (targetAStarNode.HasValue)
                     {
-                        if (targetAStarNode.Status == CellStatus.Closed || newg >= targetAStarNode.G)
+                        if (targetAStarNode.Value.Status == CellStatus.Closed || newg >= targetAStarNode.Value.G)
                             continue;
 
-                        // NOTE: I comment this temporarily
-                        openListLookup[successorTarget] = null;
-                        //openList.RemoveWhere(n => n.NodeId == successorTarget);
+                        targetAStarNode = new AStarNode(nodeId, newg, targetAStarNode.Value.H, CellStatus.Open);
+                        openListLookup[successorTarget] = targetAStarNode;
+                        openList.UpdatePriority(successorTarget, targetAStarNode.Value.F);
                     }
-
-                    var newHeuristic = getHeuristic(successorTarget);
-                    var newAStarNode = new AStarNode(successorTarget, node, newg, newHeuristic, CellStatus.Open);
-                    openList.Add(newAStarNode);
-                    openListLookup[successorTarget] = newAStarNode;
+                    else
+                    {
+                        var newHeuristic = getHeuristic(successorTarget);
+                        var newAStarNode = new AStarNode(nodeId, newg, newHeuristic, CellStatus.Open);
+                        openList.Enqueue(successorTarget, newAStarNode.F);
+                        openListLookup[successorTarget] = newAStarNode;
+                    }
                 }
-
-                node.Status = CellStatus.Closed;
             }
         }
     }

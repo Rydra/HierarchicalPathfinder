@@ -104,60 +104,56 @@ namespace HPASharp
             wizard.CreateAbstractMap();
             var absTiling = wizard.AbsTiling;
 
-            RegularSearch(tiling, absTiling, clusterSize);
-            HierarchicalSearch(absTiling, maxLevel, tiling, clusterSize);
-            
-            
+	        var sw = Stopwatch.StartNew();
+            var path1 = RegularSearch(tiling, absTiling, clusterSize);
+	        var elapsed = sw.ElapsedMilliseconds;
+
+			Console.WriteLine("Regular search: " + elapsed + " ms");
+			PrintFormatted(tiling, absTiling, clusterSize, path1);
+
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
+
+	        sw = Stopwatch.StartNew();
+            var path2 = HierarchicalSearch(absTiling, maxLevel, tiling, clusterSize);
+	        elapsed = sw.ElapsedMilliseconds;
+			Console.WriteLine("Hierachical search: " + elapsed + " ms");
+
+			PrintFormatted(tiling, absTiling, clusterSize, path2);
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
+
+
             Console.WriteLine("Press any key to quit...");
             Console.ReadKey();
         }
 
-	    private static void HierarchicalSearch(AbsTiling absTiling, int maxLevel, Tiling tiling, int clusterSize)
+	    private static List<Position> HierarchicalSearch(AbsTiling absTiling, int maxLevel, Tiling tiling, int clusterSize)
 	    {
             // Hierarchical pathfinding
-	        var sw = Stopwatch.StartNew();
 	        var startAbsNode = absTiling.InsertSTAL(new Position(14, 20), 0);
-	        var targetAbsNode = absTiling.InsertSTAL(new Position(69, 69), 1);
-	        //PrintFormatted(tiling, absTiling, clusterSize, new List<int>());
-	        //Console.WriteLine();
-	        //Console.WriteLine();
-	        //Console.WriteLine();
-	        var maxPathsToRefine = 2;
+	        var targetAbsNode = absTiling.InsertSTAL(new Position(40, 40), 1);
+	        var maxPathsToRefine = int.MaxValue;
             var abstractPath = absTiling.DoHierarchicalSearch(startAbsNode, targetAbsNode, maxLevel, maxPathsToRefine);
-            var path = absTiling.AbstractPathToLowLevelPath(abstractPath, absTiling.Width, maxPathsToRefine);
-            
-            //absTiling.RemoveStal();
-
-	        //PrintFormatted(tiling, absTiling, clusterSize, path);
-
-	        //Console.WriteLine();
-	        //Console.WriteLine();
-	        //Console.WriteLine();
-
+			var path = absTiling.AbstractPathToLowLevelPath(abstractPath, absTiling.Width, maxPathsToRefine);
+			absTiling.RemoveStal(startAbsNode, 0);
+			absTiling.RemoveStal(targetAbsNode, 1);
             var smoother = new SmoothWizard(tiling, path);
             path = smoother.SmoothPath();
-	        Console.WriteLine(sw.ElapsedTicks + " ticks!");
-            PrintFormatted(tiling, absTiling, clusterSize,
-                path.Select(n => n.Level == 0 ? tiling.Graph.GetNodeInfo(n.Id).Position : absTiling.Graph.GetNodeInfo(n.Id).Position).ToList());
 
-            Console.WriteLine();
-	        Console.WriteLine();
-	        Console.WriteLine();
-	    }
+			return path.Select(n => n.Level == 0 ? tiling.Graph.GetNodeInfo(n.Id).Position : absTiling.Graph.GetNodeInfo(n.Id).Position).ToList();
+            
+        }
 
-	    private static void RegularSearch(Tiling tiling, AbsTiling absTiling, int clusterSize)
+	    private static List<Position> RegularSearch(Tiling tiling, AbsTiling absTiling, int clusterSize)
 	    {
             // Regular pathfinding
-	        var sw2 = Stopwatch.StartNew();
 	        var searcher = new AStar();
-	        searcher.FindPath(tiling, tiling[14, 20].NodeId, tiling[69, 69].NodeId);
+	        searcher.FindPath(tiling, tiling[14, 20].NodeId, tiling[40, 40].NodeId);
 	        var path2 = searcher.Path;
-	        Console.WriteLine(sw2.ElapsedTicks + " ticks!");
-            PrintFormatted(tiling, absTiling, clusterSize, path2.Select(n => tiling.Graph.GetNodeInfo(n).Position).ToList());
-
-	        Console.WriteLine();
-	        Console.WriteLine();
-	        Console.WriteLine();
+		    return path2.Select(n => tiling.Graph.GetNodeInfo(n).Position).ToList();
 	    }
 
 	    private static List<char> GetCharVector(Tiling tiling)

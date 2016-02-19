@@ -56,17 +56,6 @@ namespace HPASharp
 
                 if (i > 0)
                     entranceId = CreateVertEntrances(j, j + vertSize - 1, i - 1, AbsTiling.GetCluster(clusterX - 1, clusterY).Id, cluster.Id, entranceId);
-
-                // NOTE: This piece of code creates diagonal entrances between 2 clusters placed in diagonal
-                // against each other. Leaving this commented as a reminder until I make sure whether this
-                // is useful or not.
-                //if (AbsTiling.Type ==  TileType.OCTILE)
-                //{
-                //    if (j > 0 && j < m_tiling.getHeight())
-                //        createDHEntrances(i, i + horizSize - 2, j - 1, row - 1, col, &entranceId);
-                //    if (i > 0 && i < m_tiling.getWidth())
-                //        createDVEntrances(j, j + vertSize - 2, i - 1, row, col - 1, &entranceId);
-                //}
             }
             
             AbsTiling.AddAbstractNodes();
@@ -100,9 +89,7 @@ namespace HPASharp
                 var node2isObstacle = Tiling[i, y + 1].Info.IsObstacle;
                 // get the next communication spot
                 if (node1isObstacle || node2isObstacle)
-                {
                     continue;
-                }
 
                 // start building and tracking the entrance
                 var entranceStart = i;
@@ -154,9 +141,7 @@ namespace HPASharp
                 var node2isObstacle = Tiling[x + 1, i].Info.IsObstacle;
                 // get the next communication spot
                 if (node1isObstacle || node2isObstacle)
-                {
                     continue;
-                }
 
                 // start building the entrance
                 var entranceStart = i;
