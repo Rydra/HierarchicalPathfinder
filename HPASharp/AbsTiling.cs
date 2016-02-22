@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 
 namespace HPASharp
 {
+    #region Abstract Tiling support classes
+
     public struct Neighbour
     {
         public int Target;
@@ -16,6 +18,65 @@ namespace HPASharp
         {
             Target = target;
             Cost = cost;
+        }
+    }
+
+    // implements edges in the abstract graph
+    public class AbsTilingEdgeInfo
+    {
+        public int Cost { get; set; }
+        public int Level { get; set; }
+        public bool IsInterEdge { get; set; }
+
+        public AbsTilingEdgeInfo(int cost, int level = 1, bool inter = true)
+        {
+            Cost = cost;
+            Level = level;
+            IsInterEdge = inter;
+        }
+        public override string ToString()
+        {
+            return ("cost: " + Cost + "; level: " + Level + "; inter: " + IsInterEdge);
+        }
+
+        public void PrintInfo()
+        {
+            Console.WriteLine(this.ToString());
+        }
+    }
+
+    // implements nodes in the abstract graph
+    public class AbsTilingNodeInfo
+    {
+        public int Id { get; set; }
+        public Position Position { get; set; }
+        public int ClusterId { get; set; }
+        public int CenterId { get; set; }
+        public int Level { get; set; }
+        public int LocalIdxCluster { get; set; }
+
+        public AbsTilingNodeInfo(int id, int level, int clId,
+                    Position position, int centerId,
+                    int localIdxCluster)
+        {
+            Id = id;
+            Level = level;
+            ClusterId = clId;
+            Position = position;
+            CenterId = centerId;
+            LocalIdxCluster = localIdxCluster;
+        }
+
+        public void PrintInfo()
+        {
+            Console.Write("id: " + Id);
+            Console.Write("; level: " + Level);
+            Console.Write("; cluster: " + ClusterId);
+            Console.Write("; row: " + Position.Y);
+            Console.Write("; col: " + Position.X);
+            Console.Write("; center: " + CenterId);
+            Console.Write("; local idx: " + LocalIdxCluster);
+            Console.WriteLine();
         }
     }
     
@@ -33,12 +94,12 @@ namespace HPASharp
 		public int Id { get; set; }
 		public int Cluster1Id { get; set; }
 		public int Cluster2Id { get; set; }
-		public int Center1Id { get; set; }
-		public int Center2Id { get; set; }
+		public int Coord1Id { get; set; }
+		public int Coord2Id { get; set; }
 		public Orientation Orientation { get; set; }
-		public Position Center1 { get; set; }
+		public Position Coord1 { get; set; }
 
-		public Position Center2
+		public Position Coord2
 		{
 			get
 			{
@@ -47,13 +108,13 @@ namespace HPASharp
 				{
 					case Orientation.HORIZONTAL:
 					case Orientation.HDIAG2:
-						x = Center1.X;
+						x = this.Coord1.X;
 						break;
 					case Orientation.VERTICAL:
 					case Orientation.VDIAG2:
 					case Orientation.VDIAG1:
 					case Orientation.HDIAG1:
-						x = Center1.X + 1;
+						x = this.Coord1.X + 1;
 						break;
 					default:
 						//assert(false);
@@ -68,11 +129,11 @@ namespace HPASharp
 					case Orientation.HDIAG1:
 					case Orientation.HDIAG2:
 					case Orientation.VDIAG1:
-						y = Center1.Y + 1;
+						y = this.Coord1.Y + 1;
 						break;
 					case Orientation.VERTICAL:
 					case Orientation.VDIAG2:
-						y = Center1.Y;
+						y = this.Coord1.Y;
 						break;
 					default:
 						//assert(false);
@@ -84,7 +145,7 @@ namespace HPASharp
 			}
 		}
 
-		public Entrance(int id, int cl1Id, int cl2Id, int center1Row, int center1Col, int center1Id, int center2Id, Orientation orientation)
+		public Entrance(int id, int cl1Id, int cl2Id, int center1Row, int center1Col, int coord1Id, int coord2Id, Orientation orientation)
 		{
 			Id = id;
 			Cluster1Id = cl1Id;
@@ -101,12 +162,14 @@ namespace HPASharp
 			else
 				center1y = center1Row;
 
-			Center1 = new Position(center1x, center1y);
-			Center1Id = center1Id;
-			Center2Id = center2Id;
+			this.Coord1 = new Position(center1x, center1y);
+			this.Coord1Id = coord1Id;
+			this.Coord2Id = coord2Id;
 			Orientation = orientation;
 		}
 	}
+
+    #endregion
 
     // implements an abstract maze decomposition
     // the ultimate abstract representation is a weighted graph of
@@ -120,14 +183,7 @@ namespace HPASharp
         protected int MaxLevel { get; set; }
         protected List<Cluster> Clusters { get; set; }
         protected List<Entrance> Entrances { get; set; }
-
-	    public int NrNodes
-	    {
-		    get
-		    {
-				return Graph.Nodes.Count;
-		    }
-	    }
+	    public int NrNodes { get { return Graph.Nodes.Count; } }
 
         // This list, indexed by a node id from the low level, 
         // indicates to which abstract node id it maps. It is a sparse
@@ -190,21 +246,15 @@ namespace HPASharp
                         return Constants.COST_ONE * straight + (Constants.COST_ONE * 34 / 24 - 2 * Constants.COST_ONE) * diag;
                     }
                 default:
-                    //assert(false);
                     return 0;
             }
         }
 
-        public abstract List<Node> DoHierarchicalSearch(int startNodeId, int targetNodeId, int maxSearchLevel, int maxPathsToRefine = int.MaxValue);
+        public abstract List<PathNode> DoHierarchicalSearch(int startNodeId, int targetNodeId, int maxSearchLevel, int maxPathsToRefine = int.MaxValue);
 
-        public abstract List<Node> RefineAbstractPath(List<Node> path, int level, int maxPathsToRefine = int.MaxValue);
+        public abstract List<PathNode> RefineAbstractPath(List<PathNode> path, int level, int maxPathsToRefine = int.MaxValue);
 
-        public int GetMinCost()
-        {
-            return 0;
-        }
-
-        public abstract List<Neighbour> GetNeighbours(int nodeId, int lastNodeId);
+        public abstract IEnumerable<Neighbour> GetNeighbours(int nodeId);
 
         public void AddCluster(Cluster cluster)
         {
@@ -268,10 +318,10 @@ namespace HPASharp
                 switch (entrance.Orientation)
                 {
                     case Orientation.HORIZONTAL:
-                        level = DetermineLevel(entrance.Center1.Y);
+                        level = DetermineLevel(entrance.Coord1.Y);
                         break;
                     case Orientation.VERTICAL:
-                        level = DetermineLevel(entrance.Center1.X);
+                        level = DetermineLevel(entrance.Coord1.X);
                         break;
                     default:
                         level = -1;
@@ -281,19 +331,19 @@ namespace HPASharp
                 // use absNodes as a local var to check quickly if a node with the same centerId
                 // has been created before
                 AbsTilingNodeInfo absNode;
-                if (!absNodes.TryGetValue(entrance.Center1Id, out absNode))
+                if (!absNodes.TryGetValue(entrance.Coord1Id, out absNode))
                 {
                     cluster1.AddEntrance(new LocalEntrance(
                                                abstractNodeId,
                                                -1, // real value set in addEntrance()
-                                               new Position(entrance.Center1.X - cluster1.Origin.X, entrance.Center1.Y - cluster1.Origin.Y)));
+                                               new Position(entrance.Coord1.X - cluster1.Origin.X, entrance.Coord1.Y - cluster1.Origin.Y)));
 
-                    AbsNodeIds[entrance.Center1Id] = abstractNodeId;
+                    AbsNodeIds[entrance.Coord1Id] = abstractNodeId;
                     var node = new AbsTilingNodeInfo(abstractNodeId, level,
                                  entrance.Cluster1Id,
-                                 new Position(entrance.Center1.X, entrance.Center1.Y),
-                                 entrance.Center1Id, cluster1.GetNrEntrances() - 1);
-                    absNodes[entrance.Center1Id] = node;
+                                 new Position(entrance.Coord1.X, entrance.Coord1.Y),
+                                 entrance.Coord1Id, cluster1.GetNrEntrances() - 1);
+                    absNodes[entrance.Coord1Id] = node;
                     abstractNodeId++;
                 }
                 else
@@ -302,19 +352,19 @@ namespace HPASharp
                         absNode.Level = level;
                 }
                 
-                if (!absNodes.TryGetValue(entrance.Center2Id, out absNode))
+                if (!absNodes.TryGetValue(entrance.Coord2Id, out absNode))
                 {
                     cluster2.AddEntrance(new LocalEntrance(
                                                abstractNodeId,
                                                -1, // real value set in addEntrance()
-                                               new Position(entrance.Center2.X - cluster2.Origin.X, entrance.Center2.Y - cluster2.Origin.Y)));
+                                               new Position(entrance.Coord2.X - cluster2.Origin.X, entrance.Coord2.Y - cluster2.Origin.Y)));
 
-                    AbsNodeIds[entrance.Center2Id] = abstractNodeId;
+                    AbsNodeIds[entrance.Coord2Id] = abstractNodeId;
                     var node = new AbsTilingNodeInfo(abstractNodeId, level,
                                  entrance.Cluster2Id,
-                                 new Position(entrance.Center2.X, entrance.Center2.Y),
-                                 entrance.Center2Id, cluster2.GetNrEntrances() - 1);
-                    absNodes[entrance.Center2Id] = node;
+                                 new Position(entrance.Coord2.X, entrance.Coord2.Y),
+                                 entrance.Coord2Id, cluster2.GetNrEntrances() - 1);
+                    absNodes[entrance.Coord2Id] = node;
                     abstractNodeId++;
                 }
                 else
@@ -343,9 +393,9 @@ namespace HPASharp
                 cluster.ComputePaths();
         }
 
-        public List<Node> AbstractPathToLowLevelPath(List<Node> absPath, int width, int maxPathsToCalculate = int.MaxValue)
+        public List<PathNode> AbstractPathToLowLevelPath(List<PathNode> absPath, int width, int maxPathsToCalculate = int.MaxValue)
         {
-            var result = new List<Node>(absPath.Count * 10);
+            var result = new List<PathNode>(absPath.Count * 10);
             if (absPath.Count == 0) return result;
 
             var calculatedPaths = 0;
@@ -380,8 +430,8 @@ namespace HPASharp
                             .Select(
                                 lp =>
                                     {
-                                        var localPoint = this.LocalId2GlobalId(lp, cluster, width);
-                                        return new Node(localPoint, 0);
+                                        var localPoint = LocalClusterId2GlobalId(lp, cluster, width);
+                                        return new PathNode(localPoint, 0);
                                     });
 
                         result.AddRange(localPath);
@@ -394,9 +444,9 @@ namespace HPASharp
                     var lastVal = lastNodeInfo.CenterId;
                     var currentVal = currentNodeInfo.CenterId;
                     if (result[result.Count - 1].Id != lastVal)
-                        result.Add(new Node(lastVal, 0));
+                        result.Add(new PathNode(lastVal, 0));
 
-                    result.Add(new Node(currentVal, 0));
+                    result.Add(new PathNode(currentVal, 0));
                 }
 
                 lastAbsNodeId = currentAbsNodeId;
@@ -436,8 +486,7 @@ namespace HPASharp
         // x and y are the positions where I want to put the node
         public int InsertStal(int nodeId, Position pos, int start)
         {
-            var absNodeId = AbsNodeIds[nodeId];
-            if (absNodeId != Constants.NO_NODE)
+            if (AbsNodeIds[nodeId] != Constants.NO_NODE)
             {
                 // If the node already existed (for instance, it was the an entrance point already
 				// existing in the graph, we need to keep track of the previous status in order
@@ -445,7 +494,7 @@ namespace HPASharp
                 m_stalLevel[start] = Graph.GetNodeInfo(AbsNodeIds[nodeId]).Level;
                 m_stalEdges[start] = GetNodeEdges(nodeId);
                 m_stalUsed[start] = true;
-                return absNodeId;
+                return AbsNodeIds[nodeId];
             }
 
             m_stalUsed[start] = false;
@@ -459,13 +508,17 @@ namespace HPASharp
                     pos.X < cl.Origin.X + cl.Size.Width);
 
             // create global entrance
-            absNodeId = NrNodes;
+            var absNodeId = NrNodes;
 
             // insert local entrance to cluster and updatePaths(cluster.getNrEntrances() - 1)
-            cluster.AddEntrance(new LocalEntrance(absNodeId, -1, new Position(pos.X - cluster.Origin.X, pos.Y - cluster.Origin.Y)));
-            cluster.UpdatePaths(cluster.GetNrEntrances() - 1);
+            var localEntrance = new LocalEntrance(
+                absNodeId,
+                -1,
+                new Position(pos.X - cluster.Origin.X, pos.Y - cluster.Origin.Y));
+            cluster.AddEntrance(localEntrance);
+            cluster.UpdatePaths(localEntrance.EntranceLocalIdx);
 
-			AbsNodeIds[nodeId] = NrNodes;
+            AbsNodeIds[nodeId] = absNodeId;
 
             // create new node to the abstract graph (to the level 1)
             Graph.AddNode(absNodeId,
@@ -475,23 +528,19 @@ namespace HPASharp
                                     cluster.GetNrEntrances() - 1));
 
             // add new edges to the abstract graph
-            var l = cluster.GetNrEntrances() - 1;
+            var entranceLocalIdx = localEntrance.EntranceLocalIdx;
             for (var k = 0; k < cluster.GetNrEntrances() - 1; k++)
             {
-                if (cluster.AreConnected(l, k))
+                if (cluster.AreConnected(entranceLocalIdx, k))
                 {
                     this.AddEdge(
                         cluster.GetGlobalAbsNodeId(k),
-                        cluster.GetGlobalAbsNodeId(l),
-                        cluster.GetDistance(l, k),
-                        1,
-                        false);
+                        cluster.GetGlobalAbsNodeId(entranceLocalIdx),
+                        cluster.GetDistance(entranceLocalIdx, k));
                     this.AddEdge(
-                        cluster.GetGlobalAbsNodeId(l),
+                        cluster.GetGlobalAbsNodeId(entranceLocalIdx),
                         cluster.GetGlobalAbsNodeId(k),
-                        cluster.GetDistance(k, l),
-                        1,
-                        false);
+                        cluster.GetDistance(k, entranceLocalIdx));
                 }
             }
 
@@ -552,25 +601,25 @@ namespace HPASharp
                 }
             }
 
-            // add transition edges
+            // add transition (inter) edges
             foreach (var entrance in Entrances)
             {
                 int level;
                 switch (entrance.Orientation)
                 {
                     case Orientation.HORIZONTAL:
-                        level = DetermineLevel(entrance.Center1.Y);
+                        level = DetermineLevel(entrance.Coord1.Y);
                         break;
                     case Orientation.VERTICAL:
-                        level = DetermineLevel(entrance.Center1.X);
+                        level = DetermineLevel(entrance.Coord1.X);
                         break;
                     default:
                         level = -1;
                         break;
                 }
 
-                var abstractNodeId1 = AbsNodeIds[entrance.Center1Id];
-                var abstractNodeId2 = AbsNodeIds[entrance.Center2Id];
+                var abstractNodeId1 = AbsNodeIds[entrance.Coord1Id];
+                var abstractNodeId2 = AbsNodeIds[entrance.Coord2Id];
 
                 switch (Type)
                 {
@@ -593,11 +642,10 @@ namespace HPASharp
                                 case Orientation.HDIAG1:
                                 case Orientation.VDIAG1:
                                 case Orientation.VDIAG2:
-                                    unitCost = Constants.SQRT2; // This should be SQRT(2). I should use doubles instead.
+                                    unitCost = (Constants.COST_ONE * 34) / 24;
                                     break;
                                 default:
                                     unitCost = -1;
-                                    //assert(false);
                                     break;
                             }
 
@@ -617,7 +665,7 @@ namespace HPASharp
             return node.Edges;
         }
 
-        public virtual bool PruneNode(int targetNodeId, int nodeId, int lastNodeId)
+        public virtual bool PruneNode(int targetNodeId, int lastNodeId)
         {
             var targetNodeInfo = Graph.GetNodeInfo(targetNodeId);
             var lastNodeInfo = Graph.GetNodeInfo(lastNodeId);
@@ -633,7 +681,7 @@ namespace HPASharp
             return Clusters[id];
         }
 
-        private int LocalId2GlobalId(int localId, Cluster cluster, int width)
+        private static int LocalClusterId2GlobalId(int localId, Cluster cluster, int width)
         {
             var localX = localId % cluster.Size.Width;
             var localY = localId / cluster.Size.Width;
@@ -642,7 +690,7 @@ namespace HPASharp
             return result;
         }
 
-        private int GlobalId2LocalId(int globalId, Cluster cluster, int width)
+        private static int GlobalId2LocalId(int globalId, Cluster cluster, int width)
         {
             var globalY = globalId / width;
             var globalX = globalId % width;

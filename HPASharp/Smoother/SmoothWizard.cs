@@ -19,13 +19,14 @@ namespace HPASharp.Smoother
 
     public class SmoothWizard
     {
-        public List<Node> InitPath { get; set; }
+        public List<PathNode> InitPath { get; set; }
 
         private Tiling tiling;
+
         // This is a dictionary, indexed by nodeId, that tells in which order does this node occupy in the path
         private Dictionary<int, int> pathMap;
 
-        public SmoothWizard(Tiling tiling, List<Node> path)
+        public SmoothWizard(Tiling tiling, List<PathNode> path)
         {
             InitPath = path;
             this.tiling = tiling;
@@ -37,21 +38,21 @@ namespace HPASharp.Smoother
 
         private Position GetPosition(int nodeId)
         {
-            return tiling.Graph.GetNode(nodeId).Info.Position;
+            return tiling.Graph.GetNodeInfo(nodeId).Position;
         }
 
-        public List<Node> SmoothPath()
+        public List<PathNode> SmoothPath()
         {
-            var smoothedPath = new List<Node>(InitPath.Count * 2);
+            var smoothedPath = new List<PathNode>(InitPath.Count * 2);
             for (var j = 0; j < InitPath.Count; j++)
             {
-                var pathPoint = InitPath[j];
+                var pathNode = InitPath[j];
 
                 // Only process for smoothing points which belong to lvl 0. Anything above that is an abstract
                 // path that cannot be smoothed.
-                if (pathPoint.Level > 0)
+                if (pathNode.Level > 0)
                 {
-                    smoothedPath.Add(pathPoint);
+                    smoothedPath.Add(pathNode);
                     continue;
                 }
 
@@ -70,7 +71,7 @@ namespace HPASharp.Smoother
                     if (!AreAdjacent(GetPosition(lastNodeInSmoothedPath.Id), GetPosition(currentNodeInPath.Id)))
                     {
                         var intrapath = GenerateIntermediateNodes(smoothedPath[smoothedPath.Count - 1].Id, InitPath[j].Id);
-                        smoothedPath.AddRange(intrapath.Skip(1).Select(n => new Node(n, 0)));
+                        smoothedPath.AddRange(intrapath.Skip(1).Select(n => new PathNode(n, 0)));
                     }
 
                     smoothedPath.Add(InitPath[j]);

@@ -35,8 +35,16 @@ namespace HPASharp
         public int Id { get; set; }
         public int ClusterY { get; set; }
         public int ClusterX { get; set; }
+
+        /// <summary>
+        /// A 2D array which represents a distance between 2 entrances.
+        /// This array could be represented as a Dictionary, but it's faster
+        /// to use an array.
+        /// </summary>
         public int[,] Distances { get; set; }
-        public bool[,] DistanceCalculated { get; set; } // Tells whether a path has already been calculated for 2 node ids
+
+        // Tells whether a path has already been calculated for 2 node ids
+        public bool[,] DistanceCalculated { get; set; } 
         
 		// A local entrance is a point inside this cluster
 		public List<LocalEntrance> Entrances { get; set; }
@@ -52,11 +60,11 @@ namespace HPASharp
             Tiling = new Tiling(tiling, origin.X, origin.Y, size.Width, size.Height, tiling.Passability);
             Id = id;
             ClusterY = clusterY;
-            this.ClusterX = clusterX;
+            ClusterX = clusterX;
             Origin = origin;
             Size = size;
             Distances = new int[MAX_CLENTRANCES, MAX_CLENTRANCES];
-            this.DistanceCalculated = new bool[MAX_CLENTRANCES, MAX_CLENTRANCES];
+            DistanceCalculated = new bool[MAX_CLENTRANCES, MAX_CLENTRANCES];
             Entrances = new List<LocalEntrance>();
         }
 
@@ -66,13 +74,13 @@ namespace HPASharp
         /// </summary>
         public void ComputePaths()
         {
+            for (var j = 0; j < MAX_CLENTRANCES; j++)
             for (var i = 0; i < MAX_CLENTRANCES; i++)
-                for (var j = 0; j < MAX_CLENTRANCES; j++)
-                    this.DistanceCalculated[i,j] = false;
+                this.DistanceCalculated[i,j] = false;
 
-            foreach(var entrance1 in Entrances)
-                foreach (var entrance2 in Entrances)
-                    ComputeAddPath(entrance1, entrance2);
+            foreach (var entrance1 in Entrances)
+            foreach (var entrance2 in Entrances)
+                ComputeAddPath(entrance1, entrance2);
         }
 
         /// <summary>
@@ -83,18 +91,6 @@ namespace HPASharp
             return entrance.RelativePos.Y * Size.Width + entrance.RelativePos.X;
         }
 
-        private void NoPath(int startIdx, int targetIdx)
-        {
-            Distances[startIdx,targetIdx] = Distances[targetIdx,startIdx] = int.MaxValue;
-        }
-
-        private int ComputeDistance(int start, int target)
-        {
-            var search = new AStar();
-            search.FindPath(Tiling, target, start);
-            return search.PathCost;
-        }
-
         private void ComputeAddPath(LocalEntrance e1, LocalEntrance e2)
         {
             var start = GetEntrancePositionIndex(e1);
@@ -102,23 +98,23 @@ namespace HPASharp
             var startIdx = e1.EntranceLocalIdx;
             var targetIdx = e2.EntranceLocalIdx;
 
-            //If a path already existed, or both are the same node, just return
+            // If a path already existed, or both are the same node, just return
             if (this.DistanceCalculated[startIdx,targetIdx] || startIdx == targetIdx)
                 return;
 
-            var searchUtils = new SearchUtils();
-            if (searchUtils.checkPathExists(Tiling, start, target))
-                Distances[startIdx,targetIdx] = Distances[targetIdx,startIdx] = ComputeDistance(start, target);
-            else
-                NoPath(startIdx, targetIdx);
+            var search = new AStar();
+            search.FindPath(Tiling, start, target);
+
+            if (search.PathCost != -1) Distances[startIdx, targetIdx] = Distances[targetIdx, startIdx] = search.PathCost;
+            else Distances[startIdx, targetIdx] = Distances[targetIdx, startIdx] = int.MaxValue;
 
             this.DistanceCalculated[startIdx,targetIdx] = true;
             this.DistanceCalculated[targetIdx,startIdx] = true;
         }
         
-        public void UpdatePaths(int entranceId)
+        public void UpdatePaths(int localEntranceId)
         {
-            var entrance = Entrances[entranceId];
+            var entrance = Entrances[localEntranceId];
             foreach(var j in Entrances)
                 ComputeAddPath(entrance, j);
         }
@@ -156,19 +152,19 @@ namespace HPASharp
             var idx = Entrances.Count;
             for (var i = 0; i < MAX_CLENTRANCES; i++)
             {
-                this.DistanceCalculated[idx,i] = this.DistanceCalculated[i,idx] = false;
-                Distances[idx,i] = Distances[i,idx] = int.MaxValue;
+                this.DistanceCalculated[idx, i] = this.DistanceCalculated[i, idx] = false;
+                Distances[idx, i] = Distances[i,  idx] = int.MaxValue;
             }
         }
 
         /// <summary>
         /// Gets the index of an entrance point of this cluster
         /// </summary>
-        /// <param name="localIndex"></param>
+        /// <param name="entranceLocalIndex"></param>
         /// <returns></returns>
-        public int GetLocalCenter(int localIndex)
+        public int GetLocalPosition(int entranceLocalIndex)
         {
-            var entrance = Entrances[localIndex];
+            var entrance = Entrances[entranceLocalIndex];
             return entrance.RelativePos.Y * Size.Width + entrance.RelativePos.X;
         }
 
@@ -178,11 +174,5 @@ namespace HPASharp
             search.FindPath(Tiling, target, start);
             return search.Path;
         }
-
-        private int GetPointId(int row, int col)
-        {
-            return row *Size.Width + col;
-        }
-    
-    };
+    }
 }

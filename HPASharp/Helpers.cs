@@ -20,32 +20,6 @@ namespace HPASharp
 
             return 0;
         }
-        
-        public static int GetPathCost(List<Position> path, TileType tileType)
-        {
-            var cost = 0;
-            switch (tileType)
-            {
-                case TileType.TILE:
-                case TileType.OCTILE_UNICOST:
-                    return Constants.COST_ONE * (path.Count - 1);
-                case TileType.OCTILE:
-                    for (var i = 0; i < path.Count - 1; i++)
-                    {
-                        if (AreAligned(path[i], path[i + 1]))
-                            cost += Constants.COST_ONE;
-                        else
-                            cost += Constants.SQRT2;
-                    }
-
-                    break;
-                case TileType.HEX:
-                    //GetPathCost() is not implemented for HEX;
-                    return -1;
-            }
-
-            return cost;
-        }
 
         public static bool AreAligned(Position p1, Position p2)
         {

@@ -6,8 +6,7 @@ using System.Threading.Tasks;
 
 namespace HPASharp
 {
-        /** Interface to search environment. */
-
+    /** Interface to search environment. */
     public interface IMap
     {
         int NrNodes { get; }
@@ -17,7 +16,7 @@ namespace HPASharp
             Can be used to prune nodes,
             (is set to NO_NODE in Search::checkPathExists).
         */
-        List<Neighbour> GetNeighbours(int nodeId, int lastNodeId);
+        IEnumerable<Neighbour> GetNeighbours(int nodeId);
 
         int GetHeuristic(int start, int target);
     }
