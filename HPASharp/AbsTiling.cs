@@ -234,8 +234,10 @@ namespace HPASharp
             switch (Type)
             {
                 case AbsType.ABSTRACT_TILE:
+					// Manhattan distance
                     return (diffY + diffX) * Constants.COST_ONE;
                 case AbsType.ABSTRACT_OCTILE:
+					// Diagonal distance
                     {
                         var diag = Math.Min(diffX, diffY);
                         var straight = diffX + diffY;

@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HPASharp", "HPASharp\HPASharp.csproj", "{84094B97-175B-4A36-BEDF-EC6FD3646D51}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{7A078539-2C69-45F4-81BE-FE94679BD0AA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HPAsharp.Tests", "HPAsharp.Tests\HPAsharp.Tests.csproj", "{E8060FD2-C9B6-4910-B619-5E26695C8032}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,6 +19,10 @@ Global
 		{84094B97-175B-4A36-BEDF-EC6FD3646D51}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{84094B97-175B-4A36-BEDF-EC6FD3646D51}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{84094B97-175B-4A36-BEDF-EC6FD3646D51}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E8060FD2-C9B6-4910-B619-5E26695C8032}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E8060FD2-C9B6-4910-B619-5E26695C8032}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E8060FD2-C9B6-4910-B619-5E26695C8032}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E8060FD2-C9B6-4910-B619-5E26695C8032}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

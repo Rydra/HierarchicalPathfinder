@@ -10,10 +10,12 @@ namespace HPASharp
 
     using HPASharp.Search;
 
-    // implements an abstract maze decomposition
-    // the ultimate abstract representation is a weighted graph of
-    // locations connected by precomputed paths
-    public class HTiling : AbsTiling
+	/// <summary>
+	/// Implements an abstract maze decomposition.
+	/// the ultimate abstract representation is a weighted graph of
+	/// locations connected by precomputed paths
+	/// </summary>
+	public class HTiling : AbsTiling
     {
         private int currentLevel;
 
@@ -106,10 +108,10 @@ namespace HPASharp
             return y >= this.currentClusterY0 && y <= this.currentClusterY1 && x >= this.currentClusterX0 && x <= this.currentClusterX1;
         }
 
-        // Define the offset between two clusters in this level (each level doubles the previous one in size)
+        // Define the offset between two clusters in this level (each level doubles the cluster size)
         public int GetOffset(int level)
         {
-            return ClusterSize*(1 << (level - 1));
+            return ClusterSize * (1 << (level - 1));
         }
 
         /// <summary>
@@ -208,15 +210,15 @@ namespace HPASharp
             else
                 this.SetCurrentCluster(nodeInfo.Position, level + 1);
 
-            search.FindPath(this, startNodeId, targetNodeId);
-            if (search.PathCost == -1)
+            var path = search.FindPath(this, startNodeId, targetNodeId);
+            if (path.PathCost == -1)
             {
                 // No path found
                 return new List<int>();
             }
             else
             {
-                var result = search.Path;
+                var result = path.PathNodes;
                 result.Reverse();
                 return result;
             }
@@ -389,11 +391,11 @@ namespace HPASharp
                 return;
 
             var search = new AStar();
-            search.FindPath(this, absNodeId1, absNodeId2);
-            if (search.PathCost >= 0)
+            var path = search.FindPath(this, absNodeId1, absNodeId2);
+            if (path.PathCost >= 0)
             {
-                this.AddEdge(absNodeId1, absNodeId2, search.PathCost, level, false);
-                this.AddEdge(absNodeId2, absNodeId1, search.PathCost, level, false);
+                this.AddEdge(absNodeId1, absNodeId2, path.PathCost, level, false);
+                this.AddEdge(absNodeId2, absNodeId1, path.PathCost, level, false);
             }
         }
 

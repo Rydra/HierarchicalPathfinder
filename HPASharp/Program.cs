@@ -34,6 +34,9 @@ namespace HPASharp
 				return !obstacles[pos.X, pos.Y];
 			}
 
+			/// <summary>
+			/// Creates obstacles in the map
+			/// </summary>
 			private void CreateObstacles(float obstaclePercentage, int width, int height, bool avoidDiag = false)
 			{
 				var RAND_MAX = 0x7fff;
@@ -146,10 +149,14 @@ namespace HPASharp
 
 	    private static List<Position> RegularSearch(Tiling tiling, AbsTiling absTiling, int clusterSize)
 	    {
-            // Regular pathfinding
-	        var searcher = new AStar();
-	        searcher.FindPath(tiling, tiling[14, 20].NodeId, tiling[40, 40].NodeId);
-	        var path2 = searcher.Path;
+			var tilingGraph = tiling.Graph;
+			Func<int, int, Graph<TilingNodeInfo, TilingEdgeInfo>.Node> getNode =
+				(top, left) => tilingGraph.GetNode(tiling.GetNodeIdFromPos(top, left));
+
+			// Regular pathfinding
+			var searcher = new AStar();
+			var path = searcher.FindPath(tiling, getNode(14, 20).NodeId, getNode(40, 40).NodeId);
+	        var path2 = path.PathNodes;
 		    return path2.Select(n => tiling.Graph.GetNodeInfo(n).Position).ToList();
 	    }
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HPASharp.Factories;
 
 namespace HPASharp
 {
@@ -78,20 +79,20 @@ namespace HPASharp
 
             // init builds everything, except for the obstacles...
             this.Init(tiling.TileType, width, height);
-
-            // so we now put the obstacles in place
-            for (var x = 0; x < width; x++)
-            for (var y = 0; y < height; y++)
-            {
-                // get the local node
-                var localNodeInfo = this[x, y].Info;
-                // get the initial tiling node
-                var nodeInfo = tiling[horizOrigin + x, vertOrigin + y].Info;
-                // set obstacle for the local node
-                localNodeInfo.IsObstacle = nodeInfo.IsObstacle;
-                localNodeInfo.Cost = nodeInfo.Cost;
-            }
-        }
+			
+			// so we now put the obstacles in place
+			for (var x = 0; x < width; x++)
+				for (var y = 0; y < height; y++)
+				{
+					// get the local node
+					var localNodeInfo = this.Graph.GetNode(this.GetNodeIdFromPos(x, y)).Info;
+					// get the initial tiling node
+					var nodeInfo = tiling.Graph.GetNode(tiling.GetNodeIdFromPos(horizOrigin + x, vertOrigin + y)).Info;
+					// set obstacle for the local node
+					localNodeInfo.IsObstacle = nodeInfo.IsObstacle;
+					localNodeInfo.Cost = nodeInfo.Cost;
+				}
+		}
 
         private void Init(TileType tileType, int width, int height)
         {
@@ -99,21 +100,14 @@ namespace HPASharp
             this.MaxEdges = Helpers.GetMaxEdges(tileType);
             this.Height = height;
             this.Width = width;
-            this.Graph = new Graph<TilingNodeInfo, TilingEdgeInfo>();
-            this.CreateNodes();
-            this.CreateEdges();
+            this.Graph = GraphFactory.CreateGraph(width, height, this.Passability);
         }
 
 	    public int NrNodes { get { return Width * Height; } }
 
-	    public Graph<TilingNodeInfo, TilingEdgeInfo>.Node this[int x, int y]
-	    {
-		    get { return Graph.GetNode(GetNodeIdFromPos(x, y)); }
-	    }
-
 	    public int GetNodeIdFromPos(int x, int y)
 	    {
-		    return y*Width + x;
+		    return y * Width + x;
 	    }
 
         public int GetHeuristic(int start, int target)
@@ -199,77 +193,15 @@ namespace HPASharp
                 return true;
             if (Helpers.AreAligned(p1, p2))
                 return true;
-            var nodeInfo12 = this[p2.X, p1.Y].Info;
-            var nodeInfo21 = this[p1.X, p2.Y].Info;
+
+			// The following piece of code existed in the original implementation.
+			// It basically checks that you do not forcefully cross a blocked diagonal.
+			// Honestly, this is weird, bad designed and supposes that each position is adjacent to each other.
+            var nodeInfo12 = Graph.GetNode(GetNodeIdFromPos(p2.X, p1.Y)).Info;
+            var nodeInfo21 = Graph.GetNode(GetNodeIdFromPos(p1.X, p2.Y)).Info;
             return !(nodeInfo12.IsObstacle && nodeInfo21.IsObstacle);
         }
-
-        private void AddEdge(int nodeId, int x, int y, bool isDiag = false)
-        {
-            if (y < 0 || y >= Height || x < 0 || x >= Width)
-                return;
-
-            var cost = Graph.GetNodeInfo(this[x, y].NodeId).Cost;
-            cost = isDiag ? (cost*34)/24 : cost;
-            Graph.AddEdge(nodeId, this[x, y].NodeId, new TilingEdgeInfo(cost));
-        }
-
-        private void CreateEdges()
-        {
-            for (var y = 0; y < Height; ++y)
-            for (var x = 0; x < Width; ++x)
-            {
-                var nodeId = this[x, y].NodeId;
-
-				this.AddEdge(nodeId, x, y - 1);
-				this.AddEdge(nodeId, x, y + 1);
-				this.AddEdge(nodeId, x - 1, y);
-				this.AddEdge(nodeId, x + 1, y);
-                if (this.TileType == TileType.OCTILE)
-                {
-					this.AddEdge(nodeId, x + 1, y + 1, true);
-					this.AddEdge(nodeId, x - 1, y + 1, true);
-					this.AddEdge(nodeId, x + 1, y - 1, true);
-					this.AddEdge(nodeId, x - 1, y - 1, true);
-                }
-                else if (this.TileType == TileType.OCTILE_UNICOST)
-                {
-					this.AddEdge(nodeId, x + 1, y + 1);
-					this.AddEdge(nodeId, x - 1, y + 1);
-					this.AddEdge(nodeId, x + 1, y - 1);
-					this.AddEdge(nodeId, x - 1, y - 1);
-                }
-                else if (this.TileType == TileType.HEX)
-                {
-                    if (x % 2 == 0)
-                    {
-						this.AddEdge(nodeId, x + 1, y - 1);
-						this.AddEdge(nodeId, x - 1, y - 1);
-                    }
-                    else
-                    {
-						this.AddEdge(nodeId, x + 1, y + 1);
-						this.AddEdge(nodeId, x - 1, y + 1);
-                    }
-                }
-            }
-        }
-
-        private void CreateNodes()
-        {
-            for (var y = 0; y < Height; ++y)
-            for (var x = 0; x < Width; ++x)
-            {
-                var nodeId = GetNodeIdFromPos(x, y);
-                var position = new Position(x, y);
-                int movementCost;
-                var isObstacle = !Passability.CanEnter(position, out movementCost);
-                var info = new TilingNodeInfo(isObstacle, movementCost, new Position(x, y));
-                    
-                Graph.AddNode(nodeId, info);
-            }
-        }
-
+		
         #region Printing
 
         private List<char> GetCharVector()

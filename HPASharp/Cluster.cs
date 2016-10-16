@@ -103,9 +103,9 @@ namespace HPASharp
                 return;
 
             var search = new AStar();
-            search.FindPath(Tiling, start, target);
+            var path = search.FindPath(Tiling, start, target);
 
-            if (search.PathCost != -1) Distances[startIdx, targetIdx] = Distances[targetIdx, startIdx] = search.PathCost;
+            if (path.PathCost != -1) Distances[startIdx, targetIdx] = Distances[targetIdx, startIdx] = path.PathCost;
             else Distances[startIdx, targetIdx] = Distances[targetIdx, startIdx] = int.MaxValue;
 
             this.DistanceCalculated[startIdx,targetIdx] = true;
@@ -171,8 +171,8 @@ namespace HPASharp
         public List<int> ComputePath(int start, int target)
         {
             var search = new AStar();
-            search.FindPath(Tiling, target, start);
-            return search.Path;
+            var path = search.FindPath(Tiling, target, start);
+            return path.PathNodes;
         }
     }
 }

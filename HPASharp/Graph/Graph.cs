@@ -6,6 +6,11 @@ using System.Threading.Tasks;
 
 namespace HPASharp
 {
+	/// <summary>
+	/// A graph is a set of nodes connected with edges. Each node and edge can hold
+	/// a certain amount of information, which is expressed in the templated parameters
+	/// NODEINFO and EDGEINFO
+	/// </summary>
     public class Graph<NODEINFO, EDGEINFO>
     {
         public class Edge
@@ -20,6 +25,9 @@ namespace HPASharp
             }
         }
 
+		/// <summary>
+		/// A node in the graph is a node Id and a list of outgoing edges that go from this node.
+		/// </summary>
         public class Node
         {
             public int NodeId { get; set; }
@@ -46,6 +54,10 @@ namespace HPASharp
             Nodes = new List<Node>();
         } 
 
+		/// <summary>
+		/// Adds or updates a node with the provided info. A node is updated
+		/// only if the nodeId provided previously existed.
+		/// </summary>
         public void AddNode(int nodeId, NODEINFO info)
         {
             var size = nodeId + 1;
