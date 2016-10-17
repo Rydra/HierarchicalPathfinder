@@ -267,7 +267,7 @@ namespace HPASharp
 
         public override void CreateEdges()
         {
-            CreateClusterEdges();
+            CreateInterClusterEdges();
             CreateHierarchicalEdges();
         }
 

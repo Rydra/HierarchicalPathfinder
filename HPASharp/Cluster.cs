@@ -130,6 +130,9 @@ namespace HPASharp
             return Distances[localIdx1,localIdx2];
         }
 
+        /// <summary>
+        /// Tells whether a path exists inside the cluster between localIdx1 and localIdx2
+        /// </summary>
         public bool AreConnected(int localIdx1, int localIdx2)
         {
             return Distances[localIdx1,localIdx2] != int.MaxValue;

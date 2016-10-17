@@ -32,6 +32,7 @@ namespace HPASharp
         public void CreateAbstractMap()
         {
             CreateEntrancesAndClusters();
+            // TODO: Here the edges are created. Honestly, I'd prefer to have them built on a per-cluster basis.
             CreateEdges();
         }
 
@@ -58,11 +59,42 @@ namespace HPASharp
 
                 if (left > 0)
                     entranceId = CreateVertEntrances(top, top + vertSize - 1, left - 1, AbsTiling.GetCluster(clusterX - 1, clusterY).Id, cluster.Id, entranceId);
+
+                // TODO: Bug! I'd wish to create here the Intra cluster edges, but I can't since I could not add
+                // The cluster local entrances... This code suffers from severe bad design.
+                //CreateIntraClusterEdges(cluster);
             }
             
-			// TODO: This has to improve... A LOT.
-            AbsTiling.AddAbstractNodes();
+            var abstractNodes = AbsTiling.GenerateAbstractNodes();
+            
+            // add nodes to the graph
+            foreach (var absNode in abstractNodes)
+            {
+                AbsTiling.Graph.AddNode(absNode.Id, absNode);
+            }
+
+            // TODO: For instance, I can't compute the cluster paths if I haven't add the abstract nodes. This
+            // is clearly a smell.
             AbsTiling.ComputeClusterPaths();
+        }
+
+        private void CreateIntraClusterEdges(Cluster cluster)
+        {
+            // Iterate over every pair of cluster entrances and if a path exists, create an edge between them
+            // in the graph
+            for (var k = 0; k < cluster.GetNrEntrances(); k++)
+                for (var l = k + 1; l < cluster.GetNrEntrances(); l++)
+                {
+                    if (cluster.AreConnected(l, k))
+                    {
+                        AbsTiling.AddEdge(cluster.GetGlobalAbsNodeId(k), cluster.GetGlobalAbsNodeId(l),
+                            cluster.GetDistance(l, k),
+                            1, false);
+                        AbsTiling.AddEdge(cluster.GetGlobalAbsNodeId(l), cluster.GetGlobalAbsNodeId(k),
+                            cluster.GetDistance(k, l),
+                            1, false);
+                    }
+                }
         }
 
         private void CreateEdges()

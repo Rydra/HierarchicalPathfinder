@@ -270,7 +270,7 @@ namespace HPASharp
 
         public virtual void CreateEdges()
         {
-            CreateClusterEdges();
+            CreateInterClusterEdges();
         }
 
         /// <summary>
@@ -307,7 +307,7 @@ namespace HPASharp
         /// Create the asbtract nodes of this graph (composed by the centers of
         /// the entrances between clusters)
         /// </summary>
-        public void AddAbstractNodes()
+        public IEnumerable<AbsTilingNodeInfo> GenerateAbstractNodes()
         {
             var abstractNodeId = 0;
             var absNodes = new Dictionary<int, AbsTilingNodeInfo>();
@@ -335,11 +335,13 @@ namespace HPASharp
                 AbsTilingNodeInfo absNode;
                 if (!absNodes.TryGetValue(entrance.Coord1Id, out absNode))
                 {
+                    // NOTE: Violation of SRP...
                     cluster1.AddEntrance(new LocalEntrance(
                                                abstractNodeId,
                                                -1, // real value set in addEntrance()
                                                new Position(entrance.Coord1.X - cluster1.Origin.X, entrance.Coord1.Y - cluster1.Origin.Y)));
 
+                    // NOTE: Provoking a side-effect... not good
                     AbsNodeIds[entrance.Coord1Id] = abstractNodeId;
                     var node = new AbsTilingNodeInfo(abstractNodeId, level,
                                  entrance.Cluster1Id,
@@ -372,17 +374,11 @@ namespace HPASharp
                 else
                 {
                     if (level > absNode.Level)
-                    {
                         absNode.Level = level;
-                    }
                 }
             }
 
-            // add nodes to the graph
-            foreach (var absNode in absNodes.Select(kvp => kvp.Value))
-            {
-                Graph.AddNode(absNode.Id, absNode);
-            }
+            return absNodes.Values;
         }
 
         /// <summary>
@@ -582,28 +578,27 @@ namespace HPASharp
             }
         }
 
-        protected void AddEdge(int sourceNodeId, int destNodeId, int cost, int level = 1, bool inter = false)
+        public void AddEdge(int sourceNodeId, int destNodeId, int cost, int level = 1, bool inter = false)
         {
             Graph.AddEdge(sourceNodeId, destNodeId, new AbsTilingEdgeInfo(cost, level, inter));
         }
 
-        protected void CreateClusterEdges()
+        protected void CreateInterClusterEdges()
         {
             // add cluster edges
             foreach (var cluster in Clusters)
             {
                 for (var k = 0; k < cluster.GetNrEntrances(); k++)
-                for (var l = k + 1; l < cluster.GetNrEntrances(); l++)
-                {
-                    if (cluster.AreConnected(l, k))
+                    for (var l = k + 1; l < cluster.GetNrEntrances(); l++)
                     {
-                        this.AddEdge(cluster.GetGlobalAbsNodeId(k), cluster.GetGlobalAbsNodeId(l), cluster.GetDistance(l, k), 1, false);
-                        this.AddEdge(cluster.GetGlobalAbsNodeId(l), cluster.GetGlobalAbsNodeId(k), cluster.GetDistance(k, l), 1, false);
+                        if (cluster.AreConnected(l, k))
+                        {
+                            this.AddEdge(cluster.GetGlobalAbsNodeId(k), cluster.GetGlobalAbsNodeId(l), cluster.GetDistance(l, k), 1, false);
+                            this.AddEdge(cluster.GetGlobalAbsNodeId(l), cluster.GetGlobalAbsNodeId(k), cluster.GetDistance(k, l), 1, false);
+                        }
                     }
-                }
             }
 
-            // add transition (inter) edges
             foreach (var entrance in Entrances)
             {
                 int level;
@@ -632,28 +627,28 @@ namespace HPASharp
                         this.AddEdge(abstractNodeId2, abstractNodeId1, Constants.COST_ONE, level, true);
                         break;
                     case AbsType.ABSTRACT_OCTILE:
+                    {
+                        int unitCost;
+                        switch (entrance.Orientation)
                         {
-                            int unitCost;
-                            switch (entrance.Orientation)
-                            {
-                                case Orientation.HORIZONTAL:
-                                case Orientation.VERTICAL:
-                                    unitCost = Constants.COST_ONE;
-                                    break;
-                                case Orientation.HDIAG2:
-                                case Orientation.HDIAG1:
-                                case Orientation.VDIAG1:
-                                case Orientation.VDIAG2:
-                                    unitCost = (Constants.COST_ONE * 34) / 24;
-                                    break;
-                                default:
-                                    unitCost = -1;
-                                    break;
-                            }
-
-                            this.AddEdge(abstractNodeId1, abstractNodeId2, unitCost, level, true);
-                            this.AddEdge(abstractNodeId2, abstractNodeId1, unitCost, level, true);
+                            case Orientation.HORIZONTAL:
+                            case Orientation.VERTICAL:
+                                unitCost = Constants.COST_ONE;
+                                break;
+                            case Orientation.HDIAG2:
+                            case Orientation.HDIAG1:
+                            case Orientation.VDIAG1:
+                            case Orientation.VDIAG2:
+                                unitCost = (Constants.COST_ONE*34)/24;
+                                break;
+                            default:
+                                unitCost = -1;
+                                break;
                         }
+
+                        this.AddEdge(abstractNodeId1, abstractNodeId2, unitCost, level, true);
+                        this.AddEdge(abstractNodeId2, abstractNodeId1, unitCost, level, true);
+                    }
                         break;
                     default:
                         break;
