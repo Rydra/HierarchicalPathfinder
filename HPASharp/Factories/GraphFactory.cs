@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace HPASharp.Factories
+﻿namespace HPASharp.Factories
 {
 	public class GraphFactory
 	{
@@ -22,7 +16,7 @@ namespace HPASharp.Factories
 		{
 			 return graph.GetNode(GetNodeIdFromPos(x, y,width));
 		}
-
+		
 		private static void AddEdge(Graph<TilingNodeInfo, TilingEdgeInfo> graph, int nodeId, int x, int y, int width, int height, bool isDiag = false)
 		{
 			if (y < 0 || y >= height || x < 0 || x >= width)

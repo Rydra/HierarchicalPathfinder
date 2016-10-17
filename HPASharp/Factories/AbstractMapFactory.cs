@@ -20,13 +20,15 @@ namespace HPASharp
         public EntranceStyle EntranceStyle { get; set; }
         public int AbstractionRate { get; set; }
         public int ClusterSize { get; set; }
+		public int MaxLevel { get; set; }
 
         public AbstractMapFactory(Tiling tiling, int clusterSize, int maxLevel, EntranceStyle style)
         {
             this.ClusterSize = clusterSize;
             this.EntranceStyle = style;
+	        MaxLevel = maxLevel;
             Tiling = tiling;
-            AbsTiling = new HTiling(clusterSize, maxLevel, tiling.Height, tiling.Width);
+            AbsTiling = new HierarchicalTiling(clusterSize, maxLevel, tiling.Height, tiling.Width);
         }
 
         public void CreateAbstractMap()
@@ -43,40 +45,59 @@ namespace HPASharp
             var entranceId = 0;
             
             AbsTiling.SetType(Tiling.TileType);
-			
-            for (int top = 0, clusterY = 0; top < Tiling.Height; top += ClusterSize, clusterY++)
+			List<Entrance> entrancesList = new List<Entrance>();
+			List<Cluster> clusters = new List<Cluster>();
+			AbsTiling.Clusters = clusters;
+
+			// NOTE: Here we create bottom-level cluster instances. Maybe I could deal here with the levels
+			// And create multi-level clusters
+			for (int top = 0, clusterY = 0; top < Tiling.Height; top += ClusterSize, clusterY++)
             for (int left = 0, clusterX = 0; left < Tiling.Width; left += ClusterSize, clusterX++)
             {
                 var horizSize = Math.Min(ClusterSize, Tiling.Width - left);
                 var vertSize = Math.Min(ClusterSize, Tiling.Height - top);
                 var cluster = new Cluster(Tiling, clusterId++, clusterX, clusterY, new Position(left, top), new Size(horizSize, vertSize));
-                AbsTiling.AddCluster(cluster);
+				clusters.Add(cluster);
 
                 // add inter-cluster entrances. Obviously we should not add entrances on leftmost clusters when adding vertical entrances
 				// nor on topmost clusters when adding horizontal entrances.
-				if (top > 0)
-                    entranceId = CreateHorizEntrances(left, left + horizSize - 1, top - 1, AbsTiling.GetCluster(clusterX, clusterY - 1).Id, cluster.Id, entranceId);
+				
+	            if (top > 0)
+	            {
+		            int lastEntranceId;
+		            var entrances = CreateHorizEntrances(left, left + horizSize - 1, top - 1,
+			            AbsTiling.GetCluster(clusterX, clusterY - 1).Id, cluster.Id, entranceId, out lastEntranceId);
+		            entranceId = lastEntranceId;
+					entrancesList.AddRange(entrances);
+				}
 
-                if (left > 0)
-                    entranceId = CreateVertEntrances(top, top + vertSize - 1, left - 1, AbsTiling.GetCluster(clusterX - 1, clusterY).Id, cluster.Id, entranceId);
-
-                // TODO: Bug! I'd wish to create here the Intra cluster edges, but I can't since I could not add
-                // The cluster local entrances... This code suffers from severe bad design.
-                //CreateIntraClusterEdges(cluster);
+	            if (left > 0)
+	            {
+					int lastEntranceId;
+					var entrances = CreateVertEntrances(top, top + vertSize - 1, left - 1,
+			        AbsTiling.GetCluster(clusterX - 1, clusterY).Id, cluster.Id, entranceId, out lastEntranceId);
+					entranceId = lastEntranceId;
+					entrancesList.AddRange(entrances);
+				}
             }
+
+			// The entrances we created define points that we must transform as abstract nodes of the abstract graph
+			var abstractNodes = AbsTiling.GenerateAbstractNodes(entrancesList);
             
-            var abstractNodes = AbsTiling.GenerateAbstractNodes();
-            
-            // add nodes to the graph
+            // add nodes to the abstract graph
             foreach (var absNode in abstractNodes)
             {
                 AbsTiling.Graph.AddNode(absNode.Id, absNode);
             }
 
-            // TODO: For instance, I can't compute the cluster paths if I haven't add the abstract nodes. This
-            // is clearly a smell.
-            AbsTiling.ComputeClusterPaths();
-        }
+			// Create the interEdges. NOTE: SRP Violation here!
+			foreach (var entrance in entrancesList)
+			{
+				AbsTiling.CreateInterClusterEdges(entrance);
+			}
+
+			AbsTiling.ComputeClusterPaths();
+		}
 
         private void CreateIntraClusterEdges(Cluster cluster)
         {
@@ -87,18 +108,28 @@ namespace HPASharp
                 {
                     if (cluster.AreConnected(l, k))
                     {
-                        AbsTiling.AddEdge(cluster.GetGlobalAbsNodeId(k), cluster.GetGlobalAbsNodeId(l),
-                            cluster.GetDistance(l, k),
-                            1, false);
-                        AbsTiling.AddEdge(cluster.GetGlobalAbsNodeId(l), cluster.GetGlobalAbsNodeId(k),
-                            cluster.GetDistance(k, l),
-                            1, false);
+	                    var absTilingEdgeInfo1 = new AbsTilingEdgeInfo(cluster.GetDistance(l, k), 1, false);
+						AbsTiling.Graph.AddEdge(
+							cluster.GetGlobalAbsNodeId(k), 
+							cluster.GetGlobalAbsNodeId(l),
+							absTilingEdgeInfo1);
+
+						var absTilingEdgeInfo2 = new AbsTilingEdgeInfo(cluster.GetDistance(k, l), 1, false);
+						AbsTiling.Graph.AddEdge(
+							cluster.GetGlobalAbsNodeId(l), 
+							cluster.GetGlobalAbsNodeId(k),
+							absTilingEdgeInfo2);
                     }
                 }
         }
 
         private void CreateEdges()
         {
+	        foreach (var cluster in AbsTiling.Clusters)
+	        {
+		        CreateIntraClusterEdges(cluster);
+	        }
+			
             AbsTiling.CreateEdges();
         }
 
@@ -106,19 +137,22 @@ namespace HPASharp
         /// <summary>
         /// Creates the horizontal entrances between the two clusters, and returns the last entrance id
         /// </summary>
-        private int CreateHorizEntrances(
+        private List<Entrance> CreateHorizEntrances(
             int x0,
             int x1,
             int y,
             int clusterid1,
             int clusterid2,
-            int currId)
+            int currId,
+			out int nextId)
         {
             var currentIdCounter = currId;
 
 	        var tilingGraph = Tiling.Graph;
 			Func<int, int, Graph<TilingNodeInfo, TilingEdgeInfo>.Node> getNode =
 				(top, left) => tilingGraph.GetNode(Tiling.GetNodeIdFromPos(top, left));
+
+			List<Entrance> entrances = new List<Entrance>();
 
 			// rolls over the horizontal edge between x0 and x1 in order to find edges between
 			// the top cluster (latitude marks the other cluster entrance line)
@@ -150,32 +184,39 @@ namespace HPASharp
                     var entrance1 = new Entrance(currentIdCounter++, clusterid1, clusterid2, y, entranceStart,
 									   getNode(entranceStart, y).NodeId,
 									   getNode(entranceStart, y + 1).NodeId, Orientation.HORIZONTAL);
-                    AbsTiling.AddEntrance(entrance1);
+
                     var entrance2 = new Entrance(currentIdCounter++, clusterid1, clusterid2, y, (i - 1),
 									   getNode(i - 1, y).NodeId,
 									   getNode(i - 1, y + 1).NodeId, Orientation.HORIZONTAL);
-                    AbsTiling.AddEntrance(entrance2);
-                }
+
+					entrances.Add(entrance1);
+					entrances.Add(entrance2);
+				}
                 else
                 {
                     // if it is small, create one entrance in the middle 
                     var entrance = new Entrance(currentIdCounter++, clusterid1, clusterid2, y, ((i - 1) + entranceStart) / 2,
 									  getNode(((i - 1) + entranceStart) / 2, y).NodeId,
 									  getNode(((i - 1) + entranceStart) / 2, y + 1).NodeId, Orientation.HORIZONTAL);
-                    AbsTiling.AddEntrance(entrance);
+
+					entrances.Add(entrance);
                 }
             }
 
-            return currentIdCounter;
+	        nextId = currentIdCounter;
+			
+			return entrances;
         }
 
-        private int CreateVertEntrances(int y0, int y1, int x, int clusterid1,
-            int clusterid2, int currId)
+        private List<Entrance> CreateVertEntrances(int y0, int y1, int x, int clusterid1,
+            int clusterid2, int currId, out int lastEntraceId)
         {
             var currentIdCounter = currId;
 			var tilingGraph = Tiling.Graph;
 	        Func<int, int, Graph<TilingNodeInfo, TilingEdgeInfo>.Node> getNode =
 		        (top, left) => tilingGraph.GetNode(Tiling.GetNodeIdFromPos(top, left));
+
+			List<Entrance> entrances = new List<Entrance>();
 
 			for (var i = y0; i <= y1; i++)
             {
@@ -204,7 +245,6 @@ namespace HPASharp
                     var entrance1 = new Entrance(currentIdCounter++, clusterid1, clusterid2, entranceStart, x,
 									   getNode(x, entranceStart).NodeId,
 									   getNode(x + 1, entranceStart).NodeId, Orientation.VERTICAL);
-                    AbsTiling.AddEntrance(entrance1);
 
                     // BEWARE! We are getting the tileNode for position i - 1. If clustersize was 8
                     // for example, and end would had finished at 7, you would set the entrance at 6.
@@ -212,19 +252,22 @@ namespace HPASharp
                     var entrance2 = new Entrance(currentIdCounter++, clusterid1, clusterid2, (i - 1), x,
 									   getNode(x, i - 1).NodeId,
                                        getNode(x + 1, i - 1).NodeId, Orientation.VERTICAL);
-                    AbsTiling.AddEntrance(entrance2);
-                }
+
+					entrances.Add(entrance1);
+					entrances.Add(entrance2);
+				}
                 else
                 {
                     // create one entrance
                     var entrance = new Entrance(currentIdCounter++, clusterid1, clusterid2, ((i - 1) + entranceStart) / 2, x,
 									  getNode(x, (i - 1 + entranceStart) / 2).NodeId,
                                       getNode(x + 1, (i - 1 + entranceStart) / 2).NodeId, Orientation.VERTICAL);
-                    AbsTiling.AddEntrance(entrance);
-                }
+					entrances.Add(entrance);
+				}
             }
 
-            return currentIdCounter;
+            lastEntraceId = currentIdCounter;
+	        return entrances;
         }
     }
 }

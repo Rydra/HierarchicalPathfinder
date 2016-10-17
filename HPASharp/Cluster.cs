@@ -12,7 +12,12 @@ namespace HPASharp
         HORIZONTAL, VERTICAL, HDIAG1, HDIAG2, VDIAG1, VDIAG2
     }
 
-	public class LocalEntrance
+	/// <summary>
+	/// An Entrance Point represents a point inside a cluster
+	/// that belongs to an entrance. It holds a reference to the
+	/// abstract node it belongs to
+	/// </summary>
+	public class EntrancePoint
 	{
 		public int AbsNodeId { get; set; } // id of the abstract node
 
@@ -20,7 +25,7 @@ namespace HPASharp
 		public Position RelativePos { get; set; }
 		public int EntranceLocalIdx { get; set; } // local id
 
-		public LocalEntrance(int absNodeId, int localIdx, Position relativePosition)
+		public EntrancePoint(int absNodeId, int localIdx, Position relativePosition)
 		{
 			AbsNodeId = absNodeId;
 			EntranceLocalIdx = localIdx;
@@ -47,17 +52,17 @@ namespace HPASharp
         public bool[,] DistanceCalculated { get; set; } 
         
 		// A local entrance is a point inside this cluster
-		public List<LocalEntrance> Entrances { get; set; }
+		public List<EntrancePoint> EntrancePoints { get; set; }
 		
 		// This tiling object contains the subregion of the main grid that this cluster contains.
 		// Necessary to do local search to find paths and distances between local entrances
-        public Tiling Tiling { get; set; }
+        public Tiling SubTiling { get; set; }
         public Size Size { get; set; }
         public Position Origin { get; set; } // The position where this cluster starts in the main grid
 
         public Cluster(Tiling tiling, int id, int clusterX, int clusterY, Position origin, Size size)
         {
-            Tiling = new Tiling(tiling, origin.X, origin.Y, size.Width, size.Height, tiling.Passability);
+            SubTiling = new Tiling(tiling, origin.X, origin.Y, size.Width, size.Height, tiling.Passability);
             Id = id;
             ClusterY = clusterY;
             ClusterX = clusterX;
@@ -65,7 +70,7 @@ namespace HPASharp
             Size = size;
             Distances = new int[MAX_CLENTRANCES, MAX_CLENTRANCES];
             DistanceCalculated = new bool[MAX_CLENTRANCES, MAX_CLENTRANCES];
-            Entrances = new List<LocalEntrance>();
+            EntrancePoints = new List<EntrancePoint>();
         }
 
         /// <summary>
@@ -78,20 +83,20 @@ namespace HPASharp
             for (var i = 0; i < MAX_CLENTRANCES; i++)
                 this.DistanceCalculated[i,j] = false;
 
-            foreach (var entrance1 in Entrances)
-            foreach (var entrance2 in Entrances)
-                ComputeAddPath(entrance1, entrance2);
+            foreach (var point1 in EntrancePoints)
+            foreach (var point2 in EntrancePoints)
+                ComputePath(point1, point2);
         }
 
         /// <summary>
         /// Gets the index of the entrance point inside this cluster
         /// </summary>
-        private int GetEntrancePositionIndex(LocalEntrance entrance)
+        private int GetEntrancePositionIndex(EntrancePoint entrancePoint)
         {
-            return entrance.RelativePos.Y * Size.Width + entrance.RelativePos.X;
+            return entrancePoint.RelativePos.Y * Size.Width + entrancePoint.RelativePos.X;
         }
 
-        private void ComputeAddPath(LocalEntrance e1, LocalEntrance e2)
+        private void ComputePath(EntrancePoint e1, EntrancePoint e2)
         {
             var start = GetEntrancePositionIndex(e1);
             var target = GetEntrancePositionIndex(e2);
@@ -103,7 +108,7 @@ namespace HPASharp
                 return;
 
             var search = new AStar();
-            var path = search.FindPath(Tiling, start, target);
+            var path = search.FindPath(SubTiling, start, target);
 
             if (path.PathCost != -1) Distances[startIdx, targetIdx] = Distances[targetIdx, startIdx] = path.PathCost;
             else Distances[startIdx, targetIdx] = Distances[targetIdx, startIdx] = int.MaxValue;
@@ -114,15 +119,15 @@ namespace HPASharp
         
         public void UpdatePaths(int localEntranceId)
         {
-            var entrance = Entrances[localEntranceId];
-            foreach(var j in Entrances)
-                ComputeAddPath(entrance, j);
+            var entrance = EntrancePoints[localEntranceId];
+            foreach(var j in EntrancePoints)
+                ComputePath(entrance, j);
         }
 
         // Gets the abstract node Id that an entrance belong to
         public int GetGlobalAbsNodeId(int localIdx)
         {
-            return Entrances[localIdx].AbsNodeId;
+            return EntrancePoints[localIdx].AbsNodeId;
         }
 
         public int GetDistance(int localIdx1, int localIdx2)
@@ -140,19 +145,19 @@ namespace HPASharp
 
         public int GetNrEntrances()
         {
-            return Entrances.Count;
+            return EntrancePoints.Count;
         }
 
-        public void AddEntrance(LocalEntrance entrance)
+        public void AddEntrance(EntrancePoint entrancePoint)
         {
-            Entrances.Add(entrance);
-            Entrances[Entrances.Count - 1].EntranceLocalIdx = Entrances.Count - 1;
+            EntrancePoints.Add(entrancePoint);
+            EntrancePoints[EntrancePoints.Count - 1].EntranceLocalIdx = EntrancePoints.Count - 1;
         }
 
         public void RemoveLastEntranceRecord()
         {
-            Entrances.RemoveAt(Entrances.Count - 1);
-            var idx = Entrances.Count;
+            EntrancePoints.RemoveAt(EntrancePoints.Count - 1);
+            var idx = EntrancePoints.Count;
             for (var i = 0; i < MAX_CLENTRANCES; i++)
             {
                 this.DistanceCalculated[idx, i] = this.DistanceCalculated[i, idx] = false;
@@ -167,14 +172,14 @@ namespace HPASharp
         /// <returns></returns>
         public int GetLocalPosition(int entranceLocalIndex)
         {
-            var entrance = Entrances[entranceLocalIndex];
+            var entrance = EntrancePoints[entranceLocalIndex];
             return entrance.RelativePos.Y * Size.Width + entrance.RelativePos.X;
         }
 
         public List<int> ComputePath(int start, int target)
         {
             var search = new AStar();
-            var path = search.FindPath(Tiling, target, start);
+            var path = search.FindPath(SubTiling, target, start);
             return path.PathNodes;
         }
     }

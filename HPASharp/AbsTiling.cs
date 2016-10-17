@@ -97,8 +97,15 @@ namespace HPASharp
 		public int Coord1Id { get; set; }
 		public int Coord2Id { get; set; }
 		public Orientation Orientation { get; set; }
+
+		/// <summary>
+		/// This position represents one end of the entrance
+		/// </summary>
 		public Position Coord1 { get; set; }
 
+		/// <summary>
+		/// This position represents the other end of the entrance
+		/// </summary>
 		public Position Coord2
 		{
 			get
@@ -181,8 +188,7 @@ namespace HPASharp
         public Graph<AbsTilingNodeInfo, AbsTilingEdgeInfo> Graph { get; set; }
         public int ClusterSize { get; set; }
         protected int MaxLevel { get; set; }
-        protected List<Cluster> Clusters { get; set; }
-        protected List<Entrance> Entrances { get; set; }
+        public List<Cluster> Clusters { get; set; }
 	    public int NrNodes { get { return Graph.Nodes.Count; } }
 
         // This list, indexed by a node id from the low level, 
@@ -220,7 +226,6 @@ namespace HPASharp
                 AbsNodeIds[i] = -1;
 
             Clusters = new List<Cluster>();
-            Entrances = new List<Entrance>();
             Graph = new Graph<AbsTilingNodeInfo, AbsTilingEdgeInfo>();
         }
 
@@ -257,32 +262,19 @@ namespace HPASharp
         public abstract List<PathNode> RefineAbstractPath(List<PathNode> path, int level, int maxPathsToRefine = int.MaxValue);
 
         public abstract IEnumerable<Neighbour> GetNeighbours(int nodeId);
-
-        public void AddCluster(Cluster cluster)
-        {
-            Clusters.Add(cluster);
-        }
-
-        public void AddEntrance(Entrance entrance)
-        {
-            Entrances.Add(entrance);
-        }
-
-        public virtual void CreateEdges()
-        {
-            CreateInterClusterEdges();
-        }
+		
+	    public abstract void CreateEdges();
 
         /// <summary>
         /// Gets the cluster Id, determined by its row and column
         /// </summary>
-        public Cluster GetCluster(int x, int y)
+        public Cluster GetCluster(int left, int top)
         {
             var clustersW = Width / ClusterSize;
             if (Width % ClusterSize > 0)
                 clustersW++;
 
-            return Clusters[y * clustersW + x];
+            return Clusters[top * clustersW + left];
         }
 
         public int DetermineLevel(int y)
@@ -307,15 +299,17 @@ namespace HPASharp
         /// Create the asbtract nodes of this graph (composed by the centers of
         /// the entrances between clusters)
         /// </summary>
-        public IEnumerable<AbsTilingNodeInfo> GenerateAbstractNodes()
+        public IEnumerable<AbsTilingNodeInfo> GenerateAbstractNodes(List<Entrance> entrances)
         {
             var abstractNodeId = 0;
             var absNodes = new Dictionary<int, AbsTilingNodeInfo>();
-            foreach (var entrance in Entrances)
+            foreach (var entrance in entrances)
             {
                 var cluster1 = Clusters[entrance.Cluster1Id];
                 var cluster2 = Clusters[entrance.Cluster2Id];
 
+				// Determine the level of this entrance. It is given
+				// by its orientation and its coordinates
                 int level;
                 switch (entrance.Orientation)
                 {
@@ -335,20 +329,19 @@ namespace HPASharp
                 AbsTilingNodeInfo absNode;
                 if (!absNodes.TryGetValue(entrance.Coord1Id, out absNode))
                 {
-                    // NOTE: Violation of SRP...
-                    cluster1.AddEntrance(new LocalEntrance(
-                                               abstractNodeId,
-                                               -1, // real value set in addEntrance()
-                                               new Position(entrance.Coord1.X - cluster1.Origin.X, entrance.Coord1.Y - cluster1.Origin.Y)));
+					cluster1.AddEntrance(new EntrancePoint(
+											   abstractNodeId,
+											   -1, // real value set in addEntrance()
+											   new Position(entrance.Coord1.X - cluster1.Origin.X, entrance.Coord1.Y - cluster1.Origin.Y)));
 
-                    // NOTE: Provoking a side-effect... not good
-                    AbsNodeIds[entrance.Coord1Id] = abstractNodeId;
+					// NOTE: Provoking a side-effect... not good
                     var node = new AbsTilingNodeInfo(abstractNodeId, level,
                                  entrance.Cluster1Id,
                                  new Position(entrance.Coord1.X, entrance.Coord1.Y),
                                  entrance.Coord1Id, cluster1.GetNrEntrances() - 1);
                     absNodes[entrance.Coord1Id] = node;
-                    abstractNodeId++;
+					
+					abstractNodeId++;
                 }
                 else
                 {
@@ -358,18 +351,18 @@ namespace HPASharp
                 
                 if (!absNodes.TryGetValue(entrance.Coord2Id, out absNode))
                 {
-                    cluster2.AddEntrance(new LocalEntrance(
-                                               abstractNodeId,
-                                               -1, // real value set in addEntrance()
-                                               new Position(entrance.Coord2.X - cluster2.Origin.X, entrance.Coord2.Y - cluster2.Origin.Y)));
+					cluster2.AddEntrance(new EntrancePoint(
+											   abstractNodeId,
+											   -1, // real value set in addEntrance()
+											   new Position(entrance.Coord2.X - cluster2.Origin.X, entrance.Coord2.Y - cluster2.Origin.Y)));
 
-                    AbsNodeIds[entrance.Coord2Id] = abstractNodeId;
                     var node = new AbsTilingNodeInfo(abstractNodeId, level,
                                  entrance.Cluster2Id,
                                  new Position(entrance.Coord2.X, entrance.Coord2.Y),
                                  entrance.Coord2Id, cluster2.GetNrEntrances() - 1);
                     absNodes[entrance.Coord2Id] = node;
-                    abstractNodeId++;
+					
+					abstractNodeId++;
                 }
                 else
                 {
@@ -377,6 +370,11 @@ namespace HPASharp
                         absNode.Level = level;
                 }
             }
+
+	        foreach (var kvp in absNodes)
+	        {
+		        AbsNodeIds[kvp.Key] = kvp.Value.Id;
+	        }
 
             return absNodes.Values;
         }
@@ -509,7 +507,7 @@ namespace HPASharp
             var absNodeId = NrNodes;
 
             // insert local entrance to cluster and updatePaths(cluster.getNrEntrances() - 1)
-            var localEntrance = new LocalEntrance(
+            var localEntrance = new EntrancePoint(
                 absNodeId,
                 -1,
                 new Position(pos.X - cluster.Origin.X, pos.Y - cluster.Origin.Y));
@@ -583,76 +581,59 @@ namespace HPASharp
             Graph.AddEdge(sourceNodeId, destNodeId, new AbsTilingEdgeInfo(cost, level, inter));
         }
 
-        protected void CreateInterClusterEdges()
+        public void CreateInterClusterEdges(Entrance entrance)
         {
-            // add cluster edges
-            foreach (var cluster in Clusters)
+            int level;
+            switch (entrance.Orientation)
             {
-                for (var k = 0; k < cluster.GetNrEntrances(); k++)
-                    for (var l = k + 1; l < cluster.GetNrEntrances(); l++)
-                    {
-                        if (cluster.AreConnected(l, k))
-                        {
-                            this.AddEdge(cluster.GetGlobalAbsNodeId(k), cluster.GetGlobalAbsNodeId(l), cluster.GetDistance(l, k), 1, false);
-                            this.AddEdge(cluster.GetGlobalAbsNodeId(l), cluster.GetGlobalAbsNodeId(k), cluster.GetDistance(k, l), 1, false);
-                        }
-                    }
+                case Orientation.HORIZONTAL:
+                    level = DetermineLevel(entrance.Coord1.Y);
+                    break;
+                case Orientation.VERTICAL:
+                    level = DetermineLevel(entrance.Coord1.X);
+                    break;
+                default:
+                    level = -1;
+                    break;
             }
 
-            foreach (var entrance in Entrances)
+            var abstractNodeId1 = AbsNodeIds[entrance.Coord1Id];
+            var abstractNodeId2 = AbsNodeIds[entrance.Coord2Id];
+
+            switch (Type)
             {
-                int level;
-                switch (entrance.Orientation)
+                case AbsType.ABSTRACT_TILE:
+                case AbsType.ABSTRACT_OCTILE_UNICOST:
+                    // Inter-edges: cost 1
+                    this.AddEdge(abstractNodeId1, abstractNodeId2, Constants.COST_ONE, level, true);
+                    this.AddEdge(abstractNodeId2, abstractNodeId1, Constants.COST_ONE, level, true);
+                    break;
+                case AbsType.ABSTRACT_OCTILE:
                 {
-                    case Orientation.HORIZONTAL:
-                        level = DetermineLevel(entrance.Coord1.Y);
-                        break;
-                    case Orientation.VERTICAL:
-                        level = DetermineLevel(entrance.Coord1.X);
-                        break;
-                    default:
-                        level = -1;
-                        break;
-                }
-
-                var abstractNodeId1 = AbsNodeIds[entrance.Coord1Id];
-                var abstractNodeId2 = AbsNodeIds[entrance.Coord2Id];
-
-                switch (Type)
-                {
-                    case AbsType.ABSTRACT_TILE:
-                    case AbsType.ABSTRACT_OCTILE_UNICOST:
-                        // Inter-edges: cost 1
-                        this.AddEdge(abstractNodeId1, abstractNodeId2, Constants.COST_ONE, level, true);
-                        this.AddEdge(abstractNodeId2, abstractNodeId1, Constants.COST_ONE, level, true);
-                        break;
-                    case AbsType.ABSTRACT_OCTILE:
+                    int unitCost;
+                    switch (entrance.Orientation)
                     {
-                        int unitCost;
-                        switch (entrance.Orientation)
-                        {
-                            case Orientation.HORIZONTAL:
-                            case Orientation.VERTICAL:
-                                unitCost = Constants.COST_ONE;
-                                break;
-                            case Orientation.HDIAG2:
-                            case Orientation.HDIAG1:
-                            case Orientation.VDIAG1:
-                            case Orientation.VDIAG2:
-                                unitCost = (Constants.COST_ONE*34)/24;
-                                break;
-                            default:
-                                unitCost = -1;
-                                break;
-                        }
-
-                        this.AddEdge(abstractNodeId1, abstractNodeId2, unitCost, level, true);
-                        this.AddEdge(abstractNodeId2, abstractNodeId1, unitCost, level, true);
+                        case Orientation.HORIZONTAL:
+                        case Orientation.VERTICAL:
+                            unitCost = Constants.COST_ONE;
+                            break;
+                        case Orientation.HDIAG2:
+                        case Orientation.HDIAG1:
+                        case Orientation.VDIAG1:
+                        case Orientation.VDIAG2:
+                            unitCost = (Constants.COST_ONE*34)/24;
+                            break;
+                        default:
+                            unitCost = -1;
+                            break;
                     }
-                        break;
-                    default:
-                        break;
+
+                    this.AddEdge(abstractNodeId1, abstractNodeId2, unitCost, level, true);
+                    this.AddEdge(abstractNodeId2, abstractNodeId1, unitCost, level, true);
                 }
+                    break;
+                default:
+                    break;
             }
         }
 

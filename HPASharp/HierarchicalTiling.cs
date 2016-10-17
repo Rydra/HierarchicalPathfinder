@@ -1,21 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace HPASharp
 {
-    using System.Diagnostics;
-
-    using HPASharp.Search;
+    using Search;
 
 	/// <summary>
 	/// Implements an abstract maze decomposition.
 	/// the ultimate abstract representation is a weighted graph of
 	/// locations connected by precomputed paths
 	/// </summary>
-	public class HTiling : AbsTiling
+	public class HierarchicalTiling : AbsTiling
     {
         private int currentLevel;
 
@@ -27,7 +23,7 @@ namespace HPASharp
 
         private int currentClusterX1;
 
-        public HTiling(int clusterSize, int maxLevel, int height, int width) : base(clusterSize, maxLevel, height, width)
+        public HierarchicalTiling(int clusterSize, int maxLevel, int height, int width) : base(clusterSize, maxLevel, height, width)
         {
         }
 
@@ -267,7 +263,6 @@ namespace HPASharp
 
         public override void CreateEdges()
         {
-            CreateInterClusterEdges();
             CreateHierarchicalEdges();
         }
 
@@ -280,11 +275,15 @@ namespace HPASharp
                 this.currentLevel = level - 1;
 
                 // for each cluster
-                for (var y = 0; y < this.Height; y += offset)
-                for (var x = 0; x < this.Width; x += offset)
+				// TODO: Maybe we could refactor this so that instead of having to deal with levels,
+				// offsets and all this mess... we could create multiple clusters and each cluster have a level.
+				// PD: How amazing it is to pick an old project after leaving it in the shelf for some time,
+				// you think extremely different in terms of design and see things from another perspective
+                for (var top = 0; top < this.Height; top += offset)
+                for (var left = 0; left < this.Width; left += offset)
                 {
                     // define the bounding box of the current cluster we want to analize to create HEdges
-                    this.SetCurrentCluster(x, y, offset);
+                    this.SetCurrentCluster(left, top, offset);
                     this.ConstructVerticalToVerticalEdges(level);
                     this.ConstructHorizontalToHorizontalEdges(level);
                     this.ConstructHorizontalToVerticalEdges(level);

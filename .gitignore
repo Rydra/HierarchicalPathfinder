@@ -3,3 +3,7 @@
 ################################################################################
 
 /.vs/HPASharp/v14/.suo
+/HPASharp/bin/Debug
+/HPASharp/obj/Debug
+/HPAsharp.Tests/obj/Debug
+/packages
