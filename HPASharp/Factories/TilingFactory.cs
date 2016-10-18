@@ -7,13 +7,13 @@ using System.Threading.Tasks;
 namespace HPASharp
 {
     /// <summary>
-    /// Constructs Tiling objects
+    /// Constructs ConcreteMap objects
     /// </summary>
     public static class TilingFactory
     {
-        public static Tiling CreateTiling(int width, int height, IPassability passability, TileType tilingType = TileType.OCTILE)
+        public static ConcreteMap CreateTiling(int width, int height, IPassability passability, TileType tilingType = TileType.OCTILE)
         {
-            var tiling = new Tiling(tilingType, width, height, passability);
+            var tiling = new ConcreteMap(tilingType, width, height, passability);
             return tiling;
         }
     }

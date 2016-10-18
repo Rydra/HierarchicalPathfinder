@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace HPASharp
 {
-    #region Abstract Tiling support classes
+    #region Abstract ConcreteMap support classes
 
     public struct Neighbour
     {
@@ -86,113 +86,19 @@ namespace HPASharp
         ABSTRACT_OCTILE_UNICOST
     }
 
-	/// <summary>
-	/// Represents an entrance point between 2 clusters
-	/// </summary>
-	public class Entrance
-	{
-		public int Id { get; set; }
-		public int Cluster1Id { get; set; }
-		public int Cluster2Id { get; set; }
-
-        /// <summary>
-        /// This is the id of the lvl 1 abstract node of one of the entrance points.
-        /// TODO: This is horrible, why lvl 1? Even I can't understand!
-        /// </summary>
-		public int Coord1Id { get; set; }
-		public int Coord2Id { get; set; }
-		public Orientation Orientation { get; set; }
-
-		/// <summary>
-		/// This position represents one end of the entrance
-		/// </summary>
-		public Position Coord1 { get; set; }
-
-		/// <summary>
-		/// This position represents the other end of the entrance
-		/// </summary>
-		public Position Coord2
-		{
-			get
-			{
-				int x;
-				switch (Orientation)
-				{
-					case Orientation.HORIZONTAL:
-					case Orientation.HDIAG2:
-						x = this.Coord1.X;
-						break;
-					case Orientation.VERTICAL:
-					case Orientation.VDIAG2:
-					case Orientation.VDIAG1:
-					case Orientation.HDIAG1:
-						x = this.Coord1.X + 1;
-						break;
-					default:
-						//assert(false);
-						x = -1;
-						break;
-				}
-
-				int y;
-				switch (Orientation)
-				{
-					case Orientation.HORIZONTAL:
-					case Orientation.HDIAG1:
-					case Orientation.HDIAG2:
-					case Orientation.VDIAG1:
-						y = this.Coord1.Y + 1;
-						break;
-					case Orientation.VERTICAL:
-					case Orientation.VDIAG2:
-						y = this.Coord1.Y;
-						break;
-					default:
-						//assert(false);
-						y = -1;
-						break;
-				}
-
-				return new Position(x, y);
-			}
-		}
-
-		public Entrance(int id, int cl1Id, int cl2Id, int center1Row, int center1Col, int coord1Id, int coord2Id, Orientation orientation)
-		{
-			Id = id;
-			Cluster1Id = cl1Id;
-			Cluster2Id = cl2Id;
-
-			int center1y, center1x;
-			if (orientation == Orientation.HDIAG2)
-				center1x = center1Col + 1;
-			else
-				center1x = center1Col;
-
-			if (orientation == Orientation.VDIAG2)
-				center1y = center1Row + 1;
-			else
-				center1y = center1Row;
-
-			this.Coord1 = new Position(center1x, center1y);
-			this.Coord1Id = coord1Id;
-			this.Coord2Id = coord2Id;
-			Orientation = orientation;
-		}
-	}
-
     #endregion
 
-    // implements an abstract maze decomposition
-    // the ultimate abstract representation is a weighted graph of
-    // locations connected by precomputed paths
-    public abstract class AbsTiling : IMap
+    /// <summary>
+    /// Abstract maps represent, as the name implies, an abstraction
+    /// built over the concrete map.
+    /// </summary>
+    public abstract class AbstractMap : IMap
     {
         public int Height { get; set; }
         public int Width { get; set; }
         public Graph<AbsTilingNodeInfo, AbsTilingEdgeInfo> Graph { get; set; }
         public int ClusterSize { get; set; }
-        protected int MaxLevel { get; set; }
+        public int MaxLevel { get; set; }
         public List<Cluster> Clusters { get; set; }
 	    public int NrNodes { get { return Graph.Nodes.Count; } }
 
@@ -219,7 +125,7 @@ namespace HPASharp
             }
         }
 
-        protected AbsTiling(int clusterSize, int maxLevel, int height, int width)
+        protected AbstractMap(int clusterSize, int maxLevel, int height, int width)
         {
             ClusterSize = clusterSize;
             MaxLevel = maxLevel;
@@ -235,10 +141,10 @@ namespace HPASharp
             Graph = new Graph<AbsTilingNodeInfo, AbsTilingEdgeInfo>();
         }
 
-        public int GetHeuristic(int start, int target)
+        public int GetHeuristic(int startNodeId, int targetNodeId)
         {
-            var startPos = Graph.GetNodeInfo(start).Position;
-            var targetPos = Graph.GetNodeInfo(target).Position;
+            var startPos = Graph.GetNodeInfo(startNodeId).Position;
+            var targetPos = Graph.GetNodeInfo(targetNodeId).Position;
             var diffY = Math.Abs(startPos.Y - targetPos.Y);
             var diffX = Math.Abs(startPos.X - targetPos.X);
 
@@ -266,110 +172,6 @@ namespace HPASharp
         public abstract IEnumerable<Neighbour> GetNeighbours(int nodeId);
 		
 	    public abstract void CreateHierarchicalEdges();
-
-        /// <summary>
-        /// Gets the cluster Id, determined by its row and column
-        /// </summary>
-        public Cluster GetCluster(int left, int top)
-        {
-            var clustersW = Width / ClusterSize;
-            if (Width % ClusterSize > 0)
-                clustersW++;
-
-            return Clusters[top * clustersW + left];
-        }
-
-        #region Path Operations - SHOULD NOT BE HERE!
-
-        public abstract List<PathNode> DoHierarchicalSearch(int startNodeId, int targetNodeId, int maxSearchLevel, int maxPathsToRefine = int.MaxValue);
-
-        public abstract List<PathNode> RefineAbstractPath(List<PathNode> path, int level, int maxPathsToRefine = int.MaxValue);
-
-        public List<PathNode> AbstractPathToLowLevelPath(List<PathNode> absPath, int width, int maxPathsToCalculate = int.MaxValue)
-        {
-            var result = new List<PathNode>(absPath.Count * 10);
-            if (absPath.Count == 0) return result;
-
-            var calculatedPaths = 0;
-            var lastAbsNodeId = absPath[0].Id;
-
-            for (var j = 1; j < absPath.Count; j++)
-            {
-                var currentAbsNodeId = absPath[j].Id;
-                var currentNodeInfo = Graph.GetNodeInfo(currentAbsNodeId);
-                var lastNodeInfo = Graph.GetNodeInfo(lastAbsNodeId);
-
-                // We cannot compute a low level path from a level which is higher than lvl 1
-                // (obvious...) therefore, ignore any non-refined path
-                if (absPath[j].Level > 1)
-                {
-                    result.Add(absPath[j]);
-                    continue;
-                }
-
-                var eClusterId = currentNodeInfo.ClusterId;
-                var leClusterId = lastNodeInfo.ClusterId;
-                
-                if (eClusterId == leClusterId && calculatedPaths < maxPathsToCalculate)
-                {
-                    // insert the local solution into the global one
-                    var cluster = this.GetCluster(eClusterId);
-                    var localpos1 = cluster.GetLocalPosition(lastNodeInfo.LocalIdxCluster);
-                    var localpos2 = cluster.GetLocalPosition(currentNodeInfo.LocalIdxCluster);
-                    if (localpos1 != localpos2)
-                    {
-                        var localPath = cluster.ComputePath(localpos1, localpos2)
-                            .Select(
-                                lp =>
-                                    {
-                                        var localPoint = LocalClusterId2GlobalId(lp, cluster, width);
-                                        return new PathNode(localPoint, 0);
-                                    });
-
-                        result.AddRange(localPath);
-
-                        calculatedPaths++;
-                    }
-                }
-                else
-                {
-                    var lastVal = lastNodeInfo.CenterId;
-                    var currentVal = currentNodeInfo.CenterId;
-                    if (result[result.Count - 1].Id != lastVal)
-                        result.Add(new PathNode(lastVal, 0));
-
-                    result.Add(new PathNode(currentVal, 0));
-                }
-
-                lastAbsNodeId = currentAbsNodeId;
-            }
-
-            return result;
-        }
-        
-        private static int LocalClusterId2GlobalId(int localId, Cluster cluster, int width)
-        {
-            var localX = localId % cluster.Size.Width;
-            var localY = localId / cluster.Size.Width;
-            var result = (localY + cluster.Origin.Y) * width +
-                         (localX + cluster.Origin.X);
-            return result;
-        }
-
-        private static int GlobalId2LocalId(int globalId, Cluster cluster, int width)
-        {
-            var globalY = globalId / width;
-            var globalX = globalId % width;
-            return (globalY - cluster.Origin.Y) * cluster.Size.Width +
-                (globalX - cluster.Origin.X);
-        }
-
-        public Cluster GetCluster(int id)
-        {
-            return Clusters[id];
-        }
-
-        #endregion
 
         #region Stal Operations - SHOULD EXPORT IT TO THE FACTORY PROBABLY
 
@@ -493,8 +295,11 @@ namespace HPASharp
             return node.Edges;
         }
 
-        #endregion
+        public Cluster GetCluster(int id)
+        {
+            return Clusters[id];
+        }
 
-        public abstract void PrintGraph();
+        #endregion
     }
 }

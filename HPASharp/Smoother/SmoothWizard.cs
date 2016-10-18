@@ -21,15 +21,15 @@ namespace HPASharp.Smoother
     {
         public List<PathNode> InitPath { get; set; }
 
-        private Tiling tiling;
+        private ConcreteMap concreteMap;
 
         // This is a dictionary, indexed by nodeId, that tells in which order does this node occupy in the path
         private Dictionary<int, int> pathMap;
 
-        public SmoothWizard(Tiling tiling, List<PathNode> path)
+        public SmoothWizard(ConcreteMap concreteMap, List<PathNode> path)
         {
             InitPath = path;
-            this.tiling = tiling;
+            this.concreteMap = concreteMap;
 
             pathMap = new Dictionary<int, int>();
             for (var i = 0; i < InitPath.Count; i++)
@@ -38,7 +38,7 @@ namespace HPASharp.Smoother
 
         private Position GetPosition(int nodeId)
         {
-            return tiling.Graph.GetNodeInfo(nodeId).Position;
+            return concreteMap.Graph.GetNodeInfo(nodeId).Position;
         }
 
         public List<PathNode> SmoothPath()
@@ -80,7 +80,7 @@ namespace HPASharp.Smoother
                 // This loops decides which is the next node of the path to consider in the next iteration (the j)
                 for (var dir = (int)Direction.NORTH; dir <= (int)Direction.NW; dir++)
                 {
-                    if (this.tiling.TileType == TileType.TILE && dir > (int)Direction.WEST)
+                    if (this.concreteMap.TileType == TileType.TILE && dir > (int)Direction.WEST)
                         break;
 
                     var seenPathNode = AdvanceThroughDirection(InitPath[j].Id, dir);
@@ -117,7 +117,7 @@ namespace HPASharp.Smoother
         private List<int> GenerateIntermediateNodes(int nodeid1, int nodeid2)
         {
             var search = new AStar();
-            var path = search.FindPath(tiling, nodeid1, nodeid2);
+            var path = search.FindPath(concreteMap, nodeid1, nodeid2);
             return path.PathNodes;
         }
 
@@ -136,7 +136,7 @@ namespace HPASharp.Smoother
 
                 // If in the direction we advanced there was an invalid node or we cannot enter the node,
                 // just return that no node was found
-                if (nodeId == Constants.NO_NODE || !this.tiling.CanJump(GetPosition(nodeId), GetPosition(lastNodeId)))
+                if (nodeId == Constants.NO_NODE || !this.concreteMap.CanJump(GetPosition(nodeId), GetPosition(lastNodeId)))
                     return Constants.NO_NODE;
 
                 // Otherwise, if the node we advanced was contained in the original path, and
@@ -147,7 +147,7 @@ namespace HPASharp.Smoother
                 }
 
                 // If we have found an obstacle, just return that no next node to advance was found
-                var newNodeInfo = this.tiling.Graph.GetNodeInfo(nodeId);
+                var newNodeInfo = this.concreteMap.Graph.GetNodeInfo(nodeId);
                 if (newNodeInfo.IsObstacle)
                     return Constants.NO_NODE;
 
@@ -157,13 +157,13 @@ namespace HPASharp.Smoother
 
         private int AdvanceNode(int nodeId, int direction)
         {
-            var nodeInfo = this.tiling.Graph.GetNodeInfo(nodeId);
+            var nodeInfo = this.concreteMap.Graph.GetNodeInfo(nodeId);
             var y = nodeInfo.Position.Y;
             var x = nodeInfo.Position.X;
 
-			var tilingGraph = this.tiling.Graph;
+			var tilingGraph = this.concreteMap.Graph;
 			Func<int, int, Graph<TilingNodeInfo, TilingEdgeInfo>.Node> getNode =
-				(top, left) => tilingGraph.GetNode(this.tiling.GetNodeIdFromPos(top, left));
+				(top, left) => tilingGraph.GetNode(this.concreteMap.GetNodeIdFromPos(top, left));
 			switch ((Direction)direction)
             {
                 case Direction.NORTH:
@@ -171,11 +171,11 @@ namespace HPASharp.Smoother
                         return Constants.NO_NODE;
                     return getNode(x, y - 1).NodeId;
                 case Direction.EAST:
-                    if (x == this.tiling.Width - 1)
+                    if (x == this.concreteMap.Width - 1)
                         return Constants.NO_NODE;
                     return getNode(x + 1, y).NodeId;
                 case Direction.SOUTH:
-                    if (y == this.tiling.Height - 1)
+                    if (y == this.concreteMap.Height - 1)
                         return Constants.NO_NODE;
                     return getNode(x, y + 1).NodeId;
                 case Direction.WEST:
@@ -183,15 +183,15 @@ namespace HPASharp.Smoother
                         return Constants.NO_NODE;
                     return getNode(x - 1, y).NodeId;
                 case Direction.NE:
-                    if (y == 0 || x == this.tiling.Width - 1)
+                    if (y == 0 || x == this.concreteMap.Width - 1)
                         return Constants.NO_NODE;
                     return getNode(x + 1, y - 1).NodeId;
                 case Direction.SE:
-                    if (y == this.tiling.Height - 1 || x == this.tiling.Width - 1)
+                    if (y == this.concreteMap.Height - 1 || x == this.concreteMap.Width - 1)
                         return Constants.NO_NODE;
                     return getNode(x + 1, y + 1).NodeId;
                 case Direction.SW:
-                    if (y == this.tiling.Height - 1 || x == 0)
+                    if (y == this.concreteMap.Height - 1 || x == 0)
                         return Constants.NO_NODE;
                     return getNode(x - 1, y + 1).NodeId;
                 case Direction.NW:

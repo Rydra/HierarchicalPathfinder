@@ -44,15 +44,7 @@ namespace HPASharp
         TILE
     }
 
-    public interface IGrid
-    {
-        int Width { get; }
-        int Height { get; }
-        TileType TileType { get; }
-        Graph<TilingNodeInfo, TilingEdgeInfo> Graph { get; }
-    }
-
-    public class Tiling : IMap, IGrid
+    public class ConcreteMap : IMap
     {
 		public IPassability Passability { get; set; }
 
@@ -66,32 +58,31 @@ namespace HPASharp
 
         public Graph<TilingNodeInfo, TilingEdgeInfo> Graph { get; set; }
 
-        public Tiling(TileType tileType, int width, int height, IPassability passability)
+        public ConcreteMap(TileType tileType, int width, int height, IPassability passability)
         {
             Passability = passability;
             this.Init(tileType, width, height);
         }
         
-        // Create a new tiling as a copy of another tiling (just copying obstacles)
-        public Tiling(Tiling tiling, int horizOrigin, int vertOrigin, int width, int height, IPassability passability)
+        // Create a new concreteMap as a copy of another concreteMap (just copying obstacles)
+        public ConcreteMap Slice(int horizOrigin, int vertOrigin, int width, int height, IPassability passability)
         {
-	        this.Passability = passability;
-
-            // init builds everything, except for the obstacles...
-            this.Init(tiling.TileType, width, height);
+            var slicedConcreteMap = new ConcreteMap(this.TileType, width, height, passability);
 			
 			// so we now put the obstacles in place
 			for (var x = 0; x < width; x++)
 				for (var y = 0; y < height; y++)
 				{
 					// get the local node
-					var localNodeInfo = this.Graph.GetNode(this.GetNodeIdFromPos(x, y)).Info;
-					// get the initial tiling node
-					var nodeInfo = tiling.Graph.GetNode(tiling.GetNodeIdFromPos(horizOrigin + x, vertOrigin + y)).Info;
+					var localNodeInfo = slicedConcreteMap.Graph.GetNode(slicedConcreteMap.GetNodeIdFromPos(x, y)).Info;
+					// get the initial concreteMap node
+					var nodeInfo = this.Graph.GetNode(this.GetNodeIdFromPos(horizOrigin + x, vertOrigin + y)).Info;
 					// set obstacle for the local node
 					localNodeInfo.IsObstacle = nodeInfo.IsObstacle;
 					localNodeInfo.Cost = nodeInfo.Cost;
 				}
+
+            return slicedConcreteMap;
 		}
 
         private void Init(TileType tileType, int width, int height)
@@ -110,10 +101,10 @@ namespace HPASharp
 		    return y * Width + x;
 	    }
 
-        public int GetHeuristic(int start, int target)
+        public int GetHeuristic(int startNodeId, int targetNodeId)
         {
-            var startPos = Graph.GetNodeInfo(start).Position;
-            var targetPos = Graph.GetNodeInfo(target).Position;
+            var startPos = Graph.GetNodeInfo(startNodeId).Position;
+            var targetPos = Graph.GetNodeInfo(targetNodeId).Position;
 
             var startX = startPos.X;
             var targetX = targetPos.X;

@@ -47,7 +47,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AbsTiling.cs" />
+    <Compile Include="AbstractMap.cs" />
+    <Compile Include="Factories\Entrance.cs" />
     <Compile Include="Factories\GraphFactory.cs" />
     <Compile Include="Helpers.cs" />
     <Compile Include="Infrastructure\Position.cs" />
@@ -55,7 +56,7 @@
     <Compile Include="Cluster.cs" />
     <Compile Include="Infrastructure\Constants.cs" />
     <Compile Include="Graph\Graph.cs" />
-    <Compile Include="HierarchicalTiling.cs" />
+    <Compile Include="HierarchicalMap.cs" />
     <Compile Include="IPassability.cs" />
     <Compile Include="PathNode.cs" />
     <Compile Include="Program.cs" />
@@ -63,8 +64,9 @@
     <Compile Include="Factories\AbstractMapFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Infrastructure\Size.cs" />
+    <Compile Include="Search\HierarchicalSearch.cs" />
     <Compile Include="Smoother\SmoothWizard.cs" />
-    <Compile Include="Tiling.cs" />
+    <Compile Include="ConcreteMap.cs" />
     <Compile Include="Factories\TilingFactory.cs" />
   </ItemGroup>
   <ItemGroup>

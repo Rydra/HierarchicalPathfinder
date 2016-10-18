@@ -54,15 +54,15 @@ namespace HPASharp
 		// A local entrance is a point inside this cluster
 		public List<EntrancePoint> EntrancePoints { get; set; }
 		
-		// This tiling object contains the subregion of the main grid that this cluster contains.
+		// This concreteMap object contains the subregion of the main grid that this cluster contains.
 		// Necessary to do local search to find paths and distances between local entrances
-        public Tiling SubTiling { get; set; }
+        public ConcreteMap SubConcreteMap { get; set; }
         public Size Size { get; set; }
         public Position Origin { get; set; } // The position where this cluster starts in the main grid
 
-        public Cluster(Tiling tiling, int id, int clusterX, int clusterY, Position origin, Size size)
+        public Cluster(ConcreteMap concreteMap, int id, int clusterX, int clusterY, Position origin, Size size)
         {
-            SubTiling = new Tiling(tiling, origin.X, origin.Y, size.Width, size.Height, tiling.Passability);
+            SubConcreteMap = concreteMap.Slice(origin.X, origin.Y, size.Width, size.Height, concreteMap.Passability);
             Id = id;
             ClusterY = clusterY;
             ClusterX = clusterX;
@@ -108,7 +108,7 @@ namespace HPASharp
                 return;
 
             var search = new AStar();
-            var path = search.FindPath(SubTiling, start, target);
+            var path = search.FindPath(SubConcreteMap, start, target);
 
             // TODO: Store the path as well, not only the cost. This will make everything faster!
             if (path.PathCost != -1) Distances[startIdx, targetIdx] = Distances[targetIdx, startIdx] = path.PathCost;
@@ -149,10 +149,15 @@ namespace HPASharp
             return EntrancePoints.Count;
         }
 
-        public void AddEntrance(EntrancePoint entrancePoint)
+        /// <summary>
+        /// Adds an entrance point to the cluster and returns the entrance index assigned for the point
+        /// </summary>
+        public int AddEntrance(EntrancePoint entrancePoint)
         {
             EntrancePoints.Add(entrancePoint);
-            EntrancePoints[EntrancePoints.Count - 1].EntranceLocalIdx = EntrancePoints.Count - 1;
+            var entranceLocalIdx = EntrancePoints.Count - 1;
+            EntrancePoints[EntrancePoints.Count - 1].EntranceLocalIdx = entranceLocalIdx;
+            return entranceLocalIdx;
         }
 
         public void RemoveLastEntranceRecord()
@@ -180,7 +185,7 @@ namespace HPASharp
         public List<int> ComputePath(int start, int target)
         {
             var search = new AStar();
-            var path = search.FindPath(SubTiling, target, start);
+            var path = search.FindPath(SubConcreteMap, target, start);
             return path.PathNodes;
         }
     }

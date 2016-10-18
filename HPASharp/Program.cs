@@ -103,9 +103,9 @@ namespace HPASharp
             // Prepare the abstract graph beforehand
 			IPassability passability = new Passability(width, height);
             var tiling = TilingFactory.CreateTiling(width, height, passability);
-            var wizard = new AbstractMapFactory(tiling, clusterSize, maxLevel, EntranceStyle.END_ENTRANCE);
-            wizard.CreateAbstractMap();
-            var absTiling = wizard.AbsTiling;
+            var wizard = new AbstractMapFactory();
+            wizard.CreateAbstractMap(tiling, clusterSize, maxLevel, EntranceStyle.END_ENTRANCE);
+            var absTiling = wizard.AbstractMap;
 
 	        var sw = Stopwatch.StartNew();
             var path1 = RegularSearch(tiling, absTiling, clusterSize);
@@ -131,63 +131,65 @@ namespace HPASharp
             Console.ReadKey();
         }
 
-	    private static List<Position> HierarchicalSearch(AbsTiling absTiling, int maxLevel, Tiling tiling, int clusterSize)
+	    private static List<Position> HierarchicalSearch(AbstractMap abstractMap, int maxLevel, ConcreteMap concreteMap, int clusterSize)
 	    {
             // Hierarchical pathfinding
-	        var startAbsNode = absTiling.InsertSTAL(new Position(0, 0), 0);
-	        var targetAbsNode = absTiling.InsertSTAL(new Position(69, 69), 1);
+	        var startAbsNode = abstractMap.InsertSTAL(new Position(0, 0), 0);
+	        var targetAbsNode = abstractMap.InsertSTAL(new Position(69, 69), 1);
 	        var maxPathsToRefine = int.MaxValue;
-            var abstractPath = absTiling.DoHierarchicalSearch(startAbsNode, targetAbsNode, maxLevel, maxPathsToRefine);
-			var path = absTiling.AbstractPathToLowLevelPath(abstractPath, absTiling.Width, maxPathsToRefine);
-            absTiling.RemoveStal(targetAbsNode, 1);
-			absTiling.RemoveStal(startAbsNode, 0);
-            var smoother = new SmoothWizard(tiling, path);
+            var hierarchicalSearch = new HierarchicalSearch();
+	        var hierarchicalmap = (HierarchicalMap) abstractMap;
+            var abstractPath = hierarchicalSearch.DoHierarchicalSearch(hierarchicalmap, startAbsNode, targetAbsNode, maxLevel, maxPathsToRefine);
+			var path = hierarchicalSearch.AbstractPathToLowLevelPath(hierarchicalmap, abstractPath, abstractMap.Width, maxPathsToRefine);
+            abstractMap.RemoveStal(targetAbsNode, 1);
+			abstractMap.RemoveStal(startAbsNode, 0);
+            var smoother = new SmoothWizard(concreteMap, path);
             path = smoother.SmoothPath();
 
-			return path.Select(n => n.Level == 0 ? tiling.Graph.GetNodeInfo(n.Id).Position : absTiling.Graph.GetNodeInfo(n.Id).Position).ToList();
+			return path.Select(n => n.Level == 0 ? concreteMap.Graph.GetNodeInfo(n.Id).Position : abstractMap.Graph.GetNodeInfo(n.Id).Position).ToList();
         }
 
-	    private static List<Position> RegularSearch(Tiling tiling, AbsTiling absTiling, int clusterSize)
+	    private static List<Position> RegularSearch(ConcreteMap concreteMap, AbstractMap abstractMap, int clusterSize)
 	    {
-			var tilingGraph = tiling.Graph;
+			var tilingGraph = concreteMap.Graph;
 			Func<int, int, Graph<TilingNodeInfo, TilingEdgeInfo>.Node> getNode =
-				(top, left) => tilingGraph.GetNode(tiling.GetNodeIdFromPos(top, left));
+				(top, left) => tilingGraph.GetNode(concreteMap.GetNodeIdFromPos(top, left));
 
 			// Regular pathfinding
 			var searcher = new AStar();
-			var path = searcher.FindPath(tiling, getNode(14, 20).NodeId, getNode(40, 40).NodeId);
+			var path = searcher.FindPath(concreteMap, getNode(14, 20).NodeId, getNode(40, 40).NodeId);
 	        var path2 = path.PathNodes;
-		    return path2.Select(n => tiling.Graph.GetNodeInfo(n).Position).ToList();
+		    return path2.Select(n => concreteMap.Graph.GetNodeInfo(n).Position).ToList();
 	    }
 
-	    private static List<char> GetCharVector(Tiling tiling)
+	    private static List<char> GetCharVector(ConcreteMap concreteMap)
         {
             var result = new List<char>();
-            var numberNodes = tiling.NrNodes;
+            var numberNodes = concreteMap.NrNodes;
             for (var i = 0; i < numberNodes; ++i)
             {
-                result.Add(tiling.Graph.GetNodeInfo(i).IsObstacle ? '@' : '.');
+                result.Add(concreteMap.Graph.GetNodeInfo(i).IsObstacle ? '@' : '.');
             }
 
             return result;
         }
 
-        public static void PrintFormatted(Tiling tiling, AbsTiling abstractGraph, int clusterSize, List<Position> path)
+        public static void PrintFormatted(ConcreteMap concreteMap, AbstractMap abstractGraph, int clusterSize, List<Position> path)
         {
-            PrintFormatted(GetCharVector(tiling), tiling, abstractGraph, clusterSize, path);
+            PrintFormatted(GetCharVector(concreteMap), concreteMap, abstractGraph, clusterSize, path);
         }
 
-        private static void PrintFormatted(List<char> chars, Tiling tiling, AbsTiling abstractGraph, int clusterSize, List<Position> path)
+        private static void PrintFormatted(List<char> chars, ConcreteMap concreteMap, AbstractMap abstractGraph, int clusterSize, List<Position> path)
         {
-            for (var y = 0; y < tiling.Height; ++y)
+            for (var y = 0; y < concreteMap.Height; ++y)
             {
                 if (y % clusterSize == 0) Console.WriteLine("---------------------------------------------------------");
-                for (var x = 0; x < tiling.Width; ++x)
+                for (var x = 0; x < concreteMap.Width; ++x)
                 {
                     Console.ForegroundColor = ConsoleColor.White;
                     if (x % clusterSize == 0) Console.Write('|');
 
-                    var nodeId = tiling.GetNodeIdFromPos(x, y);
+                    var nodeId = concreteMap.GetNodeIdFromPos(x, y);
                     var hasAbsNode = abstractGraph.Graph.Nodes.FirstOrDefault(n => n.Info.CenterId == nodeId);
                     
                     if (hasAbsNode != null)

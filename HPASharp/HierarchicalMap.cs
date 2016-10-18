@@ -11,7 +11,7 @@ namespace HPASharp
 	/// the ultimate abstract representation is a weighted graph of
 	/// locations connected by precomputed paths
 	/// </summary>
-	public class HierarchicalTiling : AbsTiling
+	public class HierarchicalMap : AbstractMap
     {
         private int currentLevel;
 
@@ -23,7 +23,7 @@ namespace HPASharp
 
         private int currentClusterX1;
 
-        public HierarchicalTiling(int clusterSize, int maxLevel, int height, int width) : base(clusterSize, maxLevel, height, width)
+        public HierarchicalMap(int clusterSize, int maxLevel, int height, int width) : base(clusterSize, maxLevel, height, width)
         {
         }
 
@@ -183,84 +183,12 @@ namespace HPASharp
             return true;
         }
 
-        #region Search
-
-        public override List<PathNode> DoHierarchicalSearch(int startNodeId, int targetNodeId, int maxSearchLevel, int maxPathsToRefine = int.MaxValue)
+        public void SetCurrentLevel(int level)
         {
-            var path = this.PerformSearch(startNodeId, targetNodeId, maxSearchLevel, true).Select(n => new PathNode(n, maxSearchLevel)).ToList();
-
-            if (path.Count == 0) return path;
-
-            for (var level = maxSearchLevel; level > 1; level--)
-                path = this.RefineAbstractPath(path, level, maxPathsToRefine);
-
-            return path;
-        }
-
-        public List<int> PerformSearch(int startNodeId, int targetNodeId, int level, bool mainSearch)
-        {
-            var search = new AStar();
             this.currentLevel = level;
-            var nodeInfo = Graph.GetNodeInfo(startNodeId);
-            if (mainSearch)
-                this.SetCurrentCluster(nodeInfo.Position, MaxLevel + 1);
-            else
-                this.SetCurrentCluster(nodeInfo.Position, level + 1);
-
-            var path = search.FindPath(this, startNodeId, targetNodeId);
-            if (path.PathCost == -1)
-            {
-                // No path found
-                return new List<int>();
-            }
-            else
-            {
-                var result = path.PathNodes;
-                result.Reverse();
-                return result;
-            }
         }
 
-        /// <summary>
-        /// Refines all the nodes that belong to a certain level to a lower level
-        /// </summary>
-        public override List<PathNode> RefineAbstractPath(List<PathNode> path, int level, int maxPathsToRefine = int.MaxValue)
-        {
-            var result = new List<PathNode>();
-            var calculatedPaths = 0;
-
-            for (var i = 0; i < path.Count - 1; i++)
-            {
-                // if the two consecutive points belong to the same cluster, compute the path between them and
-                // add the resulting nodes of that path to the list
-                if (path[i].Level == path[i + 1].Level && path[i].Level == level &&
-                    this.BelongToSameCluster(path[i].Id, path[i + 1].Id, level) && calculatedPaths < maxPathsToRefine)
-                {
-                    var tmp = this.PerformSearch(path[i].Id, path[i + 1].Id, level - 1, false)
-                        .Select(n => new PathNode(n, level - 1))
-                        .ToList();
-                    result.AddRange(tmp);
-
-                    calculatedPaths++;
-
-                    // When we have calculated a path between 2 nodes, the next path in the search
-                    // will be an interEdge node. We can safely skip it
-                    i++;
-                }
-                else
-                    result.Add(path[i]);
-            }
-
-            // make sure last elem is added
-            if (result[result.Count - 1].Id != path[path.Count - 1].Id)
-                result.Add(path[path.Count - 1]);
-
-            return result;
-        }
-
-        #endregion
-
-        #region Edges
+        #region Create Hierarchical Edges
         
         public override void CreateHierarchicalEdges()
         {
@@ -393,30 +321,6 @@ namespace HPASharp
                 this.AddEdge(absNodeId2, absNodeId1, path.PathCost, level, false);
             }
         }
-
-        #endregion
-
-        #region Printing
-
-        public override void PrintGraph()
-        {
-            Console.WriteLine("Printing abstract graph:");
-            for (int id = 0; id < NrNodes; id++)
-            {
-                var edges = Graph.GetEdges(id);
-                Console.WriteLine("PathNode " + id + "; BF "+ edges.Count);
-                var nodeInfo = Graph.GetNodeInfo(id);
-                nodeInfo.PrintInfo();
-                foreach (var edge in edges)
-                {
-                    Console.Write("Edge to node " + edge.TargetNodeId + ": ");
-                    edge.Info.PrintInfo();
-                }
-                
-                Console.WriteLine();
-            }
-        }
-        
 
         #endregion
     }

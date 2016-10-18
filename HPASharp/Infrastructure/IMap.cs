@@ -18,6 +18,6 @@ namespace HPASharp
         */
         IEnumerable<Neighbour> GetNeighbours(int nodeId);
 
-        int GetHeuristic(int start, int target);
+        int GetHeuristic(int startNodeId, int targetNodeId);
     }
 }
