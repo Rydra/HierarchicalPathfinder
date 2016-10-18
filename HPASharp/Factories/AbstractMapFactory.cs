@@ -32,11 +32,12 @@ namespace HPASharp
             this.EntranceStyle = style;
             MaxLevel = maxLevel;
             ConcreteMap = concreteMap;
-            AbstractMap = new HierarchicalMap(clusterSize, maxLevel, concreteMap.Height, concreteMap.Width);
+            AbstractMap = new HierarchicalMap(concreteMap, clusterSize, maxLevel);
 
             List<Entrance> entrances;
             List<Cluster> clusters; 
             CreateEntrancesAndClusters(out entrances, out clusters);
+            AbstractMap.Clusters = clusters;
             CreateAbstractNodes(entrances, clusters);
             CreateEdges(entrances, clusters);
         }
@@ -46,7 +47,6 @@ namespace HPASharp
             var clusterId = 0;
             var entranceId = 0;
             
-            AbstractMap.SetType(ConcreteMap.TileType);
             entrances = new List<Entrance>();
 			clusters = new List<Cluster>();
 
@@ -98,8 +98,6 @@ namespace HPASharp
 					entrances.AddRange(vEntrances);
 				}
             }
-
-            AbstractMap.Clusters = clusters;
         }
         
         /// <summary>

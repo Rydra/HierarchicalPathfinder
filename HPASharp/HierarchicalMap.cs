@@ -23,7 +23,7 @@ namespace HPASharp
 
         private int currentClusterX1;
 
-        public HierarchicalMap(int clusterSize, int maxLevel, int height, int width) : base(clusterSize, maxLevel, height, width)
+        public HierarchicalMap(ConcreteMap concreteMap, int clusterSize, int maxLevel) : base(concreteMap, clusterSize, maxLevel)
         {
         }
 

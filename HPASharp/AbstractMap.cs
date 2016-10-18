@@ -125,16 +125,16 @@ namespace HPASharp
             }
         }
 
-        protected AbstractMap(int clusterSize, int maxLevel, int height, int width)
+        protected AbstractMap(ConcreteMap concreteMap, int clusterSize, int maxLevel)
         {
             ClusterSize = clusterSize;
             MaxLevel = maxLevel;
-
-            Type = AbsType.ABSTRACT_OCTILE;
-            this.Height = height;
-            this.Width = width;
-            AbsNodeIds = new int[height * width];
-            for (var i = 0; i < height * width; i++)
+            
+            SetType(concreteMap.TileType);
+            this.Height = concreteMap.Height;
+            this.Width = concreteMap.Width;
+            AbsNodeIds = new int[this.Height * this.Width];
+            for (var i = 0; i < this.Height * this.Width; i++)
                 AbsNodeIds[i] = -1;
 
             Clusters = new List<Cluster>();
