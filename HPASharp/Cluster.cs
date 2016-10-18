@@ -95,7 +95,7 @@ namespace HPASharp
         {
             return entrancePoint.RelativePos.Y * Size.Width + entrancePoint.RelativePos.X;
         }
-
+        
         private void ComputePath(EntrancePoint e1, EntrancePoint e2)
         {
             var start = GetEntrancePositionIndex(e1);
@@ -174,8 +174,6 @@ namespace HPASharp
         /// <summary>
         /// Gets the index of an entrance point of this cluster
         /// </summary>
-        /// <param name="entranceLocalIndex"></param>
-        /// <returns></returns>
         public int GetLocalPosition(int entranceLocalIndex)
         {
             var entrance = EntrancePoints[entranceLocalIndex];

@@ -19,7 +19,6 @@ namespace HPASharp
         public AbstractMap AbstractMap { get; set; }
         public ConcreteMap ConcreteMap { get; set; }
         public EntranceStyle EntranceStyle { get; set; }
-        public int AbstractionRate { get; set; }
         public int ClusterSize { get; set; }
 		public int MaxLevel { get; set; }
 
@@ -38,6 +37,8 @@ namespace HPASharp
             List<Cluster> clusters; 
             CreateEntrancesAndClusters(out entrances, out clusters);
             AbstractMap.Clusters = clusters;
+
+            // TODO: It would be preferrable to build the nodes and the edges and then build up the graph
             CreateAbstractNodes(entrances, clusters);
             CreateEdges(entrances, clusters);
         }
@@ -103,7 +104,7 @@ namespace HPASharp
         /// <summary>
         /// Gets the cluster Id, determined by its row and column
         /// </summary>
-        public Cluster GetCluster(List<Cluster> clusters, int left, int top)
+        private Cluster GetCluster(List<Cluster> clusters, int left, int top)
         {
             var clustersW = AbstractMap.Width / ClusterSize;
             if (AbstractMap.Width % ClusterSize > 0)

@@ -190,6 +190,10 @@ namespace HPASharp
 
         #region Create Hierarchical Edges
         
+        // TODO: This can become a HUGE refactor. Basically what this code does is creating entrances
+        // abstract nodes and edges like in the previous case where we created entrances and all that kind of stuff.
+        // We could leverage this new domain knowledge into the code and get rid of this shit with 
+        // a way better design (for instance creating multilevel clusters could be a good approach)!!!!!!!
         public override void CreateHierarchicalEdges()
         {
             for (var level = 2; level <= MaxLevel; level++)
