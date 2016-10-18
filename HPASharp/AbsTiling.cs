@@ -94,6 +94,11 @@ namespace HPASharp
 		public int Id { get; set; }
 		public int Cluster1Id { get; set; }
 		public int Cluster2Id { get; set; }
+
+        /// <summary>
+        /// This is the id of the lvl 1 abstract node of one of the entrance points.
+        /// TODO: This is horrible, why lvl 1? Even I can't understand!
+        /// </summary>
 		public int Coord1Id { get; set; }
 		public int Coord2Id { get; set; }
 		public Orientation Orientation { get; set; }
@@ -194,7 +199,8 @@ namespace HPASharp
         // This list, indexed by a node id from the low level, 
         // indicates to which abstract node id it maps. It is a sparse
         // array for quick access. For saving memory space, this could be implemented as a dictionary
-        protected int[] AbsNodeIds { get; set; }
+        // NOTE: It is currently just used for insert and remove STAL
+        public int[] AbsNodeIds { get; set; }
         public AbsType Type { get; set; }
 
         public void SetType(TileType tileType)
@@ -257,13 +263,9 @@ namespace HPASharp
             }
         }
 
-        public abstract List<PathNode> DoHierarchicalSearch(int startNodeId, int targetNodeId, int maxSearchLevel, int maxPathsToRefine = int.MaxValue);
-
-        public abstract List<PathNode> RefineAbstractPath(List<PathNode> path, int level, int maxPathsToRefine = int.MaxValue);
-
         public abstract IEnumerable<Neighbour> GetNeighbours(int nodeId);
 		
-	    public abstract void CreateEdges();
+	    public abstract void CreateHierarchicalEdges();
 
         /// <summary>
         /// Gets the cluster Id, determined by its row and column
@@ -277,117 +279,11 @@ namespace HPASharp
             return Clusters[top * clustersW + left];
         }
 
-        public int DetermineLevel(int y)
-        {
-            var level = 1;
-            if (y % ClusterSize != 0)
-                y++;
+        #region Path Operations - SHOULD NOT BE HERE!
 
-            var clusterY = y / ClusterSize;
-            while (clusterY % 2 == 0 && level < MaxLevel)
-            {
-                clusterY /= 2;
-                level++;
-            }
+        public abstract List<PathNode> DoHierarchicalSearch(int startNodeId, int targetNodeId, int maxSearchLevel, int maxPathsToRefine = int.MaxValue);
 
-            if (level > MaxLevel)
-                level = MaxLevel;
-            return level;
-        }
-
-        /// <summary>
-        /// Create the asbtract nodes of this graph (composed by the centers of
-        /// the entrances between clusters)
-        /// </summary>
-        public IEnumerable<AbsTilingNodeInfo> GenerateAbstractNodes(List<Entrance> entrances)
-        {
-            var abstractNodeId = 0;
-            var absNodes = new Dictionary<int, AbsTilingNodeInfo>();
-            foreach (var entrance in entrances)
-            {
-                var cluster1 = Clusters[entrance.Cluster1Id];
-                var cluster2 = Clusters[entrance.Cluster2Id];
-
-				// Determine the level of this entrance. It is given
-				// by its orientation and its coordinates
-                int level;
-                switch (entrance.Orientation)
-                {
-                    case Orientation.HORIZONTAL:
-                        level = DetermineLevel(entrance.Coord1.Y);
-                        break;
-                    case Orientation.VERTICAL:
-                        level = DetermineLevel(entrance.Coord1.X);
-                        break;
-                    default:
-                        level = -1;
-                        break;
-                }
-
-                // use absNodes as a local var to check quickly if a node with the same centerId
-                // has been created before
-                AbsTilingNodeInfo absNode;
-                if (!absNodes.TryGetValue(entrance.Coord1Id, out absNode))
-                {
-					cluster1.AddEntrance(new EntrancePoint(
-											   abstractNodeId,
-											   -1, // real value set in addEntrance()
-											   new Position(entrance.Coord1.X - cluster1.Origin.X, entrance.Coord1.Y - cluster1.Origin.Y)));
-
-					// NOTE: Provoking a side-effect... not good
-                    var node = new AbsTilingNodeInfo(abstractNodeId, level,
-                                 entrance.Cluster1Id,
-                                 new Position(entrance.Coord1.X, entrance.Coord1.Y),
-                                 entrance.Coord1Id, cluster1.GetNrEntrances() - 1);
-                    absNodes[entrance.Coord1Id] = node;
-					
-					abstractNodeId++;
-                }
-                else
-                {
-                    if (level > absNode.Level)
-                        absNode.Level = level;
-                }
-                
-                if (!absNodes.TryGetValue(entrance.Coord2Id, out absNode))
-                {
-					cluster2.AddEntrance(new EntrancePoint(
-											   abstractNodeId,
-											   -1, // real value set in addEntrance()
-											   new Position(entrance.Coord2.X - cluster2.Origin.X, entrance.Coord2.Y - cluster2.Origin.Y)));
-
-                    var node = new AbsTilingNodeInfo(abstractNodeId, level,
-                                 entrance.Cluster2Id,
-                                 new Position(entrance.Coord2.X, entrance.Coord2.Y),
-                                 entrance.Coord2Id, cluster2.GetNrEntrances() - 1);
-                    absNodes[entrance.Coord2Id] = node;
-					
-					abstractNodeId++;
-                }
-                else
-                {
-                    if (level > absNode.Level)
-                        absNode.Level = level;
-                }
-            }
-
-	        foreach (var kvp in absNodes)
-	        {
-		        AbsNodeIds[kvp.Key] = kvp.Value.Id;
-	        }
-
-            return absNodes.Values;
-        }
-
-        /// <summary>
-        /// Computes the paths that lie inside every cluster, 
-        /// connecting the several entrances among them
-        /// </summary>
-        public void ComputeClusterPaths()
-        {
-            foreach (var cluster in Clusters)
-                cluster.ComputePaths();
-        }
+        public abstract List<PathNode> RefineAbstractPath(List<PathNode> path, int level, int maxPathsToRefine = int.MaxValue);
 
         public List<PathNode> AbstractPathToLowLevelPath(List<PathNode> absPath, int width, int maxPathsToCalculate = int.MaxValue)
         {
@@ -450,22 +346,32 @@ namespace HPASharp
 
             return result;
         }
-
-        public void ConvertVisitedNodes(List<char> absNodes, List<char> llVisitedNodes, int size)
+        
+        private static int LocalClusterId2GlobalId(int localId, Cluster cluster, int width)
         {
-            for (var i = 0; i < llVisitedNodes.Count; i++)
-            {
-                llVisitedNodes[i] = ' ';
-            }
-            
-            for (var i = 0; i < absNodes.Count; i++)
-                if (absNodes[i] != ' ')
-                {
-                    var currentNodeInfo = Graph.GetNodeInfo(i);
-                    int currentAbsNodeId = currentNodeInfo.CenterId;
-                    llVisitedNodes[currentAbsNodeId] = '+';
-                }
+            var localX = localId % cluster.Size.Width;
+            var localY = localId / cluster.Size.Width;
+            var result = (localY + cluster.Origin.Y) * width +
+                         (localX + cluster.Origin.X);
+            return result;
         }
+
+        private static int GlobalId2LocalId(int globalId, Cluster cluster, int width)
+        {
+            var globalY = globalId / width;
+            var globalX = globalId % width;
+            return (globalY - cluster.Origin.Y) * cluster.Size.Width +
+                (globalX - cluster.Origin.X);
+        }
+
+        public Cluster GetCluster(int id)
+        {
+            return Clusters[id];
+        }
+
+        #endregion
+
+        #region Stal Operations - SHOULD EXPORT IT TO THE FACTORY PROBABLY
 
         int[] m_stalLevel = new int[2];
         bool[] m_stalUsed = new bool[2];
@@ -482,11 +388,11 @@ namespace HPASharp
         // x and y are the positions where I want to put the node
         public int InsertStal(int nodeId, Position pos, int start)
         {
+            // If the node already existed (for instance, it was the an entrance point already
+            // existing in the graph, we need to keep track of the previous status in order
+            // to be able to restore it once we delete this STAL
             if (AbsNodeIds[nodeId] != Constants.NO_NODE)
             {
-                // If the node already existed (for instance, it was the an entrance point already
-				// existing in the graph, we need to keep track of the previous status in order
-				// to be able to restore it once we delete this STAL
                 m_stalLevel[start] = Graph.GetNodeInfo(AbsNodeIds[nodeId]).Level;
                 m_stalEdges[start] = GetNodeEdges(nodeId);
                 m_stalUsed[start] = true;
@@ -581,106 +487,13 @@ namespace HPASharp
             Graph.AddEdge(sourceNodeId, destNodeId, new AbsTilingEdgeInfo(cost, level, inter));
         }
 
-        public void CreateInterClusterEdges(Entrance entrance)
-        {
-            int level;
-            switch (entrance.Orientation)
-            {
-                case Orientation.HORIZONTAL:
-                    level = DetermineLevel(entrance.Coord1.Y);
-                    break;
-                case Orientation.VERTICAL:
-                    level = DetermineLevel(entrance.Coord1.X);
-                    break;
-                default:
-                    level = -1;
-                    break;
-            }
-
-            var abstractNodeId1 = AbsNodeIds[entrance.Coord1Id];
-            var abstractNodeId2 = AbsNodeIds[entrance.Coord2Id];
-
-            switch (Type)
-            {
-                case AbsType.ABSTRACT_TILE:
-                case AbsType.ABSTRACT_OCTILE_UNICOST:
-                    // Inter-edges: cost 1
-                    this.AddEdge(abstractNodeId1, abstractNodeId2, Constants.COST_ONE, level, true);
-                    this.AddEdge(abstractNodeId2, abstractNodeId1, Constants.COST_ONE, level, true);
-                    break;
-                case AbsType.ABSTRACT_OCTILE:
-                {
-                    int unitCost;
-                    switch (entrance.Orientation)
-                    {
-                        case Orientation.HORIZONTAL:
-                        case Orientation.VERTICAL:
-                            unitCost = Constants.COST_ONE;
-                            break;
-                        case Orientation.HDIAG2:
-                        case Orientation.HDIAG1:
-                        case Orientation.VDIAG1:
-                        case Orientation.VDIAG2:
-                            unitCost = (Constants.COST_ONE*34)/24;
-                            break;
-                        default:
-                            unitCost = -1;
-                            break;
-                    }
-
-                    this.AddEdge(abstractNodeId1, abstractNodeId2, unitCost, level, true);
-                    this.AddEdge(abstractNodeId2, abstractNodeId1, unitCost, level, true);
-                }
-                    break;
-                default:
-                    break;
-            }
-        }
-
         public List<Graph<AbsTilingNodeInfo, AbsTilingEdgeInfo>.Edge> GetNodeEdges(int nodeId)
         {
             var node = Graph.GetNode(AbsNodeIds[nodeId]);
             return node.Edges;
         }
 
-        public virtual bool PruneNode(int targetNodeId, int lastNodeId)
-        {
-            var targetNodeInfo = Graph.GetNodeInfo(targetNodeId);
-            var lastNodeInfo = Graph.GetNodeInfo(lastNodeId);
-            var targetClId = targetNodeInfo.ClusterId;
-            var lastClId = lastNodeInfo.ClusterId;
-
-            // if target node is in the same cluster as last node
-            return targetClId == lastClId;
-        }
-
-        public Cluster GetCluster(int id)
-        {
-            return Clusters[id];
-        }
-
-        private static int LocalClusterId2GlobalId(int localId, Cluster cluster, int width)
-        {
-            var localX = localId % cluster.Size.Width;
-            var localY = localId / cluster.Size.Width;
-            var result = (localY + cluster.Origin.Y) * width +
-                         (localX + cluster.Origin.X);
-            return result;
-        }
-
-        private static int GlobalId2LocalId(int globalId, Cluster cluster, int width)
-        {
-            var globalY = globalId / width;
-            var globalX = globalId % width;
-            return (globalY - cluster.Origin.Y) * cluster.Size.Width +
-                (globalX - cluster.Origin.X);
-        }
-
-        public virtual List<char> GetCharVector()
-        {
-            var result = new List<char>();
-            return result;
-        }
+        #endregion
 
         public abstract void PrintGraph();
     }

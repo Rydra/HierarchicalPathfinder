@@ -77,7 +77,7 @@ namespace HPASharp
         /// Computes the paths that lie inside the cluster, 
         /// connecting the several entrances among them
         /// </summary>
-        public void ComputePaths()
+        public void ComputeInternalPaths()
         {
             for (var j = 0; j < MAX_CLENTRANCES; j++)
             for (var i = 0; i < MAX_CLENTRANCES; i++)
@@ -110,6 +110,7 @@ namespace HPASharp
             var search = new AStar();
             var path = search.FindPath(SubTiling, start, target);
 
+            // TODO: Store the path as well, not only the cost. This will make everything faster!
             if (path.PathCost != -1) Distances[startIdx, targetIdx] = Distances[targetIdx, startIdx] = path.PathCost;
             else Distances[startIdx, targetIdx] = Distances[targetIdx, startIdx] = int.MaxValue;
 

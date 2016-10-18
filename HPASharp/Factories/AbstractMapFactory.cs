@@ -22,6 +22,11 @@ namespace HPASharp
         public int ClusterSize { get; set; }
 		public int MaxLevel { get; set; }
 
+        // Store the location of created entrances. This will help creating nodes and edges
+        public List<Entrance> Entrances { get; set; }
+        
+        public Dictionary<int, AbsTilingNodeInfo> AbstractNodes { get; set; }
+
         public AbstractMapFactory(Tiling tiling, int clusterSize, int maxLevel, EntranceStyle style)
         {
             this.ClusterSize = clusterSize;
@@ -34,7 +39,7 @@ namespace HPASharp
         public void CreateAbstractMap()
         {
             CreateEntrancesAndClusters();
-            // TODO: Here the edges are created. Honestly, I'd prefer to have them built on a per-cluster basis.
+            CreateAbstractNodes(Entrances, AbsTiling.Clusters);
             CreateEdges();
         }
 
@@ -61,12 +66,18 @@ namespace HPASharp
 
                 // add inter-cluster entrances. Obviously we should not add entrances on leftmost clusters when adding vertical entrances
 				// nor on topmost clusters when adding horizontal entrances.
-				
 	            if (top > 0)
 	            {
-		            int lastEntranceId;
-		            var entrances = CreateHorizEntrances(left, left + horizSize - 1, top - 1,
-			            AbsTiling.GetCluster(clusterX, clusterY - 1).Id, cluster.Id, entranceId, out lastEntranceId);
+	                var clusterAbove = AbsTiling.GetCluster(clusterX, clusterY - 1);
+                    int lastEntranceId;
+		            var entrances = CreateHorizEntrances(
+                        left, 
+                        left + horizSize - 1, 
+                        top - 1,
+                        clusterAbove.Id, 
+                        cluster.Id, 
+                        entranceId, 
+                        out lastEntranceId);
 		            entranceId = lastEntranceId;
 					entrancesList.AddRange(entrances);
 				}
@@ -74,30 +85,194 @@ namespace HPASharp
 	            if (left > 0)
 	            {
 					int lastEntranceId;
-					var entrances = CreateVertEntrances(top, top + vertSize - 1, left - 1,
-			        AbsTiling.GetCluster(clusterX - 1, clusterY).Id, cluster.Id, entranceId, out lastEntranceId);
+	                var clusterOnLeft = AbsTiling.GetCluster(clusterX - 1, clusterY);
+                    var entrances = CreateVertEntrances(
+                        top, 
+                        top + vertSize - 1, 
+                        left - 1,
+                        clusterOnLeft.Id, 
+                        cluster.Id, 
+                        entranceId, 
+                        out lastEntranceId);
 					entranceId = lastEntranceId;
 					entrancesList.AddRange(entrances);
 				}
             }
 
-			// The entrances we created define points that we must transform as abstract nodes of the abstract graph
-			var abstractNodes = AbsTiling.GenerateAbstractNodes(entrancesList);
-            
-            // add nodes to the abstract graph
-            foreach (var absNode in abstractNodes)
+            Entrances = entrancesList;
+        }
+
+        private void CreateAbstractNodes(List<Entrance> entrancesList, List<Cluster> clusters)
+        {
+            // The entrances we created define points that we must transform as abstract nodes of the abstract graph
+            var abstractNodes = GenerateAbstractNodes(entrancesList, clusters);
+
+            foreach (var kvp in abstractNodes)
             {
-                AbsTiling.Graph.AddNode(absNode.Id, absNode);
+                // TODO: Maybe we can find a way to remove this line of AbsNodesIds
+                AbsTiling.AbsNodeIds[kvp.Key] = kvp.Value.Id;
+                AbsTiling.Graph.AddNode(kvp.Value.Id, kvp.Value);
             }
 
-			// Create the interEdges. NOTE: SRP Violation here!
-			foreach (var entrance in entrancesList)
-			{
-				AbsTiling.CreateInterClusterEdges(entrance);
-			}
+            AbstractNodes = abstractNodes;
+        }
 
-			AbsTiling.ComputeClusterPaths();
-		}
+        public void CreateEntranceEdges(Entrance entrance, AbsType type, Dictionary<int, AbsTilingNodeInfo> absNodes)
+        {
+            int level;
+            switch (entrance.Orientation)
+            {
+                case Orientation.HORIZONTAL:
+                    level = DetermineLevel(entrance.Coord1.Y);
+                    break;
+                case Orientation.VERTICAL:
+                    level = DetermineLevel(entrance.Coord1.X);
+                    break;
+                default:
+                    level = -1;
+                    break;
+            }
+
+            var abstractNodeId1 = absNodes[entrance.Coord1Id].Id;
+            var abstractNodeId2 = absNodes[entrance.Coord2Id].Id;
+
+            switch (type)
+            {
+                case AbsType.ABSTRACT_TILE:
+                case AbsType.ABSTRACT_OCTILE_UNICOST:
+                    // Inter-edges: cost 1
+                    var absTilingEdgeInfo1 = new AbsTilingEdgeInfo(Constants.COST_ONE, level, true);
+                    var absTilingEdgeInfo2 = new AbsTilingEdgeInfo(Constants.COST_ONE, level, true);
+                    AbsTiling.Graph.AddEdge(abstractNodeId1, abstractNodeId2, absTilingEdgeInfo1);
+                    AbsTiling.Graph.AddEdge(abstractNodeId2, abstractNodeId1, absTilingEdgeInfo2);
+                    break;
+                case AbsType.ABSTRACT_OCTILE:
+                    {
+                        int unitCost;
+                        switch (entrance.Orientation)
+                        {
+                            case Orientation.HORIZONTAL:
+                            case Orientation.VERTICAL:
+                                unitCost = Constants.COST_ONE;
+                                break;
+                            case Orientation.HDIAG2:
+                            case Orientation.HDIAG1:
+                            case Orientation.VDIAG1:
+                            case Orientation.VDIAG2:
+                                unitCost = (Constants.COST_ONE * 34) / 24;
+                                break;
+                            default:
+                                unitCost = -1;
+                                break;
+                        }
+
+                        var absTilingEdgeInfo3 = new AbsTilingEdgeInfo(unitCost, level, true);
+                        var absTilingEdgeInfo4 = new AbsTilingEdgeInfo(unitCost, level, true);
+                        AbsTiling.Graph.AddEdge(abstractNodeId1, abstractNodeId2, absTilingEdgeInfo3);
+                        AbsTiling.Graph.AddEdge(abstractNodeId2, abstractNodeId1, absTilingEdgeInfo4);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private int DetermineLevel(int y)
+        {
+            var level = 1;
+            if (y % ClusterSize != 0)
+                y++;
+
+            var clusterY = y / ClusterSize;
+            while (clusterY % 2 == 0 && level < MaxLevel)
+            {
+                clusterY /= 2;
+                level++;
+            }
+
+            if (level > MaxLevel)
+                level = MaxLevel;
+            return level;
+        }
+
+        /// <summary>
+        /// Create the asbtract nodes of this graph (composed by the centers of
+        /// the entrances between clusters)
+        /// </summary>
+        private Dictionary<int, AbsTilingNodeInfo> GenerateAbstractNodes(List<Entrance> entrances, List<Cluster> clusters)
+        {
+            var abstractNodeId = 0;
+            var absNodes = new Dictionary<int, AbsTilingNodeInfo>();
+            foreach (var entrance in entrances)
+            {
+                var cluster1 = clusters[entrance.Cluster1Id];
+                var cluster2 = clusters[entrance.Cluster2Id];
+
+                // Determine the level of this entrance. It is given
+                // by its orientation and its coordinates
+                int level;
+                switch (entrance.Orientation)
+                {
+                    case Orientation.HORIZONTAL:
+                        level = DetermineLevel(entrance.Coord1.Y);
+                        break;
+                    case Orientation.VERTICAL:
+                        level = DetermineLevel(entrance.Coord1.X);
+                        break;
+                    default:
+                        level = -1;
+                        break;
+                }
+
+                // use absNodes as a local var to check quickly if a node with the same centerId
+                // has been created before
+                AbsTilingNodeInfo absNode;
+                if (!absNodes.TryGetValue(entrance.Coord1Id, out absNode))
+                {
+                    cluster1.AddEntrance(new EntrancePoint(
+                                               abstractNodeId,
+                                               -1, // real value set in addEntrance()
+                                               new Position(entrance.Coord1.X - cluster1.Origin.X, entrance.Coord1.Y - cluster1.Origin.Y)));
+
+                    // NOTE: Provoking a side-effect... not good
+                    var node = new AbsTilingNodeInfo(abstractNodeId, level,
+                                 entrance.Cluster1Id,
+                                 new Position(entrance.Coord1.X, entrance.Coord1.Y),
+                                 entrance.Coord1Id, cluster1.GetNrEntrances() - 1);
+                    absNodes[entrance.Coord1Id] = node;
+
+                    abstractNodeId++;
+                }
+                else
+                {
+                    if (level > absNode.Level)
+                        absNode.Level = level;
+                }
+
+                if (!absNodes.TryGetValue(entrance.Coord2Id, out absNode))
+                {
+                    cluster2.AddEntrance(new EntrancePoint(
+                                               abstractNodeId,
+                                               -1, // real value set in addEntrance()
+                                               new Position(entrance.Coord2.X - cluster2.Origin.X, entrance.Coord2.Y - cluster2.Origin.Y)));
+
+                    var node = new AbsTilingNodeInfo(abstractNodeId, level,
+                                 entrance.Cluster2Id,
+                                 new Position(entrance.Coord2.X, entrance.Coord2.Y),
+                                 entrance.Coord2Id, cluster2.GetNrEntrances() - 1);
+                    absNodes[entrance.Coord2Id] = node;
+
+                    abstractNodeId++;
+                }
+                else
+                {
+                    if (level > absNode.Level)
+                        absNode.Level = level;
+                }
+            }
+
+            return absNodes;
+        }
 
         private void CreateIntraClusterEdges(Cluster cluster)
         {
@@ -125,12 +300,22 @@ namespace HPASharp
 
         private void CreateEdges()
         {
-	        foreach (var cluster in AbsTiling.Clusters)
+            // Create the entrances between each cluster entrance
+            foreach (var entrance in Entrances)
+            {
+                CreateEntranceEdges(entrance, AbsTiling.Type, AbstractNodes);
+            }
+
+            foreach (var cluster in AbsTiling.Clusters)
 	        {
-		        CreateIntraClusterEdges(cluster);
+                // Computes the paths that lie inside every cluster, 
+                // connecting the several entrances among them
+                cluster.ComputeInternalPaths();
+                CreateIntraClusterEdges(cluster);
 	        }
 			
-            AbsTiling.CreateEdges();
+            // TODO: Review this one!
+            AbsTiling.CreateHierarchicalEdges();
         }
 
         // TODO: Together with Vert Entrances, refactor the code, they are too similar!

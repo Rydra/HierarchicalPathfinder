@@ -42,6 +42,7 @@ namespace HPASharp
                 {
                     // If the node is an interCluster edge and the edge is of a lower level than
                     // the current level, we have to ignore it
+                    // This means we can use higher level interEdges.
                     if (edgeInfo.Level < this.currentLevel) continue;
                 }
                 else
@@ -260,13 +261,8 @@ namespace HPASharp
         #endregion
 
         #region Edges
-
-        public override void CreateEdges()
-        {
-            CreateHierarchicalEdges();
-        }
-
-        private void CreateHierarchicalEdges()
+        
+        public override void CreateHierarchicalEdges()
         {
             for (var level = 2; level <= MaxLevel; level++)
             {
