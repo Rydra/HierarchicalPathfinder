@@ -21,12 +21,12 @@ namespace HPASharp.Search
             return path;
         }
 
-        public List<int> PerformSearch(HierarchicalMap map, int startNodeId, int targetNodeId, int level, bool mainSearch)
+        public List<int> PerformSearch(HierarchicalMap map, int startNodeId, int targetNodeId, int level, bool searchEntireMap)
         {
             var search = new AStar();
             map.SetCurrentLevel(level);
             var nodeInfo = map.Graph.GetNodeInfo(startNodeId);
-            if (mainSearch)
+            if (searchEntireMap)
                 map.SetCurrentCluster(nodeInfo.Position, map.MaxLevel + 1);
             else
                 map.SetCurrentCluster(nodeInfo.Position, level + 1);

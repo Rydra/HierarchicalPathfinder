@@ -33,23 +33,14 @@ namespace HPASharp
         public override IEnumerable<Neighbour> GetNeighbours(int nodeId)
         {
             var node = Graph.GetNode(nodeId);
-            var edges = node.Edges;
+			// Only pick those edges that belong to the current or greater level
+			// E.g. If the map is at level 3, we want level 3 edges
+			// For performance, there should be a dictionary list with the levels
+	        var edges = node.Edges.Where(e => e.Info.Level == this.currentLevel).ToList();
             var result = new List<Neighbour>(edges.Count);
             foreach (var edge in edges)
             {
                 var edgeInfo = edge.Info;
-                if (edgeInfo.IsInterEdge)
-                {
-                    // If the node is an interCluster edge and the edge is of a lower level than
-                    // the current level, we have to ignore it
-                    // This means we can use higher level interEdges.
-                    if (edgeInfo.Level < this.currentLevel) continue;
-                }
-                else
-                {
-                    // If it is NOT an interCluster edge (local edge for example) but that edge belongs to another level... ignore it
-                    if (edgeInfo.Level != this.currentLevel) continue;
-                }
 
                 var targetNodeId = edge.TargetNodeId;
                 var targetNodeInfo = Graph.GetNodeInfo(targetNodeId);
@@ -57,7 +48,11 @@ namespace HPASharp
                 // NOTE: Sure this if happens? Previous validations should ensure that the edge is connected to
                 // a node of the same level. Also... why are we checking if the target node is in the current Cluster?
                 // We should be able to navigate to that edge!
-                if (targetNodeInfo.Level < this.currentLevel || !this.NodeInCurrentCluster(targetNodeInfo))
+				//
+				// NOTE2: Now I understand why we need to check if the node is in the current cluster. That's because
+				// we are dealing with the complete map, and we need a way to force that we are inside a specific cluster,
+				// specially when computing the distances of intra-cluster, higher level entrance points.
+                if (!this.NodeInCurrentCluster(targetNodeInfo))
                     continue;
 
                 result.Add(new Neighbour(targetNodeId, edgeInfo.Cost));
@@ -200,6 +195,7 @@ namespace HPASharp
             {
                 // The offset determines the distances that will separate clusters in this new level
                 int offset = GetOffset(level);
+				// We set 1 level lower so that when we do searches we get
                 this.currentLevel = level - 1;
 
                 // for each cluster
