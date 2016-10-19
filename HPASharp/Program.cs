@@ -14,13 +14,13 @@ namespace HPASharp
 
 	public class Program
     {
-		public class Passability : IPassability
+		public class FakePassability : IPassability
 		{
 			float obstaclePercentage = 0.20f;
 
 			private bool[,] obstacles;
 
-			public Passability(int width, int height)
+			public FakePassability(int width, int height)
 			{
 				obstacles = new bool[width,height];
 				CreateObstacles(obstaclePercentage, width, height, true);
@@ -101,7 +101,7 @@ namespace HPASharp
             var maxLevel = 2;
 
             // Prepare the abstract graph beforehand
-			IPassability passability = new Passability(width, height);
+			IPassability passability = new FakePassability(width, height);
             var tiling = TilingFactory.CreateTiling(width, height, passability);
             var wizard = new AbstractMapFactory();
             wizard.CreateAbstractMap(tiling, clusterSize, maxLevel, EntranceStyle.END_ENTRANCE);
@@ -146,7 +146,7 @@ namespace HPASharp
             var smoother = new SmoothWizard(concreteMap, path);
             path = smoother.SmoothPath();
 
-			return path.Select(n => n.Level == 0 ? concreteMap.Graph.GetNodeInfo(n.Id).Position : abstractMap.Graph.GetNodeInfo(n.Id).Position).ToList();
+			return path.Select(n => n.Level == 0 ? concreteMap.Graph.GetNodeInfo(n.Id).Position : abstractMap.AbstractGraph.GetNodeInfo(n.Id).Position).ToList();
         }
 
 	    private static List<Position> RegularSearch(ConcreteMap concreteMap, AbstractMap abstractMap, int clusterSize)
@@ -190,7 +190,7 @@ namespace HPASharp
                     if (x % clusterSize == 0) Console.Write('|');
 
                     var nodeId = concreteMap.GetNodeIdFromPos(x, y);
-                    var hasAbsNode = abstractGraph.Graph.Nodes.FirstOrDefault(n => n.Info.CenterId == nodeId);
+                    var hasAbsNode = abstractGraph.AbstractGraph.Nodes.FirstOrDefault(n => n.Info.CenterId == nodeId);
                     
                     if (hasAbsNode != null)
                         switch (hasAbsNode.Info.Level)

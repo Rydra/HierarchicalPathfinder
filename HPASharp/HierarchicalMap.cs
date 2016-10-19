@@ -32,7 +32,7 @@ namespace HPASharp
         /// </summary>
         public override IEnumerable<Neighbour> GetNeighbours(int nodeId)
         {
-            var node = Graph.GetNode(nodeId);
+            var node = AbstractGraph.GetNode(nodeId);
             var edges = node.Edges;
             var result = new List<Neighbour>(edges.Count);
             foreach (var edge in edges)
@@ -52,7 +52,7 @@ namespace HPASharp
                 }
 
                 var targetNodeId = edge.TargetNodeId;
-                var targetNodeInfo = Graph.GetNodeInfo(targetNodeId);
+                var targetNodeInfo = AbstractGraph.GetNodeInfo(targetNodeId);
 
                 // NOTE: Sure this if happens? Previous validations should ensure that the edge is connected to
                 // a node of the same level. Also... why are we checking if the target node is in the current Cluster?
@@ -73,7 +73,7 @@ namespace HPASharp
         private void InsertStalHEdges(int nodeId)
         {
             var abstractNodeId = AbsNodeIds[nodeId];
-            var nodeInfo = Graph.GetNodeInfo(abstractNodeId);
+            var nodeInfo = AbstractGraph.GetNodeInfo(abstractNodeId);
             var oldLevel = nodeInfo.Level;
             nodeInfo.Level = MaxLevel;
             for (var level = oldLevel + 1; level <= MaxLevel; level++)
@@ -166,8 +166,8 @@ namespace HPASharp
 
         public bool BelongToSameCluster(int node1Id, int node2Id, int level)
         {
-            var node1Pos = Graph.GetNodeInfo(node1Id).Position;
-            var node2Pos = Graph.GetNodeInfo(node2Id).Position;
+            var node1Pos = AbstractGraph.GetNodeInfo(node1Id).Position;
+            var node2Pos = AbstractGraph.GetNodeInfo(node2Id).Position;
             var offset = GetOffset(level);
             var currentRow1 = node1Pos.Y - (node1Pos.Y % offset);
             var currentRow2 = node2Pos.Y - (node2Pos.Y % offset);
@@ -224,7 +224,7 @@ namespace HPASharp
             if (abstractNode == Constants.NO_NODE)
                 return false;
 
-            var nodeInfo1 = this.Graph.GetNodeInfo(abstractNode);
+            var nodeInfo1 = this.AbstractGraph.GetNodeInfo(abstractNode);
             if (nodeInfo1.Level < level)
                 return false;
 

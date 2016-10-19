@@ -152,11 +152,14 @@ namespace HPASharp
         /// <summary>
         /// Adds an entrance point to the cluster and returns the entrance index assigned for the point
         /// </summary>
-        public int AddEntrance(EntrancePoint entrancePoint)
+        public int AddEntrance(int abstractNodeId, Position pos)
         {
-            EntrancePoints.Add(entrancePoint);
-            var entranceLocalIdx = EntrancePoints.Count - 1;
-            EntrancePoints[EntrancePoints.Count - 1].EntranceLocalIdx = entranceLocalIdx;
+            var entranceLocalIdx = EntrancePoints.Count;
+            var localEntrance = new EntrancePoint(
+                abstractNodeId,
+                EntrancePoints.Count,
+                pos);
+            EntrancePoints.Add(localEntrance);
             return entranceLocalIdx;
         }
 

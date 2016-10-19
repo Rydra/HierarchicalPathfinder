@@ -67,7 +67,7 @@ namespace HPASharp
                 Nodes[nodeId] = new Node(nodeId, info);
         }
 
-        #region Graph updating
+        #region AbstractGraph updating
 
         public void AddEdge(int sourceNodeId, int targetNodeId,
                         EDGEINFO info)

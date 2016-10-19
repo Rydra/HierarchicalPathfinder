@@ -25,7 +25,7 @@ namespace HPASharp.Search
         {
             var search = new AStar();
             map.SetCurrentLevel(level);
-            var nodeInfo = map.Graph.GetNodeInfo(startNodeId);
+            var nodeInfo = map.AbstractGraph.GetNodeInfo(startNodeId);
             if (mainSearch)
                 map.SetCurrentCluster(nodeInfo.Position, map.MaxLevel + 1);
             else
@@ -92,8 +92,8 @@ namespace HPASharp.Search
             for (var j = 1; j < absPath.Count; j++)
             {
                 var currentAbsNodeId = absPath[j].Id;
-                var currentNodeInfo = map.Graph.GetNodeInfo(currentAbsNodeId);
-                var lastNodeInfo = map.Graph.GetNodeInfo(lastAbsNodeId);
+                var currentNodeInfo = map.AbstractGraph.GetNodeInfo(currentAbsNodeId);
+                var lastNodeInfo = map.AbstractGraph.GetNodeInfo(lastAbsNodeId);
 
                 // We cannot compute a low level path from a level which is higher than lvl 1
                 // (obvious...) therefore, ignore any non-refined path

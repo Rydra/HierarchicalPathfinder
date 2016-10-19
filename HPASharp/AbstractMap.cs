@@ -96,11 +96,11 @@ namespace HPASharp
     {
         public int Height { get; set; }
         public int Width { get; set; }
-        public Graph<AbsTilingNodeInfo, AbsTilingEdgeInfo> Graph { get; set; }
+        public Graph<AbsTilingNodeInfo, AbsTilingEdgeInfo> AbstractGraph { get; set; }
         public int ClusterSize { get; set; }
         public int MaxLevel { get; set; }
         public List<Cluster> Clusters { get; set; }
-	    public int NrNodes { get { return Graph.Nodes.Count; } }
+	    public int NrNodes { get { return AbstractGraph.Nodes.Count; } }
 
         // This list, indexed by a node id from the low level, 
         // indicates to which abstract node id it maps. It is a sparse
@@ -138,13 +138,13 @@ namespace HPASharp
                 AbsNodeIds[i] = -1;
 
             Clusters = new List<Cluster>();
-            Graph = new Graph<AbsTilingNodeInfo, AbsTilingEdgeInfo>();
+            AbstractGraph = new Graph<AbsTilingNodeInfo, AbsTilingEdgeInfo>();
         }
 
         public int GetHeuristic(int startNodeId, int targetNodeId)
         {
-            var startPos = Graph.GetNodeInfo(startNodeId).Position;
-            var targetPos = Graph.GetNodeInfo(targetNodeId).Position;
+            var startPos = AbstractGraph.GetNodeInfo(startNodeId).Position;
+            var targetPos = AbstractGraph.GetNodeInfo(targetNodeId).Position;
             var diffY = Math.Abs(startPos.Y - targetPos.Y);
             var diffX = Math.Abs(startPos.X - targetPos.X);
 
@@ -195,60 +195,61 @@ namespace HPASharp
             // to be able to restore it once we delete this STAL
             if (AbsNodeIds[nodeId] != Constants.NO_NODE)
             {
-                m_stalLevel[start] = Graph.GetNodeInfo(AbsNodeIds[nodeId]).Level;
+                m_stalLevel[start] = AbstractGraph.GetNodeInfo(AbsNodeIds[nodeId]).Level;
                 m_stalEdges[start] = GetNodeEdges(nodeId);
                 m_stalUsed[start] = true;
                 return AbsNodeIds[nodeId];
             }
 
             m_stalUsed[start] = false;
-
-            // identify the cluster
-            var cluster = this.Clusters
-                .First(cl => 
-                    cl.Origin.Y <= pos.Y && 
-                    pos.Y < cl.Origin.Y + cl.Size.Height && 
-                    cl.Origin.X <= pos.X && 
-                    pos.X < cl.Origin.X + cl.Size.Width);
+            
+            var cluster = FindClusterForPosition(pos);
 
             // create global entrance
             var absNodeId = NrNodes;
-
-            // insert local entrance to cluster and updatePaths(cluster.getNrEntrances() - 1)
-            var localEntrance = new EntrancePoint(
-                absNodeId,
-                -1,
-                new Position(pos.X - cluster.Origin.X, pos.Y - cluster.Origin.Y));
-            cluster.AddEntrance(localEntrance);
-            cluster.UpdatePaths(localEntrance.EntranceLocalIdx);
+            var localEntranceIdx = cluster.AddEntrance(absNodeId, new Position(pos.X - cluster.Origin.X, pos.Y - cluster.Origin.Y));
+            cluster.UpdatePaths(localEntranceIdx);
 
             AbsNodeIds[nodeId] = absNodeId;
 
-            // create new node to the abstract graph (to the level 1)
-            Graph.AddNode(absNodeId,
-                new AbsTilingNodeInfo(absNodeId, 1,
-                                    cluster.Id,
-                                    pos, nodeId,
-                                    cluster.GetNrEntrances() - 1));
+            var info = new AbsTilingNodeInfo(
+                absNodeId,
+                1,
+                cluster.Id,
+                pos, 
+                nodeId,
+                localEntranceIdx);
+
+            AbstractGraph.AddNode(absNodeId, info);
 
             // add new edges to the abstract graph
-            var entranceLocalIdx = localEntrance.EntranceLocalIdx;
             for (var k = 0; k < cluster.GetNrEntrances() - 1; k++)
             {
-                if (cluster.AreConnected(entranceLocalIdx, k))
+                if (cluster.AreConnected(localEntranceIdx, k))
                 {
                     this.AddEdge(
                         cluster.GetGlobalAbsNodeId(k),
-                        cluster.GetGlobalAbsNodeId(entranceLocalIdx),
-                        cluster.GetDistance(entranceLocalIdx, k));
+                        cluster.GetGlobalAbsNodeId(localEntranceIdx),
+                        cluster.GetDistance(localEntranceIdx, k));
                     this.AddEdge(
-                        cluster.GetGlobalAbsNodeId(entranceLocalIdx),
+                        cluster.GetGlobalAbsNodeId(localEntranceIdx),
                         cluster.GetGlobalAbsNodeId(k),
-                        cluster.GetDistance(k, entranceLocalIdx));
+                        cluster.GetDistance(k, localEntranceIdx));
                 }
             }
 
             return absNodeId;
+        }
+
+        private Cluster FindClusterForPosition(Position pos)
+        {
+            var cluster = this.Clusters
+                .First(cl =>
+                    cl.Origin.Y <= pos.Y &&
+                    pos.Y < cl.Origin.Y + cl.Size.Height &&
+                    cl.Origin.X <= pos.X &&
+                    pos.X < cl.Origin.X + cl.Size.Width);
+            return cluster;
         }
 
         public void RemoveStal(int nodeId, int stal)
@@ -257,10 +258,10 @@ namespace HPASharp
             {
 				// The node was an existing entrance point in the graph. Restore it with
 				// the information we kept when inserting
-                var nodeInfo = Graph.GetNodeInfo(nodeId);
+                var nodeInfo = AbstractGraph.GetNodeInfo(nodeId);
                 nodeInfo.Level = m_stalLevel[stal];
-                Graph.RemoveNodeEdges(nodeId);
-                Graph.AddNode(nodeId, nodeInfo);
+                AbstractGraph.RemoveNodeEdges(nodeId);
+                AbstractGraph.AddNode(nodeId, nodeInfo);
                 foreach (var edge in m_stalEdges[stal])
                 {
                     var targetNodeId = edge.TargetNodeId;
@@ -274,24 +275,24 @@ namespace HPASharp
             else
             {
 				// Just delete the node from the graph
-                var currentNodeInfo = Graph.GetNodeInfo(nodeId);
+                var currentNodeInfo = AbstractGraph.GetNodeInfo(nodeId);
                 var clusterId = currentNodeInfo.ClusterId;
                 var cluster = Clusters[clusterId];
                 cluster.RemoveLastEntranceRecord();
                 AbsNodeIds[currentNodeInfo.CenterId] = Constants.NO_NODE;
-                Graph.RemoveNodeEdges(nodeId);
-                Graph.RemoveLastNode();
+                AbstractGraph.RemoveNodeEdges(nodeId);
+                AbstractGraph.RemoveLastNode();
             }
         }
 
         public void AddEdge(int sourceNodeId, int destNodeId, int cost, int level = 1, bool inter = false)
         {
-            Graph.AddEdge(sourceNodeId, destNodeId, new AbsTilingEdgeInfo(cost, level, inter));
+            AbstractGraph.AddEdge(sourceNodeId, destNodeId, new AbsTilingEdgeInfo(cost, level, inter));
         }
 
         public List<Graph<AbsTilingNodeInfo, AbsTilingEdgeInfo>.Edge> GetNodeEdges(int nodeId)
         {
-            var node = Graph.GetNode(AbsNodeIds[nodeId]);
+            var node = AbstractGraph.GetNode(AbsNodeIds[nodeId]);
             return node.Edges;
         }
 

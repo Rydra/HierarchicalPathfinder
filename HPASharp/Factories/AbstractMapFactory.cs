@@ -121,7 +121,7 @@ namespace HPASharp
             {
                 // TODO: Maybe we can find a way to remove this line of AbsNodesIds
                 AbstractMap.AbsNodeIds[kvp.Key] = kvp.Value.Id;
-                AbstractMap.Graph.AddNode(kvp.Value.Id, kvp.Value);
+                AbstractMap.AbstractGraph.AddNode(kvp.Value.Id, kvp.Value);
             }
 
             AbstractNodes = abstractNodes;
@@ -153,8 +153,8 @@ namespace HPASharp
                     // Inter-edges: cost 1
                     var absTilingEdgeInfo1 = new AbsTilingEdgeInfo(Constants.COST_ONE, level, true);
                     var absTilingEdgeInfo2 = new AbsTilingEdgeInfo(Constants.COST_ONE, level, true);
-                    AbstractMap.Graph.AddEdge(abstractNodeId1, abstractNodeId2, absTilingEdgeInfo1);
-                    AbstractMap.Graph.AddEdge(abstractNodeId2, abstractNodeId1, absTilingEdgeInfo2);
+                    AbstractMap.AbstractGraph.AddEdge(abstractNodeId1, abstractNodeId2, absTilingEdgeInfo1);
+                    AbstractMap.AbstractGraph.AddEdge(abstractNodeId2, abstractNodeId1, absTilingEdgeInfo2);
                     break;
                 case AbsType.ABSTRACT_OCTILE:
                     {
@@ -178,8 +178,8 @@ namespace HPASharp
 
                         var absTilingEdgeInfo3 = new AbsTilingEdgeInfo(unitCost, level, true);
                         var absTilingEdgeInfo4 = new AbsTilingEdgeInfo(unitCost, level, true);
-                        AbstractMap.Graph.AddEdge(abstractNodeId1, abstractNodeId2, absTilingEdgeInfo3);
-                        AbstractMap.Graph.AddEdge(abstractNodeId2, abstractNodeId1, absTilingEdgeInfo4);
+                        AbstractMap.AbstractGraph.AddEdge(abstractNodeId1, abstractNodeId2, absTilingEdgeInfo3);
+                        AbstractMap.AbstractGraph.AddEdge(abstractNodeId2, abstractNodeId1, absTilingEdgeInfo4);
                     }
                     break;
                 default:
@@ -239,10 +239,9 @@ namespace HPASharp
                 AbsTilingNodeInfo absNode;
                 if (!absNodes.TryGetValue(entrance.Coord1Id, out absNode))
                 {
-                    var localEntranceIdx = cluster1.AddEntrance(new EntrancePoint(
-                                               abstractNodeId,
-                                               -1, // real value set in addEntrance()
-                                               new Position(entrance.Coord1.X - cluster1.Origin.X, entrance.Coord1.Y - cluster1.Origin.Y)));
+                    var localEntranceIdx = cluster1.AddEntrance(
+                        abstractNodeId, 
+                        new Position(entrance.Coord1.X - cluster1.Origin.X, entrance.Coord1.Y - cluster1.Origin.Y));
                     
                     var node = new AbsTilingNodeInfo(
                         abstractNodeId, 
@@ -263,10 +262,9 @@ namespace HPASharp
 
                 if (!absNodes.TryGetValue(entrance.Coord2Id, out absNode))
                 {
-                    var localEntranceIdx = cluster2.AddEntrance(new EntrancePoint(
-                                               abstractNodeId,
-                                               -1, // real value set in addEntrance()
-                                               new Position(entrance.Coord2.X - cluster2.Origin.X, entrance.Coord2.Y - cluster2.Origin.Y)));
+                    var localEntranceIdx = cluster2.AddEntrance(
+                        abstractNodeId,
+                        new Position(entrance.Coord2.X - cluster2.Origin.X, entrance.Coord2.Y - cluster2.Origin.Y));
 
                     var node = new AbsTilingNodeInfo(
                         abstractNodeId, 
@@ -299,13 +297,13 @@ namespace HPASharp
                     if (cluster.AreConnected(l, k))
                     {
 	                    var absTilingEdgeInfo1 = new AbsTilingEdgeInfo(cluster.GetDistance(l, k), 1, false);
-						AbstractMap.Graph.AddEdge(
+						AbstractMap.AbstractGraph.AddEdge(
 							cluster.GetGlobalAbsNodeId(k), 
 							cluster.GetGlobalAbsNodeId(l),
 							absTilingEdgeInfo1);
 
 						var absTilingEdgeInfo2 = new AbsTilingEdgeInfo(cluster.GetDistance(k, l), 1, false);
-						AbstractMap.Graph.AddEdge(
+						AbstractMap.AbstractGraph.AddEdge(
 							cluster.GetGlobalAbsNodeId(l), 
 							cluster.GetGlobalAbsNodeId(k),
 							absTilingEdgeInfo2);
