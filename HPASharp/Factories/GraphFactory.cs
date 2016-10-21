@@ -17,6 +17,11 @@
 			 return graph.GetNode(GetNodeIdFromPos(x, y,width));
 		}
 		
+		public static int GetNodeIdFromPos(int left, int top, int width)
+		{
+			return top * width + left;
+		}
+
 		private static void AddEdge(Graph<TilingNodeInfo, TilingEdgeInfo> graph, int nodeId, int x, int y, int width, int height, bool isDiag = false)
 		{
 			if (y < 0 || y >= height || x < 0 || x >= width)
@@ -82,11 +87,6 @@
 
 					graph.AddNode(nodeId, info);
 				}
-		}
-
-		public static int GetNodeIdFromPos(int left, int top, int width)
-		{
-			return top * width + left;
 		}
 	}
 }

@@ -47,7 +47,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AbstractMap.cs" />
+    <Compile Include="HierarchicalMap.cs" />
     <Compile Include="Factories\Entrance.cs" />
     <Compile Include="Factories\GraphFactory.cs" />
     <Compile Include="Helpers.cs" />
@@ -56,7 +56,6 @@
     <Compile Include="Cluster.cs" />
     <Compile Include="Infrastructure\Constants.cs" />
     <Compile Include="Graph\Graph.cs" />
-    <Compile Include="HierarchicalMap.cs" />
     <Compile Include="Infrastructure\Rectangle.cs" />
     <Compile Include="IPassability.cs" />
     <Compile Include="PathNode.cs" />

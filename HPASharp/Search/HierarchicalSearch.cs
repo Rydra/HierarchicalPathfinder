@@ -109,16 +109,17 @@ namespace HPASharp.Search
                 if (eClusterId == leClusterId && calculatedPaths < maxPathsToCalculate)
                 {
                     // insert the local solution into the global one
-                    var cluster = map.GetCluster(eClusterId);
-                    var localpos1 = cluster.GetLocalPosition(lastNodeInfo.LocalIdxCluster);
-                    var localpos2 = cluster.GetLocalPosition(currentNodeInfo.LocalIdxCluster);
-                    if (localpos1 != localpos2)
+                    // var cluster = map.GetCluster(eClusterId);
+                    //var localpos1 = cluster.GetLocalPosition(lastNodeInfo.LocalEntranceId);
+                    //var localpos2 = cluster.GetLocalPosition(currentNodeInfo.LocalEntranceId);
+                    if (lastNodeInfo.LocalEntranceId != currentNodeInfo.LocalEntranceId)
                     {
-                        var localPath = cluster.ComputePath(localpos1, localpos2)
+						var cluster = map.GetCluster(eClusterId);
+						var localPath = cluster.GetPath(lastNodeInfo.LocalEntranceId, currentNodeInfo.LocalEntranceId)
                             .Select(
-                                lp =>
+                                localId =>
                                 {
-                                    var localPoint = LocalClusterId2GlobalId(lp, cluster, width);
+                                    int localPoint = LocalClusterId2GlobalId(localId, cluster, width);
                                     return new PathNode(localPoint, 0);
                                 });
 

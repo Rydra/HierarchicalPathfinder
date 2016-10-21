@@ -47,6 +47,12 @@ namespace HPASharp
             }
         }
 
+		// We store the nodes in a list because the main operations we use
+		// in this list are additions, random accesses and very few removals (only when
+		// adding or removing nodes to perform specific searches).
+		// This list is implicitly indexed by the nodeId, which makes removing a random
+		// Node in the list quite of a mess. We could use a dictionary to ease removals,
+		// but lists and arrays are faster for random accesses, and we need performance.
         public List<Node> Nodes { get; set; }
 
         public Graph()
@@ -67,20 +73,14 @@ namespace HPASharp
                 Nodes[nodeId] = new Node(nodeId, info);
         }
 
-        #region AbstractGraph updating
+		#region AbstractGraph updating
 
-        public void AddEdge(int sourceNodeId, int targetNodeId,
-                        EDGEINFO info)
+		public void AddEdge(int sourceNodeId, int targetNodeId, EDGEINFO info)
         {
             Nodes[sourceNodeId].Edges.Add(new Edge(targetNodeId, info));
         }
         
-        public void RemoveEdge(int sourceNodeId, int targetNodeId)
-        {
-            Nodes[sourceNodeId].Edges.RemoveAll(e => e.TargetNodeId == targetNodeId);
-        }
-        
-        public void RemoveNodeEdges(int nodeId)
+        public void RemoveEdgesFromNode(int nodeId)
         {
             foreach (var edge in Nodes[nodeId].Edges)
             {
@@ -93,11 +93,6 @@ namespace HPASharp
         public void RemoveLastNode()
         {
             Nodes.RemoveAt(Nodes.Count - 1);
-        }
-
-        public void Clear()
-        {
-            Nodes.Clear();
         }
 
         #endregion
