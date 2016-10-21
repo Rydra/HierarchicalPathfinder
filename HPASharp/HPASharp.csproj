@@ -57,6 +57,7 @@
     <Compile Include="Infrastructure\Constants.cs" />
     <Compile Include="Graph\Graph.cs" />
     <Compile Include="HierarchicalMap.cs" />
+    <Compile Include="Infrastructure\Rectangle.cs" />
     <Compile Include="IPassability.cs" />
     <Compile Include="PathNode.cs" />
     <Compile Include="Program.cs" />

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using HPASharp.Factories;
+using HPASharp.Search;
 
 namespace HPASharp
 {
@@ -467,5 +468,206 @@ namespace HPASharp
             lastEntraceId = currentIdCounter;
 	        return entrances;
         }
-    }
+
+		#region STAL Operations
+
+		/// <summary>
+		/// Inserts a node and creates edges around the local points of the cluster it the
+		/// node we try to insert belongs to at each level
+		/// </summary>
+		private void InsertStalHEdges(int nodeId)
+		{
+			var abstractNodeId = AbstractMap.AbsNodeIds[nodeId];
+			var nodeInfo = AbstractMap.AbstractGraph.GetNodeInfo(abstractNodeId);
+			var oldLevel = nodeInfo.Level;
+			nodeInfo.Level = MaxLevel;
+			for (var level = oldLevel + 1; level <= MaxLevel; level++)
+			{
+				AbstractMap.SetCurrentLevel(level - 1);
+				AbstractMap.SetCurrentCluster(nodeInfo.Position, level);
+				for (var y = this.currentClusterY0; y <= this.currentClusterY1; y++)
+					for (var x = this.currentClusterX0; x <= this.currentClusterX1; x++)
+					{
+						var nodeId2 = y * AbstractMap.Width + x;
+						var abstractNodeId2 = AbstractMap.AbsNodeIds[nodeId2];
+						this.AddEdgesBetweenAbstractNodes(abstractNodeId, abstractNodeId2, level);
+					}
+			}
+		}
+
+		public override int InsertSTAL(Position pos, int start)
+		{
+			var nodeId = pos.Y * Width + pos.X;
+			var result = InsertStal(nodeId, pos, start);
+			InsertStalHEdges(nodeId);
+			return result;
+		}
+
+		#endregion
+
+		#region Create Hierarchical Edges
+
+		// TODO: This can become a HUGE refactor. Basically what this code does is creating entrances
+		// abstract nodes and edges like in the previous case where we created entrances and all that kind of stuff.
+		// We could leverage this new domain knowledge into the code and get rid of this shit with 
+		// a way better design (for instance creating multilevel clusters could be a good approach)!!!!!!!
+		public void CreateHierarchicalEdges()
+		{
+			for (var level = 2; level <= MaxLevel; level++)
+			{
+				// The offset determines the distances that will separate clusters in this new level
+				int offset = GetOffset(level);
+				AbstractMap.SetCurrentLevel(level - 1);
+
+				// for each cluster
+				// TODO: Maybe we could refactor this so that instead of having to deal with levels,
+				// offsets and all this mess... we could create multiple clusters and each cluster have a level.
+				// PD: How amazing it is to pick an old project after leaving it in the shelf for some time,
+				// you think extremely different in terms of design and see things from another perspective
+				for (var top = 0; top < AbstractMap.Height; top += offset)
+					for (var left = 0; left < AbstractMap.Width; left += offset)
+					{
+						// define the bounding box of the current cluster we want to analize to create HEdges
+						AbstractMap.SetCurrentCluster(left, top, offset);
+						this.ConstructVerticalToVerticalEdges(level);
+						this.ConstructHorizontalToHorizontalEdges(level);
+						this.ConstructHorizontalToVerticalEdges(level);
+					}
+			}
+		}
+
+		private bool IsValidAbstractNode(int abstractNode, int level)
+		{
+			if (abstractNode == Constants.NO_NODE)
+				return false;
+
+			var nodeInfo1 = AbstractMap.AbstractGraph.GetNodeInfo(abstractNode);
+			if (nodeInfo1.Level < level)
+				return false;
+
+			return true;
+		}
+
+		private void ConstructHorizontalToVerticalEdges(int level)
+		{
+			// combine nodes on horizontal and vertical edges:
+			// This runs over each cell of the 2 horizontal edges against the vertical edges
+			var clusterRectangle = AbstractMap.GetCurrentClusterRectangle();
+			var height = clusterRectangle.Size.Height;
+			var width = clusterRectangle.Size.Width;
+			var currentClusterY0 = clusterRectangle.Origin.Y;
+			var currentClusterY1 = clusterRectangle.Origin.Y + clusterRectangle.Size.Height;
+			var currentClusterX0 = clusterRectangle.Origin.X + clusterRectangle.Size.Width;
+			var currentClusterX1 = clusterRectangle.Origin.X + clusterRectangle.Size.Width;
+
+			for (var y1 = currentClusterY0; y1 <= currentClusterY1; y1 += height)
+				for (var x1 = currentClusterX0 + 1; x1 < currentClusterX1; x1++)
+				{
+					var nodeId1 = y1 * AbstractMap.Width + x1;
+					var absNodeId1 = AbstractMap.AbsNodeIds[nodeId1];
+					if (!this.IsValidAbstractNode(absNodeId1, level))
+						continue;
+
+					for (var y2 = currentClusterY0 + 1; y2 < currentClusterY1; y2++)
+						for (var x2 = currentClusterX0; x2 <= currentClusterX1; x2 += width)
+						{
+							var nodeId2 = y2 * AbstractMap.Width + x2;
+							var absNodeId2 = AbstractMap.AbsNodeIds[nodeId2];
+							this.AddEdgesBetweenAbstractNodes(absNodeId1, absNodeId2, level);
+						}
+				}
+		}
+
+		private void ConstructHorizontalToHorizontalEdges(int level)
+		{
+			// combine nodes on horizontal edges:
+			// This runs over each cell of the 2 horizontal edges against itself (therefore trying to establish
+			// edges on only horizontal edges)
+			
+			var clusterRectangle = AbstractMap.GetCurrentClusterRectangle();
+			var height = clusterRectangle.Size.Height;
+			var currentClusterY0 = clusterRectangle.Origin.Y;
+			var currentClusterY1 = clusterRectangle.Origin.Y + clusterRectangle.Size.Height;
+			var currentClusterX0 = clusterRectangle.Origin.X + clusterRectangle.Size.Width;
+			var currentClusterX1 = clusterRectangle.Origin.X + clusterRectangle.Size.Width;
+			
+			for (var y1 = currentClusterY0; y1 <= currentClusterY1; y1 += height)
+				for (var x1 = currentClusterX0; x1 <= currentClusterX1; x1++)
+				{
+					var nodeId1 = y1 * AbstractMap.Width + x1;
+					var absNodeId1 = AbstractMap.AbsNodeIds[nodeId1];
+					if (!this.IsValidAbstractNode(absNodeId1, level))
+						continue;
+
+					for (var y2 = currentClusterY0; y2 <= currentClusterY1; y2 += height)
+						for (var x2 = currentClusterX0; x2 <= currentClusterX1; x2++)
+						{
+							var nodeId2 = y2 * AbstractMap.Width + x2;
+							if (nodeId1 >= nodeId2)
+								continue;
+
+							var absNodeId2 = AbstractMap.AbsNodeIds[nodeId2];
+							this.AddEdgesBetweenAbstractNodes(absNodeId1, absNodeId2, level);
+						}
+				}
+		}
+
+		private void ConstructVerticalToVerticalEdges(int level)
+		{
+			// combine nodes on vertical edges:
+			// This runs over each cell of the 2 vertical edges
+
+			var clusterRectangle = AbstractMap.GetCurrentClusterRectangle();
+			var width = clusterRectangle.Size.Width;
+			var currentClusterY0 = clusterRectangle.Origin.Y;
+			var currentClusterY1 = clusterRectangle.Origin.Y + clusterRectangle.Size.Height;
+			var currentClusterX0 = clusterRectangle.Origin.X + clusterRectangle.Size.Width;
+			var currentClusterX1 = clusterRectangle.Origin.X + clusterRectangle.Size.Width;
+
+			for (var y1 = currentClusterY0; y1 <= currentClusterY1; y1++)
+				for (var x1 = currentClusterX0; x1 <= currentClusterX1; x1 += width)
+				{
+					var nodeId1 = y1 * AbstractMap.Width + x1;
+					var absNodeId1 = AbstractMap.AbsNodeIds[nodeId1];
+					if (!this.IsValidAbstractNode(absNodeId1, level))
+						continue;
+
+					for (var y2 = currentClusterY0; y2 <= currentClusterY1; y2++)
+						for (var x2 = currentClusterX0; x2 <= currentClusterX1; x2 += width)
+						{
+							// Only analize the points that lie forward to the current point we are analizing (in front of y1,x1)
+							var nodeId2 = y2 * AbstractMap.Width + x2;
+							if (nodeId1 >= nodeId2)
+								continue;
+
+							var absNodeId2 = AbstractMap.AbsNodeIds[nodeId2];
+							this.AddEdgesBetweenAbstractNodes(absNodeId1, absNodeId2, level);
+						}
+				}
+		}
+
+		/// <summary>
+		/// Adds an edge between two abstract nodes for a given level
+		/// </summary>
+		private void AddEdgesBetweenAbstractNodes(int absNodeId1, int absNodeId2, int level)
+		{
+			if (absNodeId1 == absNodeId2 || !this.IsValidAbstractNode(absNodeId2, level))
+				return;
+
+			var search = new AStar();
+			var path = search.FindPath(AbstractMap, absNodeId1, absNodeId2);
+			if (path.PathCost >= 0)
+			{
+				AbstractMap.AddEdge(absNodeId1, absNodeId2, path.PathCost, level, false);
+				AbstractMap.AddEdge(absNodeId2, absNodeId1, path.PathCost, level, false);
+			}
+		}
+
+		public int GetOffset(int level)
+		{
+			return ClusterSize * (1 << (level - 1));
+		}
+
+		#endregion
+	}
 }

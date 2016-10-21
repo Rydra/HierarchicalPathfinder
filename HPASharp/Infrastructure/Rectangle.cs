@@ -1,27 +1,23 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Net.NetworkInformation;
 
 namespace HPASharp.Infrastructure
 {
-    public struct Rectangle
-    {
-        public int Top;
+	public struct Rectangle
+	{
+		public Position Origin;
+		public Size Size;
 
-        public int Bottom;
+		public Rectangle(Position origin, Size size)
+		{
+			Origin = origin;
+			Size = size;
+		}
 
-        public int Left;
-
-        public int Right;
-
-        public Rectangle(int top, int bottom, int left, int right)
-        {
-            Top = top;
-            Bottom = bottom;
-            Left = left;
-            Right = right;
-        }
-    }
+		public Rectangle(int x0, int x1, int y0, int y1)
+		{
+			Origin = new Position(x0, y0);
+			Size = new Size(Math.Abs(x1 - x0), Math.Abs(y1 - y0));
+		}
+	}
 }

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HPASharp.Infrastructure;
 
 namespace HPASharp
 {
@@ -301,6 +302,13 @@ namespace HPASharp
             return Clusters[id];
         }
 
-        #endregion
+	    public abstract void SetCurrentCluster(Position pos, int level);
+
+	    public abstract void SetCurrentCluster(int x, int y, int offset);
+
+	    #endregion
+
+	    public abstract void SetCurrentLevel(int level);
+	    public abstract Rectangle GetCurrentClusterRectangle();
     }
 }
