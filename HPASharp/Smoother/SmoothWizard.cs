@@ -80,7 +80,7 @@ namespace HPASharp.Smoother
                 // This loops decides which is the next node of the path to consider in the next iteration (the j)
                 for (var dir = (int)Direction.NORTH; dir <= (int)Direction.NW; dir++)
                 {
-                    if (this.concreteMap.TileType == TileType.TILE && dir > (int)Direction.WEST)
+                    if (this.concreteMap.TileType == TileType.Tile && dir > (int)Direction.WEST)
                         break;
 
                     var seenPathNode = AdvanceThroughDirection(InitPath[j].Id, dir);
@@ -162,7 +162,7 @@ namespace HPASharp.Smoother
             var x = nodeInfo.Position.X;
 
 			var tilingGraph = this.concreteMap.Graph;
-			Func<int, int, Graph<TilingNodeInfo, TilingEdgeInfo>.Node> getNode =
+			Func<int, int, Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node> getNode =
 				(top, left) => tilingGraph.GetNode(this.concreteMap.GetNodeIdFromPos(top, left));
 			switch ((Direction)direction)
             {

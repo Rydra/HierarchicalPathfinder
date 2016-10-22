@@ -16,7 +16,7 @@ namespace HPAsharp.Tests
 		public void CreateTilingTest()
 		{
 			var passability = new Mock<IPassability>();
-			var tiling = new ConcreteMap(TileType.OCTILE, 10, 10, passability.Object);
+			var tiling = new ConcreteMap(TileType.Octile, 10, 10, passability.Object);
 			
 		}
     }

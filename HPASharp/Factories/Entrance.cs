@@ -38,14 +38,14 @@ namespace HPASharp.Factories
                 int x;
                 switch (Orientation)
                 {
-                    case Orientation.HORIZONTAL:
-                    case Orientation.HDIAG2:
+                    case Orientation.Horizontal:
+                    case Orientation.Hdiag2:
                         x = this.Coord1.X;
                         break;
-                    case Orientation.VERTICAL:
-                    case Orientation.VDIAG2:
-                    case Orientation.VDIAG1:
-                    case Orientation.HDIAG1:
+                    case Orientation.Vertical:
+                    case Orientation.Vdiag2:
+                    case Orientation.Vdiag1:
+                    case Orientation.Hdiag1:
                         x = this.Coord1.X + 1;
                         break;
                     default:
@@ -57,14 +57,14 @@ namespace HPASharp.Factories
                 int y;
                 switch (Orientation)
                 {
-                    case Orientation.HORIZONTAL:
-                    case Orientation.HDIAG1:
-                    case Orientation.HDIAG2:
-                    case Orientation.VDIAG1:
+                    case Orientation.Horizontal:
+                    case Orientation.Hdiag1:
+                    case Orientation.Hdiag2:
+                    case Orientation.Vdiag1:
                         y = this.Coord1.Y + 1;
                         break;
-                    case Orientation.VERTICAL:
-                    case Orientation.VDIAG2:
+                    case Orientation.Vertical:
+                    case Orientation.Vdiag2:
                         y = this.Coord1.Y;
                         break;
                     default:
@@ -77,6 +77,32 @@ namespace HPASharp.Factories
             }
         }
 
+        public Entrance(int id, int cl1Id, int cl2Id, Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node srcNode, Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node destNode, Orientation orientation)
+        {
+            Id = id;
+            Cluster1Id = cl1Id;
+            Cluster2Id = cl2Id;
+
+            var center1Col = srcNode.Info.Position.X;
+            var center1Row = srcNode.Info.Position.Y;
+
+            int center1y, center1x;
+            if (orientation == Orientation.Hdiag2)
+                center1x = center1Col + 1;
+            else
+                center1x = center1Col;
+
+            if (orientation == Orientation.Vdiag2)
+                center1y = center1Row + 1;
+            else
+                center1y = center1Row;
+
+            this.Coord1 = new Position(center1x, center1y);
+            this.Coord1Id = srcNode.NodeId;
+            this.Coord2Id = destNode.NodeId;
+            Orientation = orientation;
+        }
+
         public Entrance(int id, int cl1Id, int cl2Id, int center1Row, int center1Col, int coord1Id, int coord2Id, Orientation orientation)
         {
             Id = id;
@@ -84,12 +110,12 @@ namespace HPASharp.Factories
             Cluster2Id = cl2Id;
 
             int center1y, center1x;
-            if (orientation == Orientation.HDIAG2)
+            if (orientation == Orientation.Hdiag2)
                 center1x = center1Col + 1;
             else
                 center1x = center1Col;
 
-            if (orientation == Orientation.VDIAG2)
+            if (orientation == Orientation.Vdiag2)
                 center1y = center1Row + 1;
             else
                 center1y = center1Row;

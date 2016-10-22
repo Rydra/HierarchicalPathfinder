@@ -23,13 +23,13 @@ namespace HPASharp
     }
 
     // implements edges in the abstract graph
-    public class AbsTilingEdgeInfo
+    public class AbtractEdgeInfo
     {
         public int Cost { get; set; }
         public int Level { get; set; }
         public bool IsInterEdge { get; set; }
 
-        public AbsTilingEdgeInfo(int cost, int level = 1, bool inter = true)
+        public AbtractEdgeInfo(int cost, int level = 1, bool inter = true)
         {
             Cost = cost;
             Level = level;
@@ -47,7 +47,7 @@ namespace HPASharp
     }
 
     // implements nodes in the abstract graph
-    public class AbsTilingNodeInfo
+    public class AbstractNodeInfo
     {
         public int Id { get; set; }
         public Position Position { get; set; }
@@ -56,7 +56,7 @@ namespace HPASharp
         public int Level { get; set; }
         public int LocalEntranceId { get; set; }
 
-        public AbsTilingNodeInfo(int id, int level, int clId,
+        public AbstractNodeInfo(int id, int level, int clId,
                     Position position, int centerId,
                     int localEntranceId)
         {
@@ -97,7 +97,7 @@ namespace HPASharp
     {
         public int Height { get; set; }
         public int Width { get; set; }
-        public Graph<AbsTilingNodeInfo, AbsTilingEdgeInfo> AbstractGraph { get; set; }
+        public Graph<AbstractNodeInfo, AbtractEdgeInfo> AbstractGraph { get; set; }
         public int ClusterSize { get; set; }
         public int MaxLevel { get; set; }
         public List<Cluster> Clusters { get; set; }
@@ -124,13 +124,13 @@ namespace HPASharp
         {
             switch(tileType)
             {
-                case TileType.TILE:
+                case TileType.Tile:
                     Type = AbsType.ABSTRACT_TILE;
                     break;
-                case TileType.OCTILE:
+                case TileType.Octile:
                     Type = AbsType.ABSTRACT_OCTILE;
                     break;
-                case TileType.OCTILE_UNICOST:
+                case TileType.OctileUnicost:
                     Type = AbsType.ABSTRACT_OCTILE_UNICOST;
                     break;
             }
@@ -149,7 +149,7 @@ namespace HPASharp
                 AbsNodeIds[i] = -1;
 
             Clusters = new List<Cluster>();
-            AbstractGraph = new Graph<AbsTilingNodeInfo, AbsTilingEdgeInfo>();
+            AbstractGraph = new Graph<AbstractNodeInfo, AbtractEdgeInfo>();
         }
 
         public int GetHeuristic(int startNodeId, int targetNodeId)
@@ -195,10 +195,10 @@ namespace HPASharp
 
         public void AddEdge(int sourceNodeId, int destNodeId, int cost, int level = 1, bool inter = false)
         {
-            AbstractGraph.AddEdge(sourceNodeId, destNodeId, new AbsTilingEdgeInfo(cost, level, inter));
+            AbstractGraph.AddEdge(sourceNodeId, destNodeId, new AbtractEdgeInfo(cost, level, inter));
         }
 
-        public List<Graph<AbsTilingNodeInfo, AbsTilingEdgeInfo>.Edge> GetNodeEdges(int nodeId)
+        public List<Graph<AbstractNodeInfo, AbtractEdgeInfo>.Edge> GetNodeEdges(int nodeId)
         {
             var node = AbstractGraph.GetNode(AbsNodeIds[nodeId]);
             return node.Edges;

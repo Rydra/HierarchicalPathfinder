@@ -9,12 +9,12 @@ namespace HPASharp
         {
             switch (tileType)
             {
-                case TileType.HEX:
+                case TileType.Hex:
                     return 6;
-                case TileType.OCTILE:
-                case TileType.OCTILE_UNICOST:
+                case TileType.Octile:
+                case TileType.OctileUnicost:
                     return 8;
-                case TileType.TILE:
+                case TileType.Tile:
                     return 4;
             }
 

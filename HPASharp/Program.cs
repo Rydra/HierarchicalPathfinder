@@ -1,16 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using HPASharp.Factories;
 using HPASharp.Search;
 using HPASharp.Smoother;
 
 namespace HPASharp
 {
 	using System.Diagnostics;
-	using System.Net.NetworkInformation;
-	using System.Security.Cryptography.X509Certificates;
 
 	public class Program
     {
@@ -97,7 +94,7 @@ namespace HPASharp
 		private static readonly int Height = 70;
 		private static readonly int Width = 70;
 		private static readonly int ClusterSize = 8;
-		private static readonly int MaxLevel = 1;
+		private static readonly int MaxLevel = 2;
 		private static readonly Position StartPosition = new Position(1, 0);
 		private static readonly Position EndPosition = new Position(69, 69);
 
@@ -107,7 +104,7 @@ namespace HPASharp
 			IPassability passability = new FakePassability(Width, Height);
             var tiling = TilingFactory.CreateTiling(Width, Height, passability);
             var wizard = new AbstractMapFactory();
-			wizard.CreateHierarchicalMap(tiling, ClusterSize, MaxLevel, EntranceStyle.END_ENTRANCE);
+			wizard.CreateHierarchicalMap(tiling, ClusterSize, MaxLevel, EntranceStyle.EndEntrance);
 			var absTiling = wizard.HierarchicalMap;
 			var sw = Stopwatch.StartNew();
             var path1 = RegularSearch(tiling);
@@ -157,7 +154,7 @@ namespace HPASharp
 	    private static List<Position> RegularSearch(ConcreteMap concreteMap)
 	    {
 			var tilingGraph = concreteMap.Graph;
-			Func<int, int, Graph<TilingNodeInfo, TilingEdgeInfo>.Node> getNode =
+			Func<int, int, Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node> getNode =
 				(top, left) => tilingGraph.GetNode(concreteMap.GetNodeIdFromPos(top, left));
 
 			// Regular pathfinding

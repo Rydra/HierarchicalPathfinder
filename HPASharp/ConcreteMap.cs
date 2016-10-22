@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using HPASharp.Factories;
 
 namespace HPASharp
 {
-    public class TilingEdgeInfo
+    public class ConcreteEdgeInfo
     {
-        public TilingEdgeInfo(int cost)
+        public ConcreteEdgeInfo(int cost)
         {
             Cost = cost;
         }
@@ -17,9 +15,9 @@ namespace HPASharp
         public int Cost { get; set; }
     }
     
-    public class TilingNodeInfo
+    public class ConcreteNodeInfo
     {
-        public TilingNodeInfo(bool isObstacle, int cost, Position position)
+        public ConcreteNodeInfo(bool isObstacle, int cost, Position position)
         {
             IsObstacle = isObstacle;
             Position = position;
@@ -33,15 +31,12 @@ namespace HPASharp
 
     public enum TileType
     {
-        HEX,
-
+        Hex,
         /** Octiles with cost 1 to adjacent and sqrt(2) to diagonal. */
-        OCTILE,
-
+        Octile,
         /** Octiles with uniform cost 1 to adjacent and diagonal. */
-        OCTILE_UNICOST,
-
-        TILE
+        OctileUnicost,
+        Tile
     }
 
     public class ConcreteMap : IMap
@@ -56,7 +51,7 @@ namespace HPASharp
 
         public int MaxEdges { get; set; }
 
-        public Graph<TilingNodeInfo, TilingEdgeInfo> Graph { get; set; }
+        public Graph<ConcreteNodeInfo, ConcreteEdgeInfo> Graph { get; set; }
 
         public ConcreteMap(TileType tileType, int width, int height, IPassability passability)
         {
@@ -87,16 +82,16 @@ namespace HPASharp
 
         private void Init(TileType tileType, int width, int height)
         {
-            this.TileType = tileType;
-            this.MaxEdges = Helpers.GetMaxEdges(tileType);
-            this.Height = height;
-            this.Width = width;
-            this.Graph = GraphFactory.CreateGraph(width, height, this.Passability);
+            TileType = tileType;
+            MaxEdges = Helpers.GetMaxEdges(tileType);
+            Height = height;
+            Width = width;
+            Graph = GraphFactory.CreateGraph(width, height, Passability);
         }
 
-	    public int NrNodes { get { return Width * Height; } }
+	    public int NrNodes => Width * Height;
 
-	    public int GetNodeIdFromPos(int x, int y)
+        public int GetNodeIdFromPos(int x, int y)
 	    {
 		    return y * Width + x;
 	    }
@@ -114,7 +109,7 @@ namespace HPASharp
             var diffY = Math.Abs(targetY - startY);
             switch (TileType)
             {
-                case TileType.HEX:
+                case TileType.Hex:
                     // Vancouver distance
                     // See P.Yap: Grid-based Path-Finding (LNAI 2338 pp.44-55)
                     {
@@ -131,9 +126,9 @@ namespace HPASharp
                         var dist = Math.Max(0, diffY - diffX / 2 - correction) + diffX;
                         return dist * 1;
                     }
-                case TileType.OCTILE_UNICOST:
+                case TileType.OctileUnicost:
                     return Math.Max(diffX, diffY) * Constants.COST_ONE;
-                case TileType.OCTILE:
+                case TileType.Octile:
                     int maxDiff;
                     int minDiff;
                     if (diffX > diffY)
@@ -149,7 +144,7 @@ namespace HPASharp
 
                     return (minDiff * Constants.COST_ONE * 34) / 24 + (maxDiff - minDiff) * Constants.COST_ONE;
 
-                case TileType.TILE:
+                case TileType.Tile:
                     return (diffX + diffY) * Constants.COST_ONE;
                 default:
                     return 0;
@@ -180,7 +175,7 @@ namespace HPASharp
         /// </summary>
         public bool CanJump(Position p1, Position p2)
         {
-            if (TileType != TileType.OCTILE && this.TileType != TileType.OCTILE_UNICOST)
+            if (TileType != TileType.Octile && this.TileType != TileType.OctileUnicost)
                 return true;
             if (Helpers.AreAligned(p1, p2))
                 return true;
