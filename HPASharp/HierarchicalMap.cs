@@ -65,7 +65,7 @@ namespace HPASharp
             ClusterId = clId;
             Position = position;
             CenterId = centerId;
-            this.LocalEntranceId = localEntranceId;
+            LocalEntranceId = localEntranceId;
         }
 
         public void PrintInfo()
@@ -107,7 +107,7 @@ namespace HPASharp
         // indicates to which abstract node id it maps. It is a sparse
         // array for quick access. For saving memory space, this could be implemented as a dictionary
         // NOTE: It is currently just used for insert and remove STAL
-        public int[] AbsNodeIds { get; set; }
+        public int[] ConcreteNodeIdToAbstractNodeIdMap { get; set; }
         public AbsType Type { get; set; }
 		
 		private int currentLevel;
@@ -144,9 +144,9 @@ namespace HPASharp
             SetType(concreteMap.TileType);
             this.Height = concreteMap.Height;
             this.Width = concreteMap.Width;
-            AbsNodeIds = new int[this.Height * this.Width];
+            ConcreteNodeIdToAbstractNodeIdMap = new int[this.Height * this.Width];
             for (var i = 0; i < this.Height * this.Width; i++)
-                AbsNodeIds[i] = -1;
+                ConcreteNodeIdToAbstractNodeIdMap[i] = -1;
 
             Clusters = new List<Cluster>();
             AbstractGraph = new Graph<AbstractNodeInfo, AbtractEdgeInfo>();
@@ -200,7 +200,7 @@ namespace HPASharp
 
         public List<Graph<AbstractNodeInfo, AbtractEdgeInfo>.Edge> GetNodeEdges(int nodeId)
         {
-            var node = AbstractGraph.GetNode(AbsNodeIds[nodeId]);
+            var node = AbstractGraph.GetNode(ConcreteNodeIdToAbstractNodeIdMap[nodeId]);
             return node.Edges;
         }
 

@@ -19,18 +19,15 @@ namespace HPASharp.Factories
         public EntranceStyle EntranceStyle { get; set; }
         public int ClusterSize { get; set; }
 		public int MaxLevel { get; set; }
-
-        // Store the location of created entrances. This will help creating nodes and edges        
-        public Dictionary<int, AbstractNodeInfo> AbstractNodes { get; set; }
-
+		
 		int[] m_stalLevel = new int[2];
 		bool[] m_stalUsed = new bool[2];
 		List<Graph<AbstractNodeInfo, AbtractEdgeInfo>.Edge>[] m_stalEdges = new List<Graph<AbstractNodeInfo, AbtractEdgeInfo>.Edge>[2];
 
 		public void CreateHierarchicalMap(ConcreteMap concreteMap, int clusterSize, int maxLevel, EntranceStyle style)
         {
-            this.ClusterSize = clusterSize;
-            this.EntranceStyle = style;
+            ClusterSize = clusterSize;
+            EntranceStyle = style;
             MaxLevel = maxLevel;
             ConcreteMap = concreteMap;
             HierarchicalMap = new HierarchicalMap(concreteMap, clusterSize, maxLevel);
@@ -40,10 +37,11 @@ namespace HPASharp.Factories
             CreateEntrancesAndClusters(out entrances, out clusters);
             HierarchicalMap.Clusters = clusters;
 			
-            CreateAbstractNodes(entrances, clusters);
+            CreateAbstractNodes(entrances);
             CreateEdges(entrances, clusters);
         }
-		
+
+		#region Graph manipulation
 		public void RemoveAbstractNode(HierarchicalMap map, int nodeId, int stal)
 		{
 			var abstractGraph = map.AbstractGraph;
@@ -73,7 +71,7 @@ namespace HPASharp.Factories
 				var clusterId = currentNodeInfo.ClusterId;
 				var cluster = map.Clusters[clusterId];
 				cluster.RemoveLastEntranceRecord();
-				map.AbsNodeIds[currentNodeInfo.CenterId] = Constants.NO_NODE;
+				map.ConcreteNodeIdToAbstractNodeIdMap[currentNodeInfo.CenterId] = Constants.NO_NODE;
 				abstractGraph.RemoveEdgesFromNode(nodeId);
 				abstractGraph.RemoveLastNode();
 			}
@@ -85,6 +83,153 @@ namespace HPASharp.Factories
 			var result = InsertStal(map, nodeId, pos, start);
 			InsertStalHEdges(map, nodeId);
 			return result;
+		}
+		
+		/// <summary>
+		/// Inserts a node and creates edges around the local points of the cluster it the
+		/// node we try to insert belongs to at each level
+		/// </summary>
+		private static void InsertStalHEdges(HierarchicalMap map, int nodeId)
+		{
+			var abstractNodeId = map.ConcreteNodeIdToAbstractNodeIdMap[nodeId];
+			var nodeInfo = map.AbstractGraph.GetNodeInfo(abstractNodeId);
+			var oldLevel = nodeInfo.Level;
+			nodeInfo.Level = map.MaxLevel;
+			for (var level = oldLevel + 1; level <= map.MaxLevel; level++)
+			{
+				map.SetCurrentLevel(level - 1);
+				map.SetCurrentCluster(nodeInfo.Position, level);
+				var clusterRectangle = map.GetCurrentClusterRectangle();
+				var currentClusterY0 = clusterRectangle.Origin.Y;
+				var currentClusterY1 = clusterRectangle.Origin.Y + clusterRectangle.Size.Height;
+				var currentClusterX0 = clusterRectangle.Origin.X;
+				var currentClusterX1 = clusterRectangle.Origin.X + clusterRectangle.Size.Width;
+				for (var y = currentClusterY0; y <= currentClusterY1; y++)
+					for (var x = currentClusterX0; x <= currentClusterX1; x++)
+					{
+						var nodeId2 = y * map.Width + x;
+						var abstractNodeId2 = map.ConcreteNodeIdToAbstractNodeIdMap[nodeId2];
+						AddEdgesBetweenAbstractNodes(map, abstractNodeId, abstractNodeId2, level);
+					}
+			}
+		}
+
+		// insert a new node, such as start or target, to the abstract graph and
+		// returns the id of the newly created node in the abstract graph
+		// x and y are the positions where I want to put the node
+		private int InsertStal(HierarchicalMap map, int nodeId, Position pos, int start)
+		{
+			// If the node already existed (for instance, it was the an entrance point already
+			// existing in the graph, we need to keep track of the previous status in order
+			// to be able to restore it once we delete this STAL
+			if (map.ConcreteNodeIdToAbstractNodeIdMap[nodeId] != Constants.NO_NODE)
+			{
+				m_stalLevel[start] = map.AbstractGraph.GetNodeInfo(map.ConcreteNodeIdToAbstractNodeIdMap[nodeId]).Level;
+				m_stalEdges[start] = map.GetNodeEdges(nodeId);
+				m_stalUsed[start] = true;
+				return map.ConcreteNodeIdToAbstractNodeIdMap[nodeId];
+			}
+
+			m_stalUsed[start] = false;
+
+			var cluster = map.FindClusterForPosition(pos);
+
+			// create global entrance
+			var absNodeId = map.NrNodes;
+			var localEntranceStartIdx = cluster.AddEntrance(absNodeId, new Position(pos.X - cluster.Origin.X, pos.Y - cluster.Origin.Y));
+			cluster.UpdatePathsForLocalEntrance(localEntranceStartIdx);
+
+			map.ConcreteNodeIdToAbstractNodeIdMap[nodeId] = absNodeId;
+
+			var info = new AbstractNodeInfo(
+				absNodeId,
+				1,
+				cluster.Id,
+				pos,
+				nodeId,
+				localEntranceStartIdx);
+
+			map.AbstractGraph.AddNode(absNodeId, info);
+
+			// add new edges to the abstract graph
+			for (var localEntranceIdx = 0; localEntranceIdx < cluster.NumberOfEntrances - 1; localEntranceIdx++)
+			{
+				if (cluster.AreConnected(localEntranceStartIdx, localEntranceIdx))
+				{
+					map.AddEdge(
+						cluster.GetAbstractNodeId(localEntranceIdx),
+						cluster.GetAbstractNodeId(localEntranceStartIdx),
+						cluster.GetDistance(localEntranceStartIdx, localEntranceIdx));
+					map.AddEdge(
+						cluster.GetAbstractNodeId(localEntranceStartIdx),
+						cluster.GetAbstractNodeId(localEntranceIdx),
+						cluster.GetDistance(localEntranceIdx, localEntranceStartIdx));
+				}
+			}
+
+			return absNodeId;
+		}
+		#endregion
+
+
+		private void CreateEdges(List<Entrance> entrances, List<Cluster> clusters)
+		{
+			foreach (var entrance in entrances)
+			{
+				CreateEntranceEdges(entrance, HierarchicalMap.Type);
+			}
+
+			foreach (var cluster in clusters)
+			{
+				CreateInterClusterEdges(cluster);
+			}
+
+			CreateHierarchicalEdges();
+		}
+
+		private void CreateEntranceEdges(Entrance entrance, AbsType type)
+		{
+			var level = entrance.GetEntranceLevel(ClusterSize, MaxLevel);
+
+			var srcAbstractNodeId = HierarchicalMap.ConcreteNodeIdToAbstractNodeIdMap[entrance.SrcNode.NodeId];
+			var destAbstractNodeId = HierarchicalMap.ConcreteNodeIdToAbstractNodeIdMap[entrance.DestNode.NodeId];
+			
+			var orientation = entrance.Orientation;
+			int cost = Constants.COST_ONE;
+			switch (type)
+			{
+				case AbsType.ABSTRACT_TILE:
+				case AbsType.ABSTRACT_OCTILE_UNICOST:
+					// Inter-edges: cost 1
+					cost = Constants.COST_ONE;
+					break;
+				case AbsType.ABSTRACT_OCTILE:
+					{
+						int unitCost;
+						switch (orientation)
+						{
+							case Orientation.Horizontal:
+							case Orientation.Vertical:
+								unitCost = Constants.COST_ONE;
+								break;
+							case Orientation.Hdiag2:
+							case Orientation.Hdiag1:
+							case Orientation.Vdiag1:
+							case Orientation.Vdiag2:
+								unitCost = (Constants.COST_ONE * 34) / 24;
+								break;
+							default:
+								unitCost = -1;
+								break;
+						}
+
+						cost = unitCost;
+					}
+					break;
+			}
+			
+			HierarchicalMap.AbstractGraph.AddEdge(srcAbstractNodeId, destAbstractNodeId, new AbtractEdgeInfo(cost, level, true));
+			HierarchicalMap.AbstractGraph.AddEdge(destAbstractNodeId, srcAbstractNodeId, new AbtractEdgeInfo(cost, level, true));
 		}
 
 		// TODO: This can become a HUGE refactor. Basically what this code does is creating entrances
@@ -138,10 +283,7 @@ namespace HPASharp.Factories
 
 			return true;
 		}
-
-		/// <summary>
-		/// Adds an edge between two abstract nodes for a given level
-		/// </summary>
+		
 		private static void AddEdgesBetweenAbstractNodes(HierarchicalMap map, int absNodeId1, int absNodeId2, int level)
 		{
 			if (absNodeId1 == absNodeId2 || !IsValidAbstractNode(map, absNodeId2, level))
@@ -160,8 +302,27 @@ namespace HPASharp.Factories
 	    {
 		    return HierarchicalMap.AbstractGraph.GetNodeInfo(entrancePoint.AbstractNodeId).Level;
 	    }
+		
+		private void CreateInterClusterEdges(Cluster cluster)
+		{
+			cluster.ComputeInternalPaths();
 
-	    private void CreateEntrancesAndClusters(out List<Entrance> entrances, out List<Cluster> clusters)
+			foreach (var point1 in cluster.EntrancePoints)
+			foreach (var point2 in cluster.EntrancePoints)
+			{
+				if (point1 != point2 && cluster.AreConnected(point1.EntranceEntranceId, point2.EntranceEntranceId))
+				{
+					var abtractEdgeInfo = new AbtractEdgeInfo(cluster.GetDistance(point1.EntranceEntranceId, point2.EntranceEntranceId), 1, false);
+					HierarchicalMap.AbstractGraph.AddEdge(
+						point1.AbstractNodeId,
+						point2.AbstractNodeId,
+						abtractEdgeInfo);
+				}
+			}
+		}
+
+		#region Entrances and clusters
+		private void CreateEntrancesAndClusters(out List<Entrance> entrances, out List<Cluster> clusters)
         {
             var clusterId = 0;
             var entranceId = 0;
@@ -186,7 +347,7 @@ namespace HPASharp.Factories
 
         private List<Entrance> CreateInterClusterEntrances(Cluster cluster, Cluster clusterAbove, Cluster clusterOnLeft, ref int entranceId)
         {
-            List<Entrance> entrances = new List<Entrance>();
+            var entrances = new List<Entrance>();
             int top = cluster.Origin.Y;
             int left = cluster.Origin.X;
             
@@ -196,8 +357,8 @@ namespace HPASharp.Factories
                     left,
                     left + cluster.Size.Width - 1,
                     top - 1,
-                    clusterAbove.Id,
-                    cluster.Id,
+                    clusterAbove,
+                    cluster,
                     ref entranceId);
 
                 entrances.AddRange(hEntrances);
@@ -209,8 +370,8 @@ namespace HPASharp.Factories
                     top,
                     top + cluster.Size.Height - 1,
                     left - 1,
-                    clusterOnLeft.Id,
-                    cluster.Id,
+                    clusterOnLeft,
+                    cluster,
                     ref entranceId);
 
                 entrances.AddRange(vEntrances);
@@ -219,253 +380,39 @@ namespace HPASharp.Factories
             return entrances;
         }
 
-        private Cluster GetCluster(List<Cluster> clusters, int left, int top)
-        {
-            var clustersW = HierarchicalMap.Width / ClusterSize;
-            if (HierarchicalMap.Width % ClusterSize > 0)
-                clustersW++;
-
-            return clusters[top * clustersW + left];
-        }
-
-        private void CreateAbstractNodes(List<Entrance> entrancesList, List<Cluster> clusters)
-        {
-            var abstractNodes = GenerateAbstractNodes(entrancesList, clusters);
-
-            foreach (var kvp in abstractNodes)
-            {
-                // TODO: Maybe we can find a way to remove this line of AbsNodesIds
-                HierarchicalMap.AbsNodeIds[kvp.Key] = kvp.Value.Id;
-                HierarchicalMap.AbstractGraph.AddNode(kvp.Value.Id, kvp.Value);
-            }
-
-            AbstractNodes = abstractNodes;
-        }
-
-        private void CreateEntranceEdges(Entrance entrance, AbsType type, Dictionary<int, AbstractNodeInfo> absNodes)
-        {
-            int level;
-            switch (entrance.Orientation)
-            {
-                case Orientation.Horizontal:
-                    level = DetermineLevel(entrance.Coord1.Y);
-                    break;
-                case Orientation.Vertical:
-                    level = DetermineLevel(entrance.Coord1.X);
-                    break;
-                default:
-                    level = -1;
-                    break;
-            }
-
-            var abstractNodeId1 = absNodes[entrance.Coord1Id].Id;
-            var abstractNodeId2 = absNodes[entrance.Coord2Id].Id;
-
-            switch (type)
-            {
-                case AbsType.ABSTRACT_TILE:
-                case AbsType.ABSTRACT_OCTILE_UNICOST:
-                    // Inter-edges: cost 1
-                    var absTilingEdgeInfo1 = new AbtractEdgeInfo(Constants.COST_ONE, level, true);
-                    var absTilingEdgeInfo2 = new AbtractEdgeInfo(Constants.COST_ONE, level, true);
-                    HierarchicalMap.AbstractGraph.AddEdge(abstractNodeId1, abstractNodeId2, absTilingEdgeInfo1);
-                    HierarchicalMap.AbstractGraph.AddEdge(abstractNodeId2, abstractNodeId1, absTilingEdgeInfo2);
-                    break;
-                case AbsType.ABSTRACT_OCTILE:
-                    {
-                        int unitCost;
-                        switch (entrance.Orientation)
-                        {
-                            case Orientation.Horizontal:
-                            case Orientation.Vertical:
-                                unitCost = Constants.COST_ONE;
-                                break;
-                            case Orientation.Hdiag2:
-                            case Orientation.Hdiag1:
-                            case Orientation.Vdiag1:
-                            case Orientation.Vdiag2:
-                                unitCost = (Constants.COST_ONE * 34) / 24;
-                                break;
-                            default:
-                                unitCost = -1;
-                                break;
-                        }
-
-                        var absTilingEdgeInfo3 = new AbtractEdgeInfo(unitCost, level, true);
-                        var absTilingEdgeInfo4 = new AbtractEdgeInfo(unitCost, level, true);
-                        HierarchicalMap.AbstractGraph.AddEdge(abstractNodeId1, abstractNodeId2, absTilingEdgeInfo3);
-                        HierarchicalMap.AbstractGraph.AddEdge(abstractNodeId2, abstractNodeId1, absTilingEdgeInfo4);
-                    }
-                    break;
-            }
-        }
-
-        private int DetermineLevel(int y)
-        {
-            var level = 1;
-            if (y % ClusterSize != 0)
-                y++;
-
-            var clusterY = y / ClusterSize;
-            while (clusterY % 2 == 0 && level < MaxLevel)
-            {
-                clusterY /= 2;
-                level++;
-            }
-
-            if (level > MaxLevel)
-                level = MaxLevel;
-            return level;
-        }
-
-        /// <summary>
-        /// Create the asbtract nodes of this graph (composed by the centers of
-        /// the entrances between clusters)
-        /// </summary>
-        private Dictionary<int, AbstractNodeInfo> GenerateAbstractNodes(List<Entrance> entrances, List<Cluster> clusters)
-        {
-            var abstractNodeId = 0;
-            var absNodes = new Dictionary<int, AbstractNodeInfo>();
-            foreach (var entrance in entrances)
-            {
-                var cluster1 = clusters[entrance.Cluster1Id];
-                var cluster2 = clusters[entrance.Cluster2Id];
-
-                // Determine the level of this entrance. It is given
-                // by its orientation and its coordinates
-                int level;
-                switch (entrance.Orientation)
-                {
-                    case Orientation.Horizontal:
-                        level = DetermineLevel(entrance.Coord1.Y);
-                        break;
-                    case Orientation.Vertical:
-                        level = DetermineLevel(entrance.Coord1.X);
-                        break;
-                    default:
-                        level = -1;
-                        break;
-                }
-
-                // use absNodes as a local var to check quickly if a node with the same centerId
-                // has been created before
-                AbstractNodeInfo absNode;
-                if (!absNodes.TryGetValue(entrance.Coord1Id, out absNode))
-                {
-                    var localEntranceIdx = cluster1.AddEntrance(
-                        abstractNodeId, 
-                        new Position(entrance.Coord1.X - cluster1.Origin.X, entrance.Coord1.Y - cluster1.Origin.Y));
-                    
-                    var node = new AbstractNodeInfo(
-                        abstractNodeId, 
-                        level,
-                        entrance.Cluster1Id,
-                        new Position(entrance.Coord1.X, entrance.Coord1.Y),
-                        entrance.Coord1Id,
-                        localEntranceIdx);
-                    absNodes[entrance.Coord1Id] = node;
-
-                    abstractNodeId++;
-                }
-                else
-                {
-                    if (level > absNode.Level)
-                        absNode.Level = level;
-                }
-
-                if (!absNodes.TryGetValue(entrance.Coord2Id, out absNode))
-                {
-                    var localEntranceIdx = cluster2.AddEntrance(
-                        abstractNodeId,
-                        new Position(entrance.Coord2.X - cluster2.Origin.X, entrance.Coord2.Y - cluster2.Origin.Y));
-
-                    var node = new AbstractNodeInfo(
-                        abstractNodeId, 
-                        level,	
-                        entrance.Cluster2Id,
-                        new Position(entrance.Coord2.X, entrance.Coord2.Y),
-                        entrance.Coord2Id,
-                        localEntranceIdx);
-                    absNodes[entrance.Coord2Id] = node;
-
-                    abstractNodeId++;
-                }
-                else
-                {
-                    if (level > absNode.Level)
-                        absNode.Level = level;
-                }
-            }
-
-            return absNodes;
-        }
-
-        private void CreateInterClusterEdges(Cluster cluster)
-        {
-            cluster.ComputeInternalPaths();
-
-            foreach (var point1 in cluster.EntrancePoints)
-			foreach (var point2 in cluster.EntrancePoints)
-			{
-				if (point1 != point2 && cluster.AreConnected(point1.EntranceEntranceId, point2.EntranceEntranceId))
-				{
-					var absTilingEdgeInfo1 = new AbtractEdgeInfo(cluster.GetDistance(point1.EntranceEntranceId, point2.EntranceEntranceId), 1, false);
-					HierarchicalMap.AbstractGraph.AddEdge(
-						point1.AbstractNodeId,
-						point2.AbstractNodeId,
-						absTilingEdgeInfo1);
-				}
-			}
-        }
-
-        private void CreateEdges(List<Entrance> entrances, List<Cluster> clusters)
-        {
-            foreach (var entrance in entrances)
-            {
-                CreateEntranceEdges(entrance, HierarchicalMap.Type, AbstractNodes);
-            }
-
-            foreach (var cluster in clusters)
-	        {
-                CreateInterClusterEdges(cluster);
-	        }
-			
-            CreateHierarchicalEdges();
-        }
-
         private List<Entrance> CreateHorizontalEntrances(
             int rowStart,
             int rowEnd,
             int column,
-            int clusterid1,
-            int clusterid2,
+			Cluster clusterAbove,
+			Cluster cluster,
             ref int currentEntranceId)
         {
             Func<int, Tuple<Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node, Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node>> getNodesForRow =
                 row => Tuple.Create(GetNode(row, column), GetNode(row, column + 1));
 
-            return CreateEntrancesAlongEdge(rowStart, rowEnd, clusterid1, clusterid2, ref currentEntranceId, getNodesForRow, Orientation.Horizontal);
+            return CreateEntrancesAlongEdge(rowStart, rowEnd, clusterAbove, cluster, ref currentEntranceId, getNodesForRow, Orientation.Horizontal);
         }
 
         private List<Entrance> CreateVerticalEntrances(
             int colStart,
             int colEnd,
             int row,
-            int clusterid1,
-            int clusterid2,
+            Cluster clusterOnLeft,
+			Cluster cluster,
             ref int currentEntranceId)
         {
             Func<int, Tuple<Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node, Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node>> getNodesForColumn =
                 column => Tuple.Create(GetNode(row, column), GetNode(row + 1, column));
 
-            return CreateEntrancesAlongEdge(colStart, colEnd, clusterid1, clusterid2, ref currentEntranceId, getNodesForColumn, Orientation.Vertical);
+            return CreateEntrancesAlongEdge(colStart, colEnd, clusterOnLeft, cluster, ref currentEntranceId, getNodesForColumn, Orientation.Vertical);
         }
 
         private List<Entrance> CreateEntrancesAlongEdge(
             int startPoint,
             int endPoint,
-            int clusterid1,
-            int clusterid2,
+            Cluster precedentCluster,
+			Cluster currentCluster,
             ref int currentEntranceId,
             Func<int, Tuple<Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node, Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node>> getNodesInEdge,
             Orientation orientation)
@@ -486,7 +433,7 @@ namespace HPASharp.Factories
                     var srcNode = nodes.Item1;
                     var destNode = nodes.Item2;
 
-                    var entrance1 = new Entrance(currentEntranceId, clusterid1, clusterid2, srcNode, destNode, orientation);
+                    var entrance1 = new Entrance(currentEntranceId, precedentCluster, currentCluster, srcNode, destNode, orientation);
 
                     currentEntranceId++;
 
@@ -494,7 +441,7 @@ namespace HPASharp.Factories
                     srcNode = nodes.Item1;
                     destNode = nodes.Item2;
 
-                    var entrance2 = new Entrance(currentEntranceId, clusterid1, clusterid2, srcNode, destNode, orientation);
+                    var entrance2 = new Entrance(currentEntranceId, precedentCluster, currentCluster, srcNode, destNode, orientation);
 
                     currentEntranceId++;
 
@@ -507,7 +454,7 @@ namespace HPASharp.Factories
                     var srcNode = nodes.Item1;
                     var destNode = nodes.Item2;
 
-                    var entrance = new Entrance(currentEntranceId, clusterid1, clusterid2, srcNode, destNode, orientation);
+                    var entrance = new Entrance(currentEntranceId, precedentCluster, currentCluster, srcNode, destNode, orientation);
 
                     currentEntranceId++;
                     entrances.Add(entrance);
@@ -551,90 +498,78 @@ namespace HPASharp.Factories
         {
             return node1.Info.IsObstacle || node2.Info.IsObstacle;
         }
-
-        /// <summary>
-        /// Inserts a node and creates edges around the local points of the cluster it the
-        /// node we try to insert belongs to at each level
-        /// </summary>
-        private static void InsertStalHEdges(HierarchicalMap map, int nodeId)
+		
+		private Cluster GetCluster(List<Cluster> clusters, int left, int top)
 		{
-			var abstractNodeId = map.AbsNodeIds[nodeId];
-			var nodeInfo = map.AbstractGraph.GetNodeInfo(abstractNodeId);
-			var oldLevel = nodeInfo.Level;
-			nodeInfo.Level = map.MaxLevel;
-			for (var level = oldLevel + 1; level <= map.MaxLevel; level++)
+			var clustersW = HierarchicalMap.Width / ClusterSize;
+			if (HierarchicalMap.Width % ClusterSize > 0)
+				clustersW++;
+
+			return clusters[top * clustersW + left];
+		}
+		#endregion
+
+
+		#region Generate abstract nodes
+		private void CreateAbstractNodes(List<Entrance> entrancesList)
+		{
+			var abstractNodes = GenerateAbstractNodes(entrancesList);
+
+			foreach (var kvp in abstractNodes)
 			{
-				map.SetCurrentLevel(level - 1);
-				map.SetCurrentCluster(nodeInfo.Position, level);
-				var clusterRectangle = map.GetCurrentClusterRectangle();
-				var currentClusterY0 = clusterRectangle.Origin.Y;
-				var currentClusterY1 = clusterRectangle.Origin.Y + clusterRectangle.Size.Height;
-				var currentClusterX0 = clusterRectangle.Origin.X;
-				var currentClusterX1 = clusterRectangle.Origin.X + clusterRectangle.Size.Width;
-				for (var y = currentClusterY0; y <= currentClusterY1; y++)
-					for (var x = currentClusterX0; x <= currentClusterX1; x++)
-					{
-						var nodeId2 = y * map.Width + x;
-						var abstractNodeId2 = map.AbsNodeIds[nodeId2];
-						AddEdgesBetweenAbstractNodes(map, abstractNodeId, abstractNodeId2, level);
-					}
+				// TODO: Maybe we can find a way to remove this line of AbsNodesIds
+				HierarchicalMap.ConcreteNodeIdToAbstractNodeIdMap[kvp.Key] = kvp.Value.Id;
+				HierarchicalMap.AbstractGraph.AddNode(kvp.Value.Id, kvp.Value);
 			}
 		}
 
-		// insert a new node, such as start or target, to the abstract graph and
-		// returns the id of the newly created node in the abstract graph
-		// x and y are the positions where I want to put the node
-		private int InsertStal(HierarchicalMap map, int nodeId, Position pos, int start)
+		private Dictionary<int, AbstractNodeInfo> GenerateAbstractNodes(List<Entrance> entrances)
 		{
-			// If the node already existed (for instance, it was the an entrance point already
-			// existing in the graph, we need to keep track of the previous status in order
-			// to be able to restore it once we delete this STAL
-			if (map.AbsNodeIds[nodeId] != Constants.NO_NODE)
+			var abstractNodeId = 0;
+			var abstractNodes = new Dictionary<int, AbstractNodeInfo>();
+			foreach (var entrance in entrances)
 			{
-				m_stalLevel[start] = map.AbstractGraph.GetNodeInfo(map.AbsNodeIds[nodeId]).Level;
-				m_stalEdges[start] = map.GetNodeEdges(nodeId);
-				m_stalUsed[start] = true;
-				return map.AbsNodeIds[nodeId];
+				var level = entrance.GetEntranceLevel(ClusterSize, MaxLevel);
+
+				CreateOrUpdateAbstractNodeFromConcreteNode(entrance.SrcNode, entrance.Cluster1, ref abstractNodeId, level, abstractNodes);
+				CreateOrUpdateAbstractNodeFromConcreteNode(entrance.DestNode, entrance.Cluster2, ref abstractNodeId, level, abstractNodes);
 			}
 
-			m_stalUsed[start] = false;
-
-			var cluster = map.FindClusterForPosition(pos);
-
-			// create global entrance
-			var absNodeId = map.NrNodes;
-			var localEntranceStartIdx = cluster.AddEntrance(absNodeId, new Position(pos.X - cluster.Origin.X, pos.Y - cluster.Origin.Y));
-			cluster.UpdatePathsForLocalEntrance(localEntranceStartIdx);
-
-			map.AbsNodeIds[nodeId] = absNodeId;
-
-			var info = new AbstractNodeInfo(
-				absNodeId,
-				1,
-				cluster.Id,
-				pos,
-				nodeId,
-				localEntranceStartIdx);
-
-			map.AbstractGraph.AddNode(absNodeId, info);
-
-			// add new edges to the abstract graph
-			for (var localEntranceIdx = 0; localEntranceIdx < cluster.NumberOfEntrances - 1; localEntranceIdx++)
-			{
-				if (cluster.AreConnected(localEntranceStartIdx, localEntranceIdx))
-				{
-					map.AddEdge(
-						cluster.GetAbstractNodeId(localEntranceIdx),
-						cluster.GetAbstractNodeId(localEntranceStartIdx),
-						cluster.GetDistance(localEntranceStartIdx, localEntranceIdx));
-					map.AddEdge(
-						cluster.GetAbstractNodeId(localEntranceStartIdx),
-						cluster.GetAbstractNodeId(localEntranceIdx),
-						cluster.GetDistance(localEntranceIdx, localEntranceStartIdx));
-				}
-			}
-
-			return absNodeId;
+			return abstractNodes;
 		}
+
+		private static void CreateOrUpdateAbstractNodeFromConcreteNode(
+			Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node srcNode,
+			Cluster cluster,
+			ref int abstractNodeId,
+			int level,
+			Dictionary<int, AbstractNodeInfo> abstractNodes)
+		{
+			AbstractNodeInfo abstractNodeInfo;
+			if (!abstractNodes.TryGetValue(srcNode.NodeId, out abstractNodeInfo))
+			{
+				var localEntranceIdx = cluster.AddEntrance(
+					abstractNodeId,
+					new Position(srcNode.Info.Position.X - cluster.Origin.X, srcNode.Info.Position.Y - cluster.Origin.Y));
+
+				abstractNodeInfo = new AbstractNodeInfo(
+					abstractNodeId,
+					level,
+					cluster.Id,
+					new Position(srcNode.Info.Position.X, srcNode.Info.Position.Y),
+					srcNode.NodeId,
+					localEntranceIdx);
+				abstractNodes[srcNode.NodeId] = abstractNodeInfo;
+
+				abstractNodeId++;
+			}
+			else
+			{
+				if (level > abstractNodeInfo.Level)
+					abstractNodeInfo.Level = level;
+			}
+		}
+		#endregion
+
 	}
 }

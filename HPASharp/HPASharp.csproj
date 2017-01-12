@@ -47,7 +47,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ClusterCollection.cs" />
     <Compile Include="HierarchicalMap.cs" />
     <Compile Include="Factories\Entrance.cs" />
     <Compile Include="Factories\GraphFactory.cs" />
