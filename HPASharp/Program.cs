@@ -148,7 +148,7 @@ namespace HPASharp
             //var smoother = new SmoothWizard(concreteMap, path);
             //path = smoother.SmoothPath();
 		    return path.Select(p => concreteMap.Graph.GetNodeInfo(p.Id).Position).ToList();
-			//return path.Select(n => n.Level == 0 ? concreteMap.Graph.GetNodeInfo(n.Id).Position : hierarchicalMap.AbstractGraph.GetNodeInfo(n.Id).Position).ToList();
+			//return path.Select(n => n.Level == 0 ? concreteMap.Graph.GetNodeInfo(n.EntranceId).Position : hierarchicalMap.AbstractGraph.GetNodeInfo(n.EntranceId).Position).ToList();
         }
 
 	    private static List<Position> RegularSearch(ConcreteMap concreteMap)

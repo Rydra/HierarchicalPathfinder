@@ -19,12 +19,12 @@ namespace HPASharp
 	{
 		public int AbstractNodeId { get; set; }
 		public Position RelativePosition { get; set; }
-		public int EntranceEntranceId { get; set; }
+		public int EntranceId { get; set; }
 
-		public EntrancePoint(int abstractNodeId, int entranceId, Position relativePosition)
+		public EntrancePoint(int abstractNodeId, int entranceEntranceId, Position relativePosition)
 		{
 			AbstractNodeId = abstractNodeId;
-			EntranceEntranceId = entranceId;    
+			EntranceId = entranceEntranceId;    
 			RelativePosition = relativePosition;
 		}
 	}
@@ -88,8 +88,8 @@ namespace HPASharp
         {
             var start = GetEntrancePositionIndex(e1);
             var target = GetEntrancePositionIndex(e2);
-            var startIdx = e1.EntranceEntranceId;
-            var targetIdx = e2.EntranceEntranceId;
+            var startIdx = e1.EntranceId;
+            var targetIdx = e2.EntranceId;
 	        var tuple = Tuple.Create(startIdx, targetIdx);
 			var invtuple = Tuple.Create(targetIdx, startIdx);
 
@@ -121,7 +121,7 @@ namespace HPASharp
 	        }
         }
 
-        // Gets the abstract node Id that an entrance belong to 
+        // Gets the abstract node EntranceId that an entrance belong to 
         public int GetAbstractNodeId(int entranceId)
         {
             return EntrancePoints[entranceId].AbstractNodeId;

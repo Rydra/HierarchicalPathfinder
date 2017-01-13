@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using HPASharp.Infrastructure;
+using HPASharp.Search;
 
 namespace HPASharp
 {
@@ -266,25 +267,25 @@ namespace HPASharp
 		/// <summary>
 		/// Defines the bounding box of the cluster we want to process based on a given level and a position in the grid
 		/// </summary>
-		public void SetCurrentCluster(Position pos, int level)
+		public void SetCurrentClusterByPositionAndLevel(Position pos, int level)
 		{
 			// if the level surpasses the MaxLevel, just set the whole map as a cluster
 			if (level > MaxLevel)
 			{
-				this.currentClusterY0 = 0;
-				this.currentClusterY1 = this.Height - 1;
-				this.currentClusterX0 = 0;
-				this.currentClusterX1 = this.Width - 1;
+				currentClusterY0 = 0;
+				currentClusterY1 = Height - 1;
+				currentClusterX0 = 0;
+				currentClusterX1 = Width - 1;
 				return;
 			}
 
 			var offset = GetOffset(level);
 			var nodeY = pos.Y; // nodeId / this.Width;
 			var nodeX = pos.X; // nodeId % this.Width;
-			this.currentClusterY0 = nodeY - (nodeY % offset);
-			this.currentClusterY1 = Math.Min(this.Height - 1, this.currentClusterY0 + offset - 1);
-			this.currentClusterX0 = nodeX - (nodeX % offset);
-			this.currentClusterX1 = Math.Min(this.Width - 1, this.currentClusterX0 + offset - 1);
+			currentClusterY0 = nodeY - (nodeY % offset);
+			currentClusterY1 = Math.Min(this.Height - 1, this.currentClusterY0 + offset - 1);
+			currentClusterX0 = nodeX - (nodeX % offset);
+			currentClusterX1 = Math.Min(this.Width - 1, this.currentClusterX0 + offset - 1);
 		}
 
 		/// <summary>
@@ -292,17 +293,12 @@ namespace HPASharp
 		/// </summary>
 		public void SetCurrentCluster(int x, int y, int offset)
 		{
-			this.currentClusterY0 = y;
-			this.currentClusterX0 = x;
-			this.currentClusterY1 = Math.Min(this.Height - 1, y + offset - 1);
-			this.currentClusterX1 = Math.Min(this.Width - 1, x + offset - 1);
+			currentClusterY0 = y;
+			currentClusterX0 = x;
+			currentClusterY1 = Math.Min(this.Height - 1, y + offset - 1);
+			currentClusterX1 = Math.Min(this.Width - 1, x + offset - 1);
 		}
-
-		public Rectangle GetCurrentClusterRectangle()
-		{
-			return new Rectangle(currentClusterX0, currentClusterX1, currentClusterY0, currentClusterY1);
-		}
-
+        
 		public bool BelongToSameCluster(int node1Id, int node2Id, int level)
 		{
 			var node1Pos = AbstractGraph.GetNodeInfo(node1Id).Position;
@@ -326,5 +322,42 @@ namespace HPASharp
 		{
 			this.currentLevel = level;
 		}
-	}
+
+        private bool IsValidAbstractNodeForLevel(int abstractNodeId, int level)
+        {
+            if (abstractNodeId == Constants.NO_NODE)
+                return false;
+
+            var nodeInfo1 = AbstractGraph.GetNodeInfo(abstractNodeId);
+            return nodeInfo1.Level >= level;
+        }
+
+        public void AddEdgesBetweenAbstractNodes(int srcAbstractNodeId, int destAbstractNodeId, int level)
+        {
+            if (srcAbstractNodeId == destAbstractNodeId || !IsValidAbstractNodeForLevel(destAbstractNodeId, level))
+                return;
+
+            var search = new AStar();
+            var path = search.FindPath(this, srcAbstractNodeId, destAbstractNodeId);
+            if (path.PathCost >= 0)
+            {
+                AddEdge(srcAbstractNodeId, destAbstractNodeId, path.PathCost, level, false);
+                AddEdge(destAbstractNodeId, srcAbstractNodeId, path.PathCost, level, false);
+            }
+        }
+
+        public void AddEdgesToOtherEntrancesInCluster(AbstractNodeInfo abstractNodeInfo, int level)
+        {
+            SetCurrentLevel(level - 1);
+            SetCurrentClusterByPositionAndLevel(abstractNodeInfo.Position, level);
+
+            for (var y = currentClusterY0; y <= currentClusterY1; y++)
+            for (var x = currentClusterX0; x <= currentClusterX1; x++)
+            {
+                var concreteNodeId = y * Width + x;
+                var entranceAbstractNodeId = ConcreteNodeIdToAbstractNodeIdMap[concreteNodeId];
+                AddEdgesBetweenAbstractNodes(abstractNodeInfo.Id, entranceAbstractNodeId, level);
+            }
+        }
+    }
 }

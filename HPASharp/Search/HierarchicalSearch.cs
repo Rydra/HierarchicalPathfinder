@@ -27,9 +27,9 @@ namespace HPASharp.Search
             map.SetCurrentLevel(level);
             var nodeInfo = map.AbstractGraph.GetNodeInfo(startNodeId);
             if (mainSearch)
-                map.SetCurrentCluster(nodeInfo.Position, map.MaxLevel + 1);
+                map.SetCurrentClusterByPositionAndLevel(nodeInfo.Position, map.MaxLevel + 1);
             else
-                map.SetCurrentCluster(nodeInfo.Position, level + 1);
+                map.SetCurrentClusterByPositionAndLevel(nodeInfo.Position, level + 1);
 
             // TODO: This could be perfectly replaced by cached paths in the clusters!
             var path = search.FindPath(map, startNodeId, targetNodeId);

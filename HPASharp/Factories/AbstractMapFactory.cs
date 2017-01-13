@@ -88,33 +88,20 @@ namespace HPASharp.Factories
 		/// <summary>
 		/// Inserts a node and creates edges around the local points of the cluster it the
 		/// node we try to insert belongs to at each level
-		/// </summary>
-		private static void InsertStalHEdges(HierarchicalMap map, int nodeId)
+		/// </summary>  
+		private static void InsertStalHEdges(HierarchicalMap map, int concreteNodeId)
 		{
-			var abstractNodeId = map.ConcreteNodeIdToAbstractNodeIdMap[nodeId];
-			var nodeInfo = map.AbstractGraph.GetNodeInfo(abstractNodeId);
-			var oldLevel = nodeInfo.Level;
-			nodeInfo.Level = map.MaxLevel;
+			var abstractNodeId = map.ConcreteNodeIdToAbstractNodeIdMap[concreteNodeId];
+			var abstractNodeInfo = map.AbstractGraph.GetNodeInfo(abstractNodeId);
+			var oldLevel = abstractNodeInfo.Level;
+			abstractNodeInfo.Level = map.MaxLevel;
 			for (var level = oldLevel + 1; level <= map.MaxLevel; level++)
 			{
-				map.SetCurrentLevel(level - 1);
-				map.SetCurrentCluster(nodeInfo.Position, level);
-				var clusterRectangle = map.GetCurrentClusterRectangle();
-				var currentClusterY0 = clusterRectangle.Origin.Y;
-				var currentClusterY1 = clusterRectangle.Origin.Y + clusterRectangle.Size.Height;
-				var currentClusterX0 = clusterRectangle.Origin.X;
-				var currentClusterX1 = clusterRectangle.Origin.X + clusterRectangle.Size.Width;
-				for (var y = currentClusterY0; y <= currentClusterY1; y++)
-					for (var x = currentClusterX0; x <= currentClusterX1; x++)
-					{
-						var nodeId2 = y * map.Width + x;
-						var abstractNodeId2 = map.ConcreteNodeIdToAbstractNodeIdMap[nodeId2];
-						AddEdgesBetweenAbstractNodes(map, abstractNodeId, abstractNodeId2, level);
-					}
+				map.AddEdgesToOtherEntrancesInCluster(abstractNodeInfo, level);
 			}
 		}
 
-		// insert a new node, such as start or target, to the abstract graph and
+        // insert a new node, such as start or target, to the abstract graph and
 		// returns the id of the newly created node in the abstract graph
 		// x and y are the positions where I want to put the node
 		private int InsertStal(HierarchicalMap map, int nodeId, Position pos, int start)
@@ -253,51 +240,29 @@ namespace HPASharp.Factories
 					// Fromeach cluster group, only pick those entrances whose level is
 					// greater or equal than the current level (e.g. level 4 entrances
 					// account for lvl 3, lvl 2 and lvl 1)
-					var entrances = clusterGroup.SelectMany(cl =>
-							cl.EntrancePoints.Where(ep => GetEntrancePointLevel(ep) >= level)).ToList();
+					var entrances = clusterGroup
+                        .SelectMany(cl => cl.EntrancePoints)
+                        .Where(entrance => GetEntrancePointLevel(entrance) >= level)
+                        .ToList();
 					
-					// NOTE: The way we are setting the current cluster is kind of hacky...
 					var firstEntrance = entrances.First();
-					HierarchicalMap.SetCurrentCluster(
-						new Position(firstEntrance.RelativePosition.X + clusterGroup.First().Origin.X, firstEntrance.RelativePosition.Y + clusterGroup.First().Origin.Y),
+				    var entrancePosition = new Position(firstEntrance.RelativePosition.X + clusterGroup.First().Origin.X,
+				        firstEntrance.RelativePosition.Y + clusterGroup.First().Origin.Y);
+                    
+                    HierarchicalMap.SetCurrentClusterByPositionAndLevel(
+                        entrancePosition,
 						level);
 					
 					foreach (var point1 in entrances)
 					foreach (var point2 in entrances)
 					{
 						if (point1 == point2) continue;
-						AddEdgesBetweenAbstractNodes(HierarchicalMap, point1.AbstractNodeId, point2.AbstractNodeId, level);
+                        HierarchicalMap.AddEdgesBetweenAbstractNodes(point1.AbstractNodeId, point2.AbstractNodeId, level);
 					}
 				}
 			}
 		}
-
-		private static bool IsValidAbstractNode(HierarchicalMap map, int abstractNode, int level)
-		{
-			if (abstractNode == Constants.NO_NODE)
-				return false;
-
-			var nodeInfo1 = map.AbstractGraph.GetNodeInfo(abstractNode);
-			if (nodeInfo1.Level < level)
-				return false;
-
-			return true;
-		}
-		
-		private static void AddEdgesBetweenAbstractNodes(HierarchicalMap map, int absNodeId1, int absNodeId2, int level)
-		{
-			if (absNodeId1 == absNodeId2 || !IsValidAbstractNode(map, absNodeId2, level))
-				return;
-
-			var search = new AStar();
-			var path = search.FindPath(map, absNodeId1, absNodeId2);
-			if (path.PathCost >= 0)
-			{
-				map.AddEdge(absNodeId1, absNodeId2, path.PathCost, level, false);
-				map.AddEdge(absNodeId2, absNodeId1, path.PathCost, level, false);
-			}
-		}
-
+        
 		private int GetEntrancePointLevel(EntrancePoint entrancePoint)
 	    {
 		    return HierarchicalMap.AbstractGraph.GetNodeInfo(entrancePoint.AbstractNodeId).Level;
@@ -310,9 +275,9 @@ namespace HPASharp.Factories
 			foreach (var point1 in cluster.EntrancePoints)
 			foreach (var point2 in cluster.EntrancePoints)
 			{
-				if (point1 != point2 && cluster.AreConnected(point1.EntranceEntranceId, point2.EntranceEntranceId))
+				if (point1 != point2 && cluster.AreConnected(point1.EntranceId, point2.EntranceId))
 				{
-					var abtractEdgeInfo = new AbtractEdgeInfo(cluster.GetDistance(point1.EntranceEntranceId, point2.EntranceEntranceId), 1, false);
+					var abtractEdgeInfo = new AbtractEdgeInfo(cluster.GetDistance(point1.EntranceId, point2.EntranceId), 1, false);
 					HierarchicalMap.AbstractGraph.AddEdge(
 						point1.AbstractNodeId,
 						point2.AbstractNodeId,

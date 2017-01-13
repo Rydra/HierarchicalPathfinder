@@ -26,7 +26,7 @@ namespace HPASharp
         }
 
 		/// <summary>
-		/// A node in the graph is a node Id and a list of outgoing edges that go from this node.
+		/// A node in the graph is a node EntranceId and a list of outgoing edges that go from this node.
 		/// </summary>
         public class Node
         {
