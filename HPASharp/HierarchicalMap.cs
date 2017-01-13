@@ -185,7 +185,7 @@ namespace HPASharp
 		
 		public Cluster FindClusterForPosition(Position pos)
         {
-            var cluster = this.Clusters
+            var cluster = Clusters
                 .First(cl =>
                     cl.Origin.Y <= pos.Y &&
                     pos.Y < cl.Origin.Y + cl.Size.Height &&
@@ -325,13 +325,57 @@ namespace HPASharp
 
         private bool IsValidAbstractNodeForLevel(int abstractNodeId, int level)
         {
-            if (abstractNodeId == Constants.NO_NODE)
-                return false;
-
-            var nodeInfo1 = AbstractGraph.GetNodeInfo(abstractNodeId);
-            return nodeInfo1.Level >= level;
+            return AbstractGraph.GetNodeInfo(abstractNodeId).Level >= level;
         }
 
+        private int GetEntrancePointLevel(EntrancePoint entrancePoint)
+        {
+            return AbstractGraph.GetNodeInfo(entrancePoint.AbstractNodeId).Level;
+        }
+
+        // TODO: This can become a HUGE refactor. Basically what this code does is creating entrances
+        // abstract nodes and edges like in the previous case where we created entrances and all that kind of stuff.
+        // We could leverage this new domain knowledge into the code and get rid of this shit with 
+        // a way better design (for instance creating multilevel clusters could be a good approach)!!!!!!!
+        public void CreateHierarchicalEdges()
+        {
+            // Starting from level 2 denotes a serious mess on design, because lvl 1 is
+            // used by the clusters.
+            for (var level = 2; level <= MaxLevel; level++)
+            {
+                SetCurrentLevel(level - 1);
+
+                int n = 1 << (level - 1);
+                // Group clusters by their level. Each subsequent level doubles the amount of clusters in each group
+                var clusterGroups = Clusters.GroupBy(cl => $"{cl.ClusterX / n}_{cl.ClusterY / n}");
+
+                foreach (var clusterGroup in clusterGroups)
+                {
+                    // Fromeach cluster group, only pick those entrances whose level is
+                    // greater or equal than the current level (e.g. level 4 entrances
+                    // account for lvl 3, lvl 2 and lvl 1)
+                    var entrances = clusterGroup
+                        .SelectMany(cl => cl.EntrancePoints)
+                        .Where(entrance => GetEntrancePointLevel(entrance) >= level)
+                        .ToList();
+
+                    var firstEntrance = entrances.First();
+                    var entrancePosition = new Position(firstEntrance.RelativePosition.X + clusterGroup.First().Origin.X,
+                        firstEntrance.RelativePosition.Y + clusterGroup.First().Origin.Y);
+
+                    SetCurrentClusterByPositionAndLevel(
+                        entrancePosition,
+                        level);
+
+                    foreach (var point1 in entrances)
+                        foreach (var point2 in entrances)
+                        {
+                            if (point1 == point2) continue;
+                            AddEdgesBetweenAbstractNodes(point1.AbstractNodeId, point2.AbstractNodeId, level);
+                        }
+                }
+            }
+        }
         public void AddEdgesBetweenAbstractNodes(int srcAbstractNodeId, int destAbstractNodeId, int level)
         {
             if (srcAbstractNodeId == destAbstractNodeId || !IsValidAbstractNodeForLevel(destAbstractNodeId, level))
@@ -351,12 +395,15 @@ namespace HPASharp
             SetCurrentLevel(level - 1);
             SetCurrentClusterByPositionAndLevel(abstractNodeInfo.Position, level);
 
-            for (var y = currentClusterY0; y <= currentClusterY1; y++)
-            for (var x = currentClusterX0; x <= currentClusterX1; x++)
+            var entrances = Clusters
+                .Where(cl =>
+                    cl.Origin.X >= currentClusterX0 && cl.Origin.X <= currentClusterX1 &&
+                    cl.Origin.Y >= currentClusterY0 && cl.Origin.Y <= currentClusterY1)
+                .SelectMany(cl => cl.EntrancePoints);
+
+            foreach (var entrance in entrances)
             {
-                var concreteNodeId = y * Width + x;
-                var entranceAbstractNodeId = ConcreteNodeIdToAbstractNodeIdMap[concreteNodeId];
-                AddEdgesBetweenAbstractNodes(abstractNodeInfo.Id, entranceAbstractNodeId, level);
+                AddEdgesBetweenAbstractNodes(abstractNodeInfo.Id, entrance.AbstractNodeId, level);
             }
         }
     }

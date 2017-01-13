@@ -171,7 +171,7 @@ namespace HPASharp.Factories
 				CreateInterClusterEdges(cluster);
 			}
 
-			CreateHierarchicalEdges();
+			HierarchicalMap.CreateHierarchicalEdges();
 		}
 
 		private void CreateEntranceEdges(Entrance entrance, AbsType type)
@@ -218,56 +218,7 @@ namespace HPASharp.Factories
 			HierarchicalMap.AbstractGraph.AddEdge(srcAbstractNodeId, destAbstractNodeId, new AbtractEdgeInfo(cost, level, true));
 			HierarchicalMap.AbstractGraph.AddEdge(destAbstractNodeId, srcAbstractNodeId, new AbtractEdgeInfo(cost, level, true));
 		}
-
-		// TODO: This can become a HUGE refactor. Basically what this code does is creating entrances
-		// abstract nodes and edges like in the previous case where we created entrances and all that kind of stuff.
-		// We could leverage this new domain knowledge into the code and get rid of this shit with 
-		// a way better design (for instance creating multilevel clusters could be a good approach)!!!!!!!
-		private void CreateHierarchicalEdges()
-		{
-			// Starting from level 2 denotes a serious mess on design, because lvl 1 is
-			// used by the clusters.
-			for (var level = 2; level <= MaxLevel; level++)
-			{
-				HierarchicalMap.SetCurrentLevel(level - 1);
-
-				int n = 1 << (level - 1);
-				// Group clusters by their level. Each subsequent level doubles the amount of clusters in each group
-				var clusterGroups = HierarchicalMap.Clusters.GroupBy(cl => $"{cl.ClusterX / n}_{cl.ClusterY / n}");
-
-				foreach (var clusterGroup in clusterGroups)
-				{
-					// Fromeach cluster group, only pick those entrances whose level is
-					// greater or equal than the current level (e.g. level 4 entrances
-					// account for lvl 3, lvl 2 and lvl 1)
-					var entrances = clusterGroup
-                        .SelectMany(cl => cl.EntrancePoints)
-                        .Where(entrance => GetEntrancePointLevel(entrance) >= level)
-                        .ToList();
-					
-					var firstEntrance = entrances.First();
-				    var entrancePosition = new Position(firstEntrance.RelativePosition.X + clusterGroup.First().Origin.X,
-				        firstEntrance.RelativePosition.Y + clusterGroup.First().Origin.Y);
-                    
-                    HierarchicalMap.SetCurrentClusterByPositionAndLevel(
-                        entrancePosition,
-						level);
-					
-					foreach (var point1 in entrances)
-					foreach (var point2 in entrances)
-					{
-						if (point1 == point2) continue;
-                        HierarchicalMap.AddEdgesBetweenAbstractNodes(point1.AbstractNodeId, point2.AbstractNodeId, level);
-					}
-				}
-			}
-		}
         
-		private int GetEntrancePointLevel(EntrancePoint entrancePoint)
-	    {
-		    return HierarchicalMap.AbstractGraph.GetNodeInfo(entrancePoint.AbstractNodeId).Level;
-	    }
-		
 		private void CreateInterClusterEdges(Cluster cluster)
 		{
 			cluster.ComputeInternalPaths();
@@ -473,8 +424,7 @@ namespace HPASharp.Factories
 			return clusters[top * clustersW + left];
 		}
 		#endregion
-
-
+        
 		#region Generate abstract nodes
 		private void CreateAbstractNodes(List<Entrance> entrancesList)
 		{
