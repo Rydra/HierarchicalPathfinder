@@ -19,12 +19,10 @@ namespace HPASharp
 	{
 		public int AbstractNodeId { get; set; }
 		public Position RelativePosition { get; set; }
-		public int EntranceId { get; set; }
 
-		public EntrancePoint(int abstractNodeId, int entranceEntranceId, Position relativePosition)
+		public EntrancePoint(int abstractNodeId, Position relativePosition)
 		{
-			AbstractNodeId = abstractNodeId;
-			EntranceId = entranceEntranceId;    
+			AbstractNodeId = abstractNodeId;  
 			RelativePosition = relativePosition;
 		}
 	}
@@ -88,13 +86,11 @@ namespace HPASharp
         {
             var start = GetEntrancePositionIndex(e1);
             var target = GetEntrancePositionIndex(e2);
-            var startIdx = e1.EntranceId;
-            var targetIdx = e2.EntranceId;
-	        var tuple = Tuple.Create(startIdx, targetIdx);
-			var invtuple = Tuple.Create(targetIdx, startIdx);
+	        var tuple = Tuple.Create(e1.AbstractNodeId, e2.AbstractNodeId);
+			var invtuple = Tuple.Create(e2.AbstractNodeId, e1.AbstractNodeId);
 
 			// If a path already existed, or both are the same node, just return
-			if (DistanceCalculated.ContainsKey(tuple) || startIdx == targetIdx)
+			if (DistanceCalculated.ContainsKey(tuple) || e1.AbstractNodeId == e2.AbstractNodeId)
                 return;
 
             var search = new AStar();
@@ -112,34 +108,27 @@ namespace HPASharp
             DistanceCalculated[tuple] = DistanceCalculated[invtuple] = true;
         }
         
-        public void UpdatePathsForLocalEntrance(int entranceId)
+        public void UpdatePathsForLocalEntrance(EntrancePoint srcEntrancePoint)
         {
-            var startEntrancePoint = EntrancePoints[entranceId];
 	        foreach (var entrancePoint in EntrancePoints)
 	        {
-		        ComputePathBetweenEntrances(startEntrancePoint, entrancePoint);
+		        ComputePathBetweenEntrances(srcEntrancePoint, entrancePoint);
 	        }
         }
-
-        // Gets the abstract node EntranceId that an entrance belong to 
-        public int GetAbstractNodeId(int entranceId)
+		
+        public int GetDistance(int abstractNodeId1, int AbstractNodeId2)
         {
-            return EntrancePoints[entranceId].AbstractNodeId;
+            return Distances[Tuple.Create(abstractNodeId1,AbstractNodeId2)];
         }
 
-        public int GetDistance(int entranceId1, int entranceId2)
-        {
-            return Distances[Tuple.Create(entranceId1,entranceId2)];
-        }
-
-		public List<int> GetPath(int entranceId1, int entranceId2)
+		public List<int> GetPath(int abstractNodeId1, int abstractNodeId2)
 		{
-			return CachedPaths[Tuple.Create(entranceId1, entranceId2)];
+			return CachedPaths[Tuple.Create(abstractNodeId1, abstractNodeId2)];
 		}
         
-		public bool AreConnected(int entranceId1, int entranceId2)
+		public bool AreConnected(int abstractNodeId1, int abstractNodeId2)
         {
-            return Distances.ContainsKey(Tuple.Create(entranceId1,entranceId2));
+            return Distances.ContainsKey(Tuple.Create(abstractNodeId1,abstractNodeId2));
         }
 
 		public int NumberOfEntrances => EntrancePoints.Count;
@@ -147,15 +136,13 @@ namespace HPASharp
         /// <summary>
         /// Adds an entrance point to the cluster and returns the entrance index assigned for the point
         /// </summary>
-        public int AddEntrance(int abstractNodeId, Position relativePosition)
+        public EntrancePoint AddEntrance(int abstractNodeId, Position relativePosition)
         {
-            var entranceLocalIdx = EntrancePoints.Count;
-            var localEntrance = new EntrancePoint(
+            var entrancePoint = new EntrancePoint(
                 abstractNodeId,
-                EntrancePoints.Count,
                 relativePosition);
-            EntrancePoints.Add(localEntrance);
-            return entranceLocalIdx;
+            EntrancePoints.Add(entrancePoint);
+	        return entrancePoint;
         }
 
         public void RemoveLastEntranceRecord()

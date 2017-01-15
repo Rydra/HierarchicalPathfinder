@@ -55,18 +55,15 @@ namespace HPASharp
         public int ClusterId { get; set; }
         public int CenterId { get; set; }
         public int Level { get; set; }
-        public int LocalEntranceId { get; set; }
 
         public AbstractNodeInfo(int id, int level, int clId,
-                    Position position, int centerId,
-                    int localEntranceId)
+                    Position position, int centerId)
         {
             Id = id;
             Level = level;
             ClusterId = clId;
             Position = position;
             CenterId = centerId;
-            LocalEntranceId = localEntranceId;
         }
 
         public void PrintInfo()
@@ -77,7 +74,6 @@ namespace HPASharp
             Console.Write("; row: " + Position.Y);
             Console.Write("; col: " + Position.X);
             Console.Write("; center: " + CenterId);
-            Console.Write("; local idx: " + LocalEntranceId);
             Console.WriteLine();
         }
     }

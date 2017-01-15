@@ -122,39 +122,44 @@ namespace HPASharp.Factories
 			var cluster = map.FindClusterForPosition(pos);
 
 			// create global entrance
-			var absNodeId = map.NrNodes;
-			var localEntranceStartIdx = cluster.AddEntrance(absNodeId, new Position(pos.X - cluster.Origin.X, pos.Y - cluster.Origin.Y));
-			cluster.UpdatePathsForLocalEntrance(localEntranceStartIdx);
+			var abstractNodeId = map.NrNodes;
+			var entrance = cluster.AddEntrance(abstractNodeId, new Position(pos.X - cluster.Origin.X, pos.Y - cluster.Origin.Y));
+			cluster.UpdatePathsForLocalEntrance(entrance);
 
-			map.ConcreteNodeIdToAbstractNodeIdMap[nodeId] = absNodeId;
+			map.ConcreteNodeIdToAbstractNodeIdMap[nodeId] = abstractNodeId;
 
 			var info = new AbstractNodeInfo(
-				absNodeId,
+				abstractNodeId,
 				1,
 				cluster.Id,
 				pos,
-				nodeId,
-				localEntranceStartIdx);
+				nodeId);
 
-			map.AbstractGraph.AddNode(absNodeId, info);
+			map.AbstractGraph.AddNode(abstractNodeId, info);
+
+			foreach (var entrancePoint in cluster.EntrancePoints)
+			{
+				if (cluster.AreConnected(abstractNodeId, entrancePoint.AbstractNodeId))
+				{
+					map.AddEdge(
+						entrancePoint.AbstractNodeId,
+						abstractNodeId,
+						cluster.GetDistance(entrancePoint.AbstractNodeId, abstractNodeId));
+					map.AddEdge(
+						abstractNodeId,
+						entrancePoint.AbstractNodeId,
+						cluster.GetDistance(abstractNodeId, entrancePoint.AbstractNodeId));
+				}
+
+			}
 
 			// add new edges to the abstract graph
 			for (var localEntranceIdx = 0; localEntranceIdx < cluster.NumberOfEntrances - 1; localEntranceIdx++)
 			{
-				if (cluster.AreConnected(localEntranceStartIdx, localEntranceIdx))
-				{
-					map.AddEdge(
-						cluster.GetAbstractNodeId(localEntranceIdx),
-						cluster.GetAbstractNodeId(localEntranceStartIdx),
-						cluster.GetDistance(localEntranceStartIdx, localEntranceIdx));
-					map.AddEdge(
-						cluster.GetAbstractNodeId(localEntranceStartIdx),
-						cluster.GetAbstractNodeId(localEntranceIdx),
-						cluster.GetDistance(localEntranceIdx, localEntranceStartIdx));
-				}
+				
 			}
 
-			return absNodeId;
+			return abstractNodeId;
 		}
 		#endregion
 
@@ -226,9 +231,9 @@ namespace HPASharp.Factories
 			foreach (var point1 in cluster.EntrancePoints)
 			foreach (var point2 in cluster.EntrancePoints)
 			{
-				if (point1 != point2 && cluster.AreConnected(point1.EntranceId, point2.EntranceId))
+				if (point1 != point2 && cluster.AreConnected(point1.AbstractNodeId, point2.AbstractNodeId))
 				{
-					var abtractEdgeInfo = new AbtractEdgeInfo(cluster.GetDistance(point1.EntranceId, point2.EntranceId), 1, false);
+					var abtractEdgeInfo = new AbtractEdgeInfo(cluster.GetDistance(point1.AbstractNodeId, point2.AbstractNodeId), 1, false);
 					HierarchicalMap.AbstractGraph.AddEdge(
 						point1.AbstractNodeId,
 						point2.AbstractNodeId,
@@ -463,7 +468,7 @@ namespace HPASharp.Factories
 			AbstractNodeInfo abstractNodeInfo;
 			if (!abstractNodes.TryGetValue(srcNode.NodeId, out abstractNodeInfo))
 			{
-				var localEntranceIdx = cluster.AddEntrance(
+				cluster.AddEntrance(
 					abstractNodeId,
 					new Position(srcNode.Info.Position.X - cluster.Origin.X, srcNode.Info.Position.Y - cluster.Origin.Y));
 
@@ -472,8 +477,7 @@ namespace HPASharp.Factories
 					level,
 					cluster.Id,
 					new Position(srcNode.Info.Position.X, srcNode.Info.Position.Y),
-					srcNode.NodeId,
-					localEntranceIdx);
+					srcNode.NodeId);
 				abstractNodes[srcNode.NodeId] = abstractNodeInfo;
 
 				abstractNodeId++;

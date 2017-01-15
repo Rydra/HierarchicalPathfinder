@@ -112,10 +112,10 @@ namespace HPASharp.Search
                     // var cluster = map.GetCluster(eClusterId);
                     //var localpos1 = cluster.GetLocalPosition(lastNodeInfo.LocalEntranceId);
                     //var localpos2 = cluster.GetLocalPosition(currentNodeInfo.LocalEntranceId);
-                    if (lastNodeInfo.LocalEntranceId != currentNodeInfo.LocalEntranceId)
+                    if (lastNodeInfo.Id != currentNodeInfo.Id)
                     {
 						var cluster = map.GetCluster(eClusterId);
-						var localPath = cluster.GetPath(lastNodeInfo.LocalEntranceId, currentNodeInfo.LocalEntranceId)
+						var localPath = cluster.GetPath(lastNodeInfo.Id, currentNodeInfo.Id)
                             .Select(
                                 localId =>
                                 {
