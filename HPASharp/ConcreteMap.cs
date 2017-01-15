@@ -56,38 +56,29 @@ namespace HPASharp
         public ConcreteMap(TileType tileType, int width, int height, IPassability passability)
         {
             Passability = passability;
-            this.Init(tileType, width, height);
-        }
+			TileType = tileType;
+			MaxEdges = Helpers.GetMaxEdges(tileType);
+			Height = height;
+			Width = width;
+			Graph = GraphFactory.CreateGraph(width, height, Passability);
+		}
         
         // Create a new concreteMap as a copy of another concreteMap (just copying obstacles)
         public ConcreteMap Slice(int horizOrigin, int vertOrigin, int width, int height, IPassability passability)
         {
             var slicedConcreteMap = new ConcreteMap(this.TileType, width, height, passability);
-			
-			// so we now put the obstacles in place
-			for (var x = 0; x < width; x++)
-				for (var y = 0; y < height; y++)
-				{
-					// get the local node
-					var localNodeInfo = slicedConcreteMap.Graph.GetNode(slicedConcreteMap.GetNodeIdFromPos(x, y)).Info;
-					// get the initial concreteMap node
-					var nodeInfo = this.Graph.GetNode(this.GetNodeIdFromPos(horizOrigin + x, vertOrigin + y)).Info;
-					// set obstacle for the local node
-					localNodeInfo.IsObstacle = nodeInfo.IsObstacle;
-					localNodeInfo.Cost = nodeInfo.Cost;
-				}
+
+	        foreach (var slicedMapNode in slicedConcreteMap.Graph.Nodes)
+	        {
+		        var globalConcreteNode =
+			        Graph.GetNode(GetNodeIdFromPos(horizOrigin + slicedMapNode.Info.Position.X,
+				        vertOrigin + slicedMapNode.Info.Position.Y));
+				slicedMapNode.Info.IsObstacle = globalConcreteNode.Info.IsObstacle;
+				slicedMapNode.Info.Cost = globalConcreteNode.Info.Cost;
+			}
 
             return slicedConcreteMap;
 		}
-
-        private void Init(TileType tileType, int width, int height)
-        {
-            TileType = tileType;
-            MaxEdges = Helpers.GetMaxEdges(tileType);
-            Height = height;
-            Width = width;
-            Graph = GraphFactory.CreateGraph(width, height, Passability);
-        }
 
 	    public int NrNodes => Width * Height;
 
@@ -98,13 +89,13 @@ namespace HPASharp
 
         public int GetHeuristic(int startNodeId, int targetNodeId)
         {
-            var startPos = Graph.GetNodeInfo(startNodeId).Position;
-            var targetPos = Graph.GetNodeInfo(targetNodeId).Position;
+            var startPosition = Graph.GetNodeInfo(startNodeId).Position;
+            var targetPosition = Graph.GetNodeInfo(targetNodeId).Position;
 
-            var startX = startPos.X;
-            var targetX = targetPos.X;
-            var startY = startPos.Y;
-            var targetY = targetPos.Y;
+            var startX = startPosition.X;
+            var targetX = targetPosition.X;
+            var startY = startPosition.Y;
+            var targetY = targetPosition.Y;
             var diffX = Math.Abs(targetX - startX);
             var diffY = Math.Abs(targetY - startY);
             switch (TileType)

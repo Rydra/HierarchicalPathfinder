@@ -39,10 +39,7 @@ namespace HPASharp.Search
         Open,
         Closed
     }
-
-	/// <summary>
-	/// A path is composed by a list of node ids and the overall cost of this path
-	/// </summary>
+	
 	public class Path
 	{
 		public int PathCost { get; private set; }
@@ -50,18 +47,13 @@ namespace HPASharp.Search
 
 		public Path(List<int> pathNodes, int pathCost)
 		{
-			this.PathCost = pathCost;
-			this.PathNodes = pathNodes;
+			PathCost = pathCost;
+			PathNodes = pathNodes;
 		}
 	}
 
 	public class AStar
 	{
-		// I hope some day C# allows to implement functions inside functions
-		// like javascript or F# in a clean way... It would allow me to
-		// not use private auxiliar variables so that private functions can use
-		// them. I could pass them as parameters... but they would end up with to
-		// many parameters
 		private Func<int, bool> isGoal;
 		private Func<int, int> calculateHeuristic;
 		private IMap map;
@@ -69,22 +61,22 @@ namespace HPASharp.Search
 		/// <summary>
 		/// Performs an A* search following the Node Array A* implementation
 		/// </summary>
-		public Path FindPath(IMap map, int start, int target)
+		public Path FindPath(IMap map, int startNodeId, int targetNodeId)
         {
-			this.isGoal = nodeId => nodeId == target;
-			this.calculateHeuristic = nodeId => map.GetHeuristic(nodeId, target);
+			isGoal = nodeId => nodeId == targetNodeId;
+			calculateHeuristic = nodeId => map.GetHeuristic(nodeId, targetNodeId);
 			this.map = map;
 
-			var heuristic = calculateHeuristic(start);
+			var heuristic = calculateHeuristic(startNodeId);
 
-            var startNode = new AStarNode(start, 0, heuristic, CellStatus.Open);
+            var startNode = new AStarNode(startNodeId, 0, heuristic, CellStatus.Open);
 			var openQueue = new SimplePriorityQueue<int>();
-			openQueue.Enqueue(start, startNode.F);
+			openQueue.Enqueue(startNodeId, startNode.F);
 
 			// The open list lookup is indexed by the number of nodes in the graph/map,
 			// and it is useful to check quickly the status of any node that has been processed
 			var nodeLookup = new AStarNode?[map.NrNodes];
-			nodeLookup[start] = startNode;
+			nodeLookup[startNodeId] = startNode;
 
             while (openQueue.Count != 0)
             {

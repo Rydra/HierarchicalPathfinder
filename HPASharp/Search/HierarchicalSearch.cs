@@ -71,7 +71,7 @@ namespace HPASharp.Search
                     i++;
                 }
                 else
-                    result.Add(path[i]);
+                    result.Add(new PathNode(path[i].Id, level - 1));
             }
 
             // make sure last elem is added
@@ -81,25 +81,25 @@ namespace HPASharp.Search
             return result;
         }
 
-        public List<PathNode> AbstractPathToLowLevelPath(HierarchicalMap map, List<PathNode> absPath, int width, int maxPathsToCalculate = int.MaxValue)
+        public List<PathNode> AbstractPathToLowLevelPath(HierarchicalMap map, List<PathNode> abstractPath, int width, int maxPathsToCalculate = int.MaxValue)
         {
-            var result = new List<PathNode>(absPath.Count * 10);
-            if (absPath.Count == 0) return result;
+            var result = new List<PathNode>(abstractPath.Count * 10);
+            if (abstractPath.Count == 0) return result;
 
             var calculatedPaths = 0;
-            var lastAbsNodeId = absPath[0].Id;
+            var lastAbstractNodeId = abstractPath[0].Id;
 
-            for (var j = 1; j < absPath.Count; j++)
+            for (var currentPoint = 1; currentPoint < abstractPath.Count; currentPoint++)
             {
-                var currentAbsNodeId = absPath[j].Id;
-                var currentNodeInfo = map.AbstractGraph.GetNodeInfo(currentAbsNodeId);
-                var lastNodeInfo = map.AbstractGraph.GetNodeInfo(lastAbsNodeId);
+                var currentAbstractNodeId = abstractPath[currentPoint].Id;
+                var currentNodeInfo = map.AbstractGraph.GetNodeInfo(currentAbstractNodeId);
+                var lastNodeInfo = map.AbstractGraph.GetNodeInfo(lastAbstractNodeId);
 
                 // We cannot compute a low level path from a level which is higher than lvl 1
                 // (obvious...) therefore, ignore any non-refined path
-                if (absPath[j].Level > 1)
+                if (abstractPath[currentPoint].Level > 1)
                 {
-                    result.Add(absPath[j]);
+                    result.Add(abstractPath[currentPoint]);
                     continue;
                 }
 
@@ -108,14 +108,10 @@ namespace HPASharp.Search
 
                 if (eClusterId == leClusterId && calculatedPaths < maxPathsToCalculate)
                 {
-                    // insert the local solution into the global one
-                    // var cluster = map.GetCluster(eClusterId);
-                    //var localpos1 = cluster.GetLocalPosition(lastNodeInfo.LocalEntranceId);
-                    //var localpos2 = cluster.GetLocalPosition(currentNodeInfo.LocalEntranceId);
-                    if (lastNodeInfo.Id != currentNodeInfo.Id)
+                    if (lastAbstractNodeId != currentAbstractNodeId)
                     {
 						var cluster = map.GetCluster(eClusterId);
-						var localPath = cluster.GetPath(lastNodeInfo.Id, currentNodeInfo.Id)
+						var localPath = cluster.GetPath(lastAbstractNodeId, currentAbstractNodeId)
                             .Select(
                                 localId =>
                                 {
@@ -130,15 +126,15 @@ namespace HPASharp.Search
                 }
                 else
                 {
-                    var lastVal = lastNodeInfo.CenterId;
-                    var currentVal = currentNodeInfo.CenterId;
+                    var lastVal = lastNodeInfo.ConcreteNodeId;
+                    var currentVal = currentNodeInfo.ConcreteNodeId;
                     if (result[result.Count - 1].Id != lastVal)
                         result.Add(new PathNode(lastVal, 0));
 
                     result.Add(new PathNode(currentVal, 0));
                 }
 
-                lastAbsNodeId = currentAbsNodeId;
+                lastAbstractNodeId = currentAbstractNodeId;
             }
 
             return result;

@@ -53,17 +53,17 @@ namespace HPASharp
         public int Id { get; set; }
         public Position Position { get; set; }
         public int ClusterId { get; set; }
-        public int CenterId { get; set; }
+        public int ConcreteNodeId { get; set; }
         public int Level { get; set; }
 
         public AbstractNodeInfo(int id, int level, int clId,
-                    Position position, int centerId)
+                    Position position, int concreteNodeId)
         {
             Id = id;
             Level = level;
             ClusterId = clId;
             Position = position;
-            CenterId = centerId;
+            ConcreteNodeId = concreteNodeId;
         }
 
         public void PrintInfo()
@@ -73,7 +73,7 @@ namespace HPASharp
             Console.Write("; cluster: " + ClusterId);
             Console.Write("; row: " + Position.Y);
             Console.Write("; col: " + Position.X);
-            Console.Write("; center: " + CenterId);
+            Console.Write("; center: " + ConcreteNodeId);
             Console.WriteLine();
         }
     }
@@ -251,7 +251,7 @@ namespace HPASharp
 		{
 			var y = position.Y;
 			var x = position.X;
-			return y >= this.currentClusterY0 && y <= this.currentClusterY1 && x >= this.currentClusterX0 && x <= this.currentClusterX1;
+			return y >= currentClusterY0 && y <= currentClusterY1 && x >= currentClusterX0 && x <= currentClusterX1;
 		}
 
 		// Define the offset between two clusters in this level (each level doubles the cluster size)
@@ -347,24 +347,20 @@ namespace HPASharp
 
                 foreach (var clusterGroup in clusterGroups)
                 {
-                    // Fromeach cluster group, only pick those entrances whose level is
-                    // greater or equal than the current level (e.g. level 4 entrances
-                    // account for lvl 3, lvl 2 and lvl 1)
-                    var entrances = clusterGroup
+                    var entrancesInClusterGroup = clusterGroup
                         .SelectMany(cl => cl.EntrancePoints)
                         .Where(entrance => GetEntrancePointLevel(entrance) >= level)
                         .ToList();
 
-                    var firstEntrance = entrances.First();
-                    var entrancePosition = new Position(firstEntrance.RelativePosition.X + clusterGroup.First().Origin.X,
-                        firstEntrance.RelativePosition.Y + clusterGroup.First().Origin.Y);
+                    var firstEntrance = entrancesInClusterGroup.First();
+	                var entrancePosition = AbstractGraph.GetNode(firstEntrance.AbstractNodeId).Info.Position;
 
                     SetCurrentClusterByPositionAndLevel(
                         entrancePosition,
                         level);
 
-                    foreach (var point1 in entrances)
-                        foreach (var point2 in entrances)
+                    foreach (var point1 in entrancesInClusterGroup)
+                        foreach (var point2 in entrancesInClusterGroup)
                         {
                             if (point1 == point2) continue;
                             AddEdgesBetweenAbstractNodes(point1.AbstractNodeId, point2.AbstractNodeId, level);
@@ -372,6 +368,7 @@ namespace HPASharp
                 }
             }
         }
+
         public void AddEdgesBetweenAbstractNodes(int srcAbstractNodeId, int destAbstractNodeId, int level)
         {
             if (srcAbstractNodeId == destAbstractNodeId || !IsValidAbstractNodeForLevel(destAbstractNodeId, level))

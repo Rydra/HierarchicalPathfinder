@@ -71,7 +71,7 @@ namespace HPASharp.Factories
 				var clusterId = currentNodeInfo.ClusterId;
 				var cluster = map.Clusters[clusterId];
 				cluster.RemoveLastEntranceRecord();
-				map.ConcreteNodeIdToAbstractNodeIdMap[currentNodeInfo.CenterId] = Constants.NO_NODE;
+				map.ConcreteNodeIdToAbstractNodeIdMap[currentNodeInfo.ConcreteNodeId] = Constants.NO_NODE;
 				abstractGraph.RemoveEdgesFromNode(nodeId);
 				abstractGraph.RemoveLastNode();
 			}
@@ -104,17 +104,17 @@ namespace HPASharp.Factories
         // insert a new node, such as start or target, to the abstract graph and
 		// returns the id of the newly created node in the abstract graph
 		// x and y are the positions where I want to put the node
-		private int InsertStal(HierarchicalMap map, int nodeId, Position pos, int start)
+		private int InsertStal(HierarchicalMap map, int concreteNodeId, Position pos, int start)
 		{
 			// If the node already existed (for instance, it was the an entrance point already
 			// existing in the graph, we need to keep track of the previous status in order
 			// to be able to restore it once we delete this STAL
-			if (map.ConcreteNodeIdToAbstractNodeIdMap[nodeId] != Constants.NO_NODE)
+			if (map.ConcreteNodeIdToAbstractNodeIdMap[concreteNodeId] != Constants.NO_NODE)
 			{
-				m_stalLevel[start] = map.AbstractGraph.GetNodeInfo(map.ConcreteNodeIdToAbstractNodeIdMap[nodeId]).Level;
-				m_stalEdges[start] = map.GetNodeEdges(nodeId);
+				m_stalLevel[start] = map.AbstractGraph.GetNodeInfo(map.ConcreteNodeIdToAbstractNodeIdMap[concreteNodeId]).Level;
+				m_stalEdges[start] = map.GetNodeEdges(concreteNodeId);
 				m_stalUsed[start] = true;
-				return map.ConcreteNodeIdToAbstractNodeIdMap[nodeId];
+				return map.ConcreteNodeIdToAbstractNodeIdMap[concreteNodeId];
 			}
 
 			m_stalUsed[start] = false;
@@ -126,14 +126,14 @@ namespace HPASharp.Factories
 			var entrance = cluster.AddEntrance(abstractNodeId, new Position(pos.X - cluster.Origin.X, pos.Y - cluster.Origin.Y));
 			cluster.UpdatePathsForLocalEntrance(entrance);
 
-			map.ConcreteNodeIdToAbstractNodeIdMap[nodeId] = abstractNodeId;
+			map.ConcreteNodeIdToAbstractNodeIdMap[concreteNodeId] = abstractNodeId;
 
 			var info = new AbstractNodeInfo(
 				abstractNodeId,
 				1,
 				cluster.Id,
 				pos,
-				nodeId);
+				concreteNodeId);
 
 			map.AbstractGraph.AddNode(abstractNodeId, info);
 
@@ -433,29 +433,27 @@ namespace HPASharp.Factories
 		#region Generate abstract nodes
 		private void CreateAbstractNodes(List<Entrance> entrancesList)
 		{
-			var abstractNodes = GenerateAbstractNodes(entrancesList);
-
-			foreach (var kvp in abstractNodes)
+			foreach (var abstractNode in GenerateAbstractNodes(entrancesList))
 			{
-				// TODO: Maybe we can find a way to remove this line of AbsNodesIds
-				HierarchicalMap.ConcreteNodeIdToAbstractNodeIdMap[kvp.Key] = kvp.Value.Id;
-				HierarchicalMap.AbstractGraph.AddNode(kvp.Value.Id, kvp.Value);
+				HierarchicalMap.ConcreteNodeIdToAbstractNodeIdMap[abstractNode.ConcreteNodeId] = abstractNode.Id;
+				HierarchicalMap.AbstractGraph.AddNode(abstractNode.Id, abstractNode);
 			}
 		}
 
-		private Dictionary<int, AbstractNodeInfo> GenerateAbstractNodes(List<Entrance> entrances)
+		private IEnumerable<AbstractNodeInfo> GenerateAbstractNodes(List<Entrance> entrances)
 		{
 			var abstractNodeId = 0;
-			var abstractNodes = new Dictionary<int, AbstractNodeInfo>();
+			var abstractNodesDict = new Dictionary<int, AbstractNodeInfo>();
 			foreach (var entrance in entrances)
 			{
 				var level = entrance.GetEntranceLevel(ClusterSize, MaxLevel);
 
-				CreateOrUpdateAbstractNodeFromConcreteNode(entrance.SrcNode, entrance.Cluster1, ref abstractNodeId, level, abstractNodes);
-				CreateOrUpdateAbstractNodeFromConcreteNode(entrance.DestNode, entrance.Cluster2, ref abstractNodeId, level, abstractNodes);
+				CreateOrUpdateAbstractNodeFromConcreteNode(entrance.SrcNode, entrance.Cluster1, ref abstractNodeId, level, abstractNodesDict);
+				CreateOrUpdateAbstractNodeFromConcreteNode(entrance.DestNode, entrance.Cluster2, ref abstractNodeId, level, abstractNodesDict);
+
 			}
 
-			return abstractNodes;
+			return abstractNodesDict.Values;
 		}
 
 		private static void CreateOrUpdateAbstractNodeFromConcreteNode(

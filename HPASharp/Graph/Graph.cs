@@ -38,12 +38,12 @@ namespace HPASharp
             {
                 NodeId = nodeId;
                 Info = info;
-                this.Edges = new List<Edge>();
+                Edges = new List<Edge>();
             }
 
             public void RemoveEdge(int targetNodeId)
             {
-                this.Edges.RemoveAll(e => e.TargetNodeId == targetNodeId);
+                Edges.RemoveAll(e => e.TargetNodeId == targetNodeId);
             }
         }
 

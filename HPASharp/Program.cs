@@ -192,7 +192,7 @@ namespace HPASharp
                     if (x % clusterSize == 0) Console.Write('|');
 
                     var nodeId = concreteMap.GetNodeIdFromPos(x, y);
-                    var hasAbsNode = hierarchicalGraph.AbstractGraph.Nodes.FirstOrDefault(n => n.Info.CenterId == nodeId);
+                    var hasAbsNode = hierarchicalGraph.AbstractGraph.Nodes.FirstOrDefault(n => n.Info.ConcreteNodeId == nodeId);
                     
                     if (hasAbsNode != null)
                         switch (hasAbsNode.Info.Level)
