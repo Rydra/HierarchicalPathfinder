@@ -6,12 +6,12 @@
         public Cluster Cluster1 { get; set; }
         public Cluster Cluster2 { get; set; }
 
-		public Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node SrcNode { get; set; }
-		public Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node DestNode { get; set; }
+		public ConcreteNode SrcNode { get; set; }
+		public ConcreteNode DestNode { get; set; }
 		public Orientation Orientation { get; set; }
 		
         
-        public Entrance(int id, Cluster cluster1, Cluster cluster2, Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node srcNode, Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node destNode, Orientation orientation)
+        public Entrance(int id, Cluster cluster1, Cluster cluster2, ConcreteNode srcNode, ConcreteNode destNode, Orientation orientation)
         {
             Id = id;
             Cluster1 = cluster1;

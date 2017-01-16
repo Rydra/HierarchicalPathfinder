@@ -1,10 +1,12 @@
-﻿namespace HPASharp.Factories
+﻿using HPASharp.Infrastructure;
+
+namespace HPASharp.Factories
 {
 	public class GraphFactory
 	{
-		public static Graph<ConcreteNodeInfo, ConcreteEdgeInfo> CreateGraph(int width, int height, IPassability passability)
+		public static ConcreteGraph CreateGraph(int width, int height, IPassability passability)
 		{
-			var graph = new Graph<ConcreteNodeInfo, ConcreteEdgeInfo>();
+			var graph = new ConcreteGraph();
 
 			CreateNodes(width, height, graph, passability);
 			CreateEdges(graph, width, height, TileType.Octile); // We hardcode OCTILE for the time being
@@ -12,17 +14,17 @@
 			return graph;
 		}
 
-		public static Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node GetNodeByPos(Graph<ConcreteNodeInfo, ConcreteEdgeInfo> graph, int x, int y, int width)
+		public static ConcreteNode GetNodeByPos(ConcreteGraph graph, int x, int y, int width)
 		{
 			 return graph.GetNode(GetNodeIdFromPos(x, y,width));
 		}
 		
-		public static int GetNodeIdFromPos(int left, int top, int width)
+		public static Id<ConcreteNode> GetNodeIdFromPos(int left, int top, int width)
 		{
-			return top * width + left;
+			return (Id<ConcreteNode>)(top * width + left);
 		}
 
-		private static void AddEdge(Graph<ConcreteNodeInfo, ConcreteEdgeInfo> graph, int nodeId, int x, int y, int width, int height, bool isDiag = false)
+		private static void AddEdge(ConcreteGraph graph, Id<ConcreteNode> nodeId, int x, int y, int width, int height, bool isDiag = false)
 		{
 			if (y < 0 || y >= height || x < 0 || x >= width)
 				return;
@@ -33,7 +35,7 @@
 			graph.AddEdge(nodeId, targetNode.NodeId, new ConcreteEdgeInfo(cost));
 		}
 
-		private static void CreateEdges(Graph<ConcreteNodeInfo, ConcreteEdgeInfo> graph, int width, int height, TileType tileType)
+		private static void CreateEdges(ConcreteGraph graph, int width, int height, TileType tileType)
 		{
 			for (var top = 0; top < height; ++top)
 				for (var left = 0; left < width; ++left)
@@ -74,7 +76,7 @@
 				}
 		}
 
-		private static void CreateNodes(int width, int height, Graph<ConcreteNodeInfo, ConcreteEdgeInfo> graph, IPassability passability)
+		private static void CreateNodes(int width, int height, ConcreteGraph graph, IPassability passability)
 		{
 			for (var top = 0; top < height; ++top)
 				for (var left = 0; left < width; ++left)

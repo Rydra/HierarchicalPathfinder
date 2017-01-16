@@ -24,13 +24,13 @@ namespace HPASharp
     }
 
     // implements edges in the abstract graph
-    public class AbtractEdgeInfo
+    public class AbstractEdgeInfo
     {
         public int Cost { get; set; }
         public int Level { get; set; }
         public bool IsInterEdge { get; set; }
 
-        public AbtractEdgeInfo(int cost, int level = 1, bool inter = true)
+        public AbstractEdgeInfo(int cost, int level = 1, bool inter = true)
         {
             Cost = cost;
             Level = level;
@@ -50,14 +50,14 @@ namespace HPASharp
     // implements nodes in the abstract graph
     public class AbstractNodeInfo
     {
-        public int Id { get; set; }
+        public Id<AbstractNode> Id { get; set; }
         public Position Position { get; set; }
         public int ClusterId { get; set; }
-        public int ConcreteNodeId { get; set; }
+        public Id<ConcreteNode> ConcreteNodeId { get; set; }
         public int Level { get; set; }
 
-        public AbstractNodeInfo(int id, int level, int clId,
-                    Position position, int concreteNodeId)
+        public AbstractNodeInfo(Id<AbstractNode> id, int level, int clId,
+                    Position position, Id<ConcreteNode> concreteNodeId)
         {
             Id = id;
             Level = level;
@@ -94,7 +94,7 @@ namespace HPASharp
     {
         public int Height { get; set; }
         public int Width { get; set; }
-        public Graph<AbstractNodeInfo, AbtractEdgeInfo> AbstractGraph { get; set; }
+        public AbstractGraph AbstractGraph { get; set; }
         public int ClusterSize { get; set; }
         public int MaxLevel { get; set; }
         public List<Cluster> Clusters { get; set; }
@@ -104,7 +104,7 @@ namespace HPASharp
         // indicates to which abstract node id it maps. It is a sparse
         // array for quick access. For saving memory space, this could be implemented as a dictionary
         // NOTE: It is currently just used for insert and remove STAL
-        public int[] ConcreteNodeIdToAbstractNodeIdMap { get; set; }
+        public Dictionary<Id<ConcreteNode>, Id<AbstractNode>> ConcreteNodeIdToAbstractNodeIdMap { get; set; }
         public AbsType Type { get; set; }
 		
 		private int currentLevel;
@@ -141,12 +141,10 @@ namespace HPASharp
             SetType(concreteMap.TileType);
             this.Height = concreteMap.Height;
             this.Width = concreteMap.Width;
-            ConcreteNodeIdToAbstractNodeIdMap = new int[this.Height * this.Width];
-            for (var i = 0; i < this.Height * this.Width; i++)
-                ConcreteNodeIdToAbstractNodeIdMap[i] = -1;
+            ConcreteNodeIdToAbstractNodeIdMap = new Dictionary<Id<ConcreteNode>, Id<AbstractNode>>();
 
             Clusters = new List<Cluster>();
-            AbstractGraph = new Graph<AbstractNodeInfo, AbtractEdgeInfo>();
+            AbstractGraph = new AbstractGraph();
         }
 
         public int GetHeuristic(int startNodeId, int targetNodeId)
@@ -190,12 +188,12 @@ namespace HPASharp
             return cluster;
         }
 
-        public void AddEdge(int sourceNodeId, int destNodeId, int cost, int level = 1, bool inter = false)
+        public void AddEdge(Id<AbstractNode> sourceNodeId, Id<AbstractNode> destNodeId, int cost, int level = 1, bool inter = false)
         {
-            AbstractGraph.AddEdge(sourceNodeId, destNodeId, new AbtractEdgeInfo(cost, level, inter));
+            AbstractGraph.AddEdge(sourceNodeId, destNodeId, new AbstractEdgeInfo(cost, level, inter));
         }
 
-        public List<Graph<AbstractNodeInfo, AbtractEdgeInfo>.Edge> GetNodeEdges(int nodeId)
+        public List<AbstractEdge> GetNodeEdges(Id<ConcreteNode> nodeId)
         {
             var node = AbstractGraph.GetNode(ConcreteNodeIdToAbstractNodeIdMap[nodeId]);
             return node.Edges;
@@ -369,7 +367,7 @@ namespace HPASharp
             }
         }
 
-        public void AddEdgesBetweenAbstractNodes(int srcAbstractNodeId, int destAbstractNodeId, int level)
+        public void AddEdgesBetweenAbstractNodes(Id<AbstractNode> srcAbstractNodeId, Id<AbstractNode> destAbstractNodeId, int level)
         {
             if (srcAbstractNodeId == destAbstractNodeId || !IsValidAbstractNodeForLevel(destAbstractNodeId, level))
                 return;

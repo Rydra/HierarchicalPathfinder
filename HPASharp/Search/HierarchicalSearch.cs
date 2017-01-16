@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HPASharp.Infrastructure;
 
 namespace HPASharp.Search
 {
@@ -111,7 +112,7 @@ namespace HPASharp.Search
                     if (lastAbstractNodeId != currentAbstractNodeId)
                     {
 						var cluster = map.GetCluster(eClusterId);
-						var localPath = cluster.GetPath(lastAbstractNodeId, currentAbstractNodeId)
+						var localPath = cluster.GetPath((Id<AbstractNode>)lastAbstractNodeId, (Id<AbstractNode>)currentAbstractNodeId)
                             .Select(
                                 localId =>
                                 {

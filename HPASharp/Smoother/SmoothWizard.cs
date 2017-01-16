@@ -162,8 +162,8 @@ namespace HPASharp.Smoother
             var x = nodeInfo.Position.X;
 
 			var tilingGraph = this._concreteMap.Graph;
-			Func<int, int, Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node> getNode =
-				(top, left) => tilingGraph.GetNode(this._concreteMap.GetNodeIdFromPos(top, left));
+			Func<int, int, ConcreteNode> getNode =
+				(top, left) => tilingGraph.GetNode(_concreteMap.GetNodeIdFromPos(top, left));
 			switch ((Direction)direction)
             {
                 case Direction.North:

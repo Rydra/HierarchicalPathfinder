@@ -154,7 +154,7 @@ namespace HPASharp
 	    private static List<Position> RegularSearch(ConcreteMap concreteMap)
 	    {
 			var tilingGraph = concreteMap.Graph;
-			Func<int, int, Graph<ConcreteNodeInfo, ConcreteEdgeInfo>.Node> getNode =
+			Func<int, int, ConcreteNode> getNode =
 				(top, left) => tilingGraph.GetNode(concreteMap.GetNodeIdFromPos(top, left));
 
 			// Regular pathfinding

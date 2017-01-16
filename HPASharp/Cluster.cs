@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using HPASharp.Infrastructure;
 using HPASharp.Search;
 
 namespace HPASharp
@@ -17,10 +18,10 @@ namespace HPASharp
 	/// </summary>
 	public class EntrancePoint
 	{
-		public int AbstractNodeId { get; set; }
+		public Id<AbstractNode> AbstractNodeId { get; set; }
 		public Position RelativePosition { get; set; }
 
-		public EntrancePoint(int abstractNodeId, Position relativePosition)
+		public EntrancePoint(Id<AbstractNode> abstractNodeId, Position relativePosition)
 		{
 			AbstractNodeId = abstractNodeId;  
 			RelativePosition = relativePosition;
@@ -38,12 +39,12 @@ namespace HPASharp
 	    /// This array could be represented as a Dictionary, but it's faster
 	    /// to use an array.
 	    /// </summary>
-	    private readonly Dictionary<Tuple<int, int>, int> _distances;
+	    private readonly Dictionary<Tuple<Id<AbstractNode>, Id<AbstractNode>>, int> _distances;
 
-	    private readonly Dictionary<Tuple<int, int>, List<int>> _cachedPaths;
+	    private readonly Dictionary<Tuple<Id<AbstractNode>, Id<AbstractNode>>, List<int>> _cachedPaths;
 
         // Tells whether a path has already been calculated for 2 node ids
-	    private readonly Dictionary<Tuple<int, int>, bool> _distanceCalculated;
+	    private readonly Dictionary<Tuple<Id<AbstractNode>, Id<AbstractNode>>, bool> _distanceCalculated;
         
 		public List<EntrancePoint> EntrancePoints { get; set; }
 		
@@ -61,9 +62,9 @@ namespace HPASharp
             ClusterX = clusterX;
             Origin = origin;
             Size = size;
-            _distances = new Dictionary<Tuple<int, int>, int>();
-			_cachedPaths = new Dictionary<Tuple<int, int>, List<int>>();
-			_distanceCalculated = new Dictionary<Tuple<int, int>, bool>();
+            _distances = new Dictionary<Tuple<Id<AbstractNode>, Id<AbstractNode>>, int>();
+			_cachedPaths = new Dictionary<Tuple<Id<AbstractNode>, Id<AbstractNode>>, List<int>>();
+			_distanceCalculated = new Dictionary<Tuple<Id<AbstractNode>, Id<AbstractNode>>, bool>();
             EntrancePoints = new List<EntrancePoint>();
         }
         
@@ -116,24 +117,24 @@ namespace HPASharp
 	        }
         }
 		
-        public int GetDistance(int abstractNodeId1, int AbstractNodeId2)
+        public int GetDistance(Id<AbstractNode> abstractNodeId1, Id<AbstractNode> AbstractNodeId2)
         {
             return _distances[Tuple.Create(abstractNodeId1,AbstractNodeId2)];
         }
 
-		public List<int> GetPath(int abstractNodeId1, int abstractNodeId2)
+		public List<int> GetPath(Id<AbstractNode> abstractNodeId1, Id<AbstractNode> abstractNodeId2)
 		{
 			return _cachedPaths[Tuple.Create(abstractNodeId1, abstractNodeId2)];
 		}
         
-		public bool AreConnected(int abstractNodeId1, int abstractNodeId2)
+		public bool AreConnected(Id<AbstractNode> abstractNodeId1, Id<AbstractNode> abstractNodeId2)
         {
             return _distances.ContainsKey(Tuple.Create(abstractNodeId1,abstractNodeId2));
         }
 
 		public int NumberOfEntrances => EntrancePoints.Count;
 		
-        public EntrancePoint AddEntrance(int abstractNodeId, Position relativePosition)
+        public EntrancePoint AddEntrance(Id<AbstractNode> abstractNodeId, Position relativePosition)
         {
             var entrancePoint = new EntrancePoint(abstractNodeId, relativePosition);
             EntrancePoints.Add(entrancePoint);

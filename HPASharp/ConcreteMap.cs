@@ -51,7 +51,7 @@ namespace HPASharp
 
         public int MaxEdges { get; set; }
 
-        public Graph<ConcreteNodeInfo, ConcreteEdgeInfo> Graph { get; set; }
+        public ConcreteGraph Graph { get; set; }
 
         public ConcreteMap(TileType tileType, int width, int height, IPassability passability)
         {

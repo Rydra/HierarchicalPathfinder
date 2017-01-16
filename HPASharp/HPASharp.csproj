@@ -51,6 +51,7 @@
     <Compile Include="Factories\Entrance.cs" />
     <Compile Include="Factories\GraphFactory.cs" />
     <Compile Include="Helpers.cs" />
+    <Compile Include="Infrastructure\Id.cs" />
     <Compile Include="Infrastructure\Position.cs" />
     <Compile Include="Infrastructure\IMap.cs" />
     <Compile Include="Cluster.cs" />
