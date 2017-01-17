@@ -1,7 +1,13 @@
-﻿using HPASharp.Infrastructure;
+﻿using HPASharp.Graph;
+using HPASharp.Infrastructure;
 
 namespace HPASharp.Factories
 {
+    public enum EntranceStyle
+    {
+        MiddleEntrance, EndEntrance
+    }
+
     public class Entrance
     {
         public Id<Entrance> Id { get; set; }

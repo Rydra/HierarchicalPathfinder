@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using HPASharp.Graph;
 using HPASharp.Infrastructure;
 using HPASharp.Search;
 

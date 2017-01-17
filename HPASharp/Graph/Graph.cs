@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Xml;
+using HPASharp.Graph;
 using HPASharp.Infrastructure;
 
 namespace HPASharp
@@ -20,73 +21,7 @@ namespace HPASharp
 		TEdgeInfo Info { get; set; }
 	}
 
-	public class AbstractNode : INode<AbstractNode, AbstractNodeInfo, AbstractEdge>
-	{
-		public Id<AbstractNode> NodeId { get; set; }
-		public AbstractNodeInfo Info { get; set; }
-		public List<AbstractEdge> Edges { get; set; }
 
-		public AbstractNode(Id<AbstractNode> nodeId, AbstractNodeInfo info)
-		{
-			NodeId = nodeId;
-			Info = info;
-			Edges = new List<AbstractEdge>();
-		}
-
-		public void RemoveEdge(Id<AbstractNode> targetNodeId)
-		{
-			Edges.RemoveAll(e => e.TargetNodeId == targetNodeId);
-		}
-
-		public static INode<AbstractNode, AbstractNodeInfo, AbstractEdge> CreateNode(Id<AbstractNode> nodeId,
-			AbstractNodeInfo info)
-		{
-			return new AbstractNode(nodeId, info);
-		}
-	}
-
-	public class AbstractEdge : IEdge<AbstractNode, AbstractEdgeInfo>
-	{
-		public Id<AbstractNode> TargetNodeId { get; set; }
-		public AbstractEdgeInfo Info { get; set; }
-
-		public AbstractEdge(Id<AbstractNode> targetNodeId, AbstractEdgeInfo info)
-		{
-			TargetNodeId = targetNodeId;
-			Info = info;
-		}
-	}
-
-	public class ConcreteNode : INode<ConcreteNode, ConcreteNodeInfo, ConcreteEdge>
-	{
-		public Id<ConcreteNode> NodeId { get; set; }
-		public ConcreteNodeInfo Info { get; set; }
-		public List<ConcreteEdge> Edges { get; set; }
-
-		public ConcreteNode(Id<ConcreteNode> nodeId, ConcreteNodeInfo info)
-		{
-			NodeId = nodeId;
-			Info = info;
-			Edges = new List<ConcreteEdge>();
-		}
-
-		public void RemoveEdge(Id<ConcreteNode> targetNodeId)
-		{
-			Edges.RemoveAll(e => e.TargetNodeId == targetNodeId);
-		}
-	}
-
-	public class ConcreteEdge : IEdge<ConcreteNode, ConcreteEdgeInfo>
-	{
-		public Id<ConcreteNode> TargetNodeId { get; set; }
-		public ConcreteEdgeInfo Info { get; set; }
-
-		public ConcreteEdge(Id<ConcreteNode> targetNodeId, ConcreteEdgeInfo info)
-		{
-			TargetNodeId = targetNodeId;
-			Info = info;
-		}
-	}
 
 	/// <summary>
 	/// A graph is a set of nodes connected with edges. Each node and edge can hold

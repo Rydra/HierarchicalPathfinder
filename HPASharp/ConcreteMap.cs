@@ -5,29 +5,6 @@ using HPASharp.Factories;
 
 namespace HPASharp
 {
-    public class ConcreteEdgeInfo
-    {
-        public ConcreteEdgeInfo(int cost)
-        {
-            Cost = cost;
-        }
-
-        public int Cost { get; set; }
-    }
-    
-    public class ConcreteNodeInfo
-    {
-        public ConcreteNodeInfo(bool isObstacle, int cost, Position position)
-        {
-            IsObstacle = isObstacle;
-            Position = position;
-            Cost = cost;
-        }
-
-        public Position Position { get; set; }
-        public bool IsObstacle { get; set; }
-	    public int Cost { get; set; }
-    }
 
     public enum TileType
     {
@@ -62,7 +39,7 @@ namespace HPASharp
 			Width = width;
 			Graph = GraphFactory.CreateGraph(width, height, Passability);
 		}
-        
+
         // Create a new concreteMap as a copy of another concreteMap (just copying obstacles)
         public ConcreteMap Slice(int horizOrigin, int vertOrigin, int width, int height, IPassability passability)
         {

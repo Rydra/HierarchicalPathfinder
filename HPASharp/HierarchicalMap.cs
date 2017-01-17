@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using HPASharp.Graph;
 using HPASharp.Infrastructure;
 using HPASharp.Search;
 
@@ -23,61 +24,6 @@ namespace HPASharp
         }
     }
 
-    // implements edges in the abstract graph
-    public class AbstractEdgeInfo
-    {
-        public int Cost { get; set; }
-        public int Level { get; set; }
-        public bool IsInterEdge { get; set; }
-
-        public AbstractEdgeInfo(int cost, int level = 1, bool inter = true)
-        {
-            Cost = cost;
-            Level = level;
-            IsInterEdge = inter;
-        }
-        public override string ToString()
-        {
-            return ("cost: " + Cost + "; level: " + Level + "; inter: " + IsInterEdge);
-        }
-
-        public void PrintInfo()
-        {
-            Console.WriteLine(this.ToString());
-        }
-    }
-
-    // implements nodes in the abstract graph
-    public class AbstractNodeInfo
-    {
-        public Id<AbstractNode> Id { get; set; }
-        public Position Position { get; set; }
-        public int ClusterId { get; set; }
-        public Id<ConcreteNode> ConcreteNodeId { get; set; }
-        public int Level { get; set; }
-
-        public AbstractNodeInfo(Id<AbstractNode> id, int level, int clId,
-                    Position position, Id<ConcreteNode> concreteNodeId)
-        {
-            Id = id;
-            Level = level;
-            ClusterId = clId;
-            Position = position;
-            ConcreteNodeId = concreteNodeId;
-        }
-
-        public void PrintInfo()
-        {
-            Console.Write("id: " + Id);
-            Console.Write("; level: " + Level);
-            Console.Write("; cluster: " + ClusterId);
-            Console.Write("; row: " + Position.Y);
-            Console.Write("; col: " + Position.X);
-            Console.Write("; center: " + ConcreteNodeId);
-            Console.WriteLine();
-        }
-    }
-    
     public enum AbsType {
         ABSTRACT_TILE,
         ABSTRACT_OCTILE,

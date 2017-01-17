@@ -1,4 +1,5 @@
-﻿using HPASharp.Infrastructure;
+﻿using HPASharp.Graph;
+using HPASharp.Infrastructure;
 
 namespace HPASharp.Factories
 {

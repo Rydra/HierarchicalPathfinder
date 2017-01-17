@@ -1,16 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using HPASharp.Graph;
 using HPASharp.Infrastructure;
-using HPASharp.Search;
 
 namespace HPASharp.Factories
 {
-    public enum EntranceStyle
-    {
-        MiddleEntrance, EndEntrance
-    }
-    
     public class AbstractMapFactory
     {
         const int MAX_ENTRANCE_WIDTH = 6;
