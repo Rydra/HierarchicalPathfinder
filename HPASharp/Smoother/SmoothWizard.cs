@@ -21,21 +21,24 @@ namespace HPASharp.Smoother
 
     public class SmoothWizard
     {
-        public List<PathNode> InitPath { get; set; }
+        public List<IPathNode> InitialPath { get; set; }
+	    private static readonly Id<ConcreteNode> INVALID_ID = Id<ConcreteNode>.From(Constants.NO_NODE);
 
         private readonly ConcreteMap _concreteMap;
 
         // This is a dictionary, indexed by nodeId, that tells in which order does this node occupy in the path
         private readonly Dictionary<int, int> _pathMap;
 
-        public SmoothWizard(ConcreteMap concreteMap, List<PathNode> path)
+        public SmoothWizard(ConcreteMap concreteMap, List<IPathNode> path)
         {
-            InitPath = path;
+            InitialPath = path;
             _concreteMap = concreteMap;
 
             _pathMap = new Dictionary<int, int>();
-            for (var i = 0; i < InitPath.Count; i++)
-                _pathMap[InitPath[i].Id] = i + 1;
+	        for (var i = 0; i < InitialPath.Count; i++)
+	        {
+			    _pathMap[InitialPath[i].IdValue] = i + 1;
+			}
         }
 
         private Position GetPosition(int nodeId)
@@ -43,113 +46,120 @@ namespace HPASharp.Smoother
             return _concreteMap.Graph.GetNodeInfo(nodeId).Position;
         }
 
-        public List<PathNode> SmoothPath()
+        public List<IPathNode> SmoothPath()
         {
-            var smoothedPath = new List<PathNode>(InitPath.Count * 2);
-            for (var j = 0; j < InitPath.Count; j++)
+			var smoothedPath = new List<IPathNode>();
+            var smoothedConcretePath = new List<ConcretePathNode>();
+			var index = 0;
+            for (; index < InitialPath.Count && InitialPath[index] is ConcretePathNode; index++)
             {
-                var pathNode = InitPath[j];
-
-                // Only process for smoothing points which belong to lvl 0. Anything above that is an abstract
-                // path that cannot be smoothed.
-                if (pathNode.Level > 0)
-                {
-                    smoothedPath.Add(pathNode);
-                    continue;
-                }
-
-                if (smoothedPath.Count == 0)
-                    smoothedPath.Add(InitPath[j]);
+				var pathNode = (ConcretePathNode)InitialPath[index];
+				if (smoothedConcretePath.Count == 0)
+					smoothedConcretePath.Add(pathNode);
 
                 // add this node to the smoothed path
-                if (smoothedPath[smoothedPath.Count - 1].Id != InitPath[j].Id)
+                if (smoothedConcretePath[smoothedConcretePath.Count - 1].Id != pathNode.Id)
                 {
                     // It's possible that, when smoothing, the next node that will be put in the path
                     // will not be adjacent. In those cases, since OpenRA requires a continuous path
                     // without breakings, we should calculate a new path for that section
-                    var lastNodeInSmoothedPath = smoothedPath[smoothedPath.Count - 1];
-                    var currentNodeInPath = InitPath[j];
+                    var lastNodeInSmoothedPath = smoothedConcretePath[smoothedConcretePath.Count - 1];
+                    var currentNodeInPath = pathNode;
 
                     if (!AreAdjacent(GetPosition(lastNodeInSmoothedPath.Id), GetPosition(currentNodeInPath.Id)))
                     {
-                        var intrapath = GenerateIntermediateNodes(smoothedPath[smoothedPath.Count - 1].Id, InitPath[j].Id);
-                        smoothedPath.AddRange(intrapath.Skip(1).Select(n => new PathNode(n, 0)));
+                        var intermediatePath = GenerateIntermediateNodes(smoothedConcretePath[smoothedConcretePath.Count - 1].Id, pathNode.Id);
+						smoothedConcretePath.AddRange(intermediatePath.Skip(1).Select(n => new ConcretePathNode(Id<ConcreteNode>.From(n))));
                     }
 
-                    smoothedPath.Add(InitPath[j]);
+					smoothedConcretePath.Add(pathNode);
                 }
 
-                // This loops decides which is the next node of the path to consider in the next iteration (the j)
-                for (var dir = (int)Direction.North; dir <= (int)Direction.NorthWest; dir++)
-                {
-                    if (_concreteMap.TileType == TileType.Tile && dir > (int)Direction.West)
-                        break;
-
-                    var seenPathNode = AdvanceThroughDirection(InitPath[j].Id, dir);
-                            
-                    if (seenPathNode == Constants.NO_NODE)
-                        // No node in advance in that direction, just continue
-                        continue;
-                    if (j > 0 && seenPathNode == InitPath[j - 1].Id)
-                        // If the point we are advancing is the same as the previous one, we didn't
-                        // improve at all. Just continue looking other directions
-                        continue;
-                    if (j < InitPath.Count - 1 && seenPathNode == InitPath[j + 1].Id)
-                        // If the point we are advancing is the same as a next node in the path,
-                        // we didn't improve either. Continue next direction
-                        continue;
-                        
-                    j = _pathMap[seenPathNode] - 2;
-
-                    // count the path reduction (e.g., 2)
-                    break;
-                }
+                index = DecideNextNodeToConsider(index);
             }
 
-            return smoothedPath;
+			smoothedPath.AddRange(smoothedConcretePath.Cast<IPathNode>());
+
+	        for (;index < InitialPath.Count; index++)
+		    {
+				smoothedPath.Add(InitialPath[index]);
+			}
+
+			return smoothedPath;
         }
 
-        private static bool AreAdjacent(Position a, Position b)
+	    private int DecideNextNodeToConsider(int index)
+	    {
+		    var newIndex = index;
+		    for (var dir = (int) Direction.North; dir <= (int) Direction.NorthWest; dir++)
+		    {
+			    if (_concreteMap.TileType == TileType.Tile && dir > (int) Direction.West)
+				    break;
+
+			    var seenPathNode = AdvanceThroughDirection(Id<ConcreteNode>.From(InitialPath[index].IdValue), dir);
+
+			    if (seenPathNode == Constants.NO_NODE)
+				    // No node in advance in that direction, just continue
+				    continue;
+			    if (index > 0 && seenPathNode == InitialPath[index - 1].IdValue)
+				    // If the point we are advancing is the same as the previous one, we didn't
+				    // improve at all. Just continue looking other directions
+				    continue;
+			    if (index < InitialPath.Count - 1 && seenPathNode == InitialPath[index + 1].IdValue)
+				    // If the point we are advancing is the same as a next node in the path,
+				    // we didn't improve either. Continue next direction
+				    continue;
+
+				newIndex = _pathMap[seenPathNode] - 2;
+
+			    // count the path reduction (e.g., 2)
+			    break;
+		    }
+
+		    return newIndex;
+	    }
+
+	    private static bool AreAdjacent(Position a, Position b)
         {
             // if the Manhattan distance between a and b is > 2, then they are not 
             // (At least on OCTILE)
             return Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y) <= 2;
         }
 
-        private List<int> GenerateIntermediateNodes(int nodeid1, int nodeid2)
+        private IEnumerable<Id<ConcreteNode>> GenerateIntermediateNodes(Id<ConcreteNode> nodeid1, Id<ConcreteNode> nodeid2)
         {
             var search = new AStar();
             var path = search.FindPath(_concreteMap, nodeid1, nodeid2);
-            return path.PathNodes;
+            return path.PathNodes.Select(Id<ConcreteNode>.From);
         }
 
         /// <summary>
         /// Returns the next node in the init path in a straight line that
         /// lies in the same direction as the origin node
         /// </summary>
-        private int AdvanceThroughDirection(int originId, int direction)
+        private int AdvanceThroughDirection(Id<ConcreteNode> originId, int direction)
         {
             var nodeId = originId;
             var lastNodeId = originId;
             while (true)
             {
                 // advance in the given direction
-                nodeId = this.AdvanceNode(nodeId, direction);
+                nodeId = AdvanceNode(nodeId, direction);
 
                 // If in the direction we advanced there was an invalid node or we cannot enter the node,
                 // just return that no node was found
-                if (nodeId == Constants.NO_NODE || !this._concreteMap.CanJump(GetPosition(nodeId), GetPosition(lastNodeId)))
+                if (nodeId == Constants.NO_NODE || !_concreteMap.CanJump(GetPosition(nodeId), GetPosition(lastNodeId)))
                     return Constants.NO_NODE;
 
                 // Otherwise, if the node we advanced was contained in the original path, and
                 // it was positioned after the node we are analyzing, return it
-                if (this._pathMap.ContainsKey(nodeId) && this._pathMap[nodeId] > this._pathMap[originId])
+                if (_pathMap.ContainsKey(nodeId) && _pathMap[nodeId] > _pathMap[originId])
                 {
                     return nodeId;
                 }
 
                 // If we have found an obstacle, just return that no next node to advance was found
-                var newNodeInfo = this._concreteMap.Graph.GetNodeInfo(nodeId);
+                var newNodeInfo = _concreteMap.Graph.GetNodeInfo(nodeId);
                 if (newNodeInfo.IsObstacle)
                     return Constants.NO_NODE;
 
@@ -157,51 +167,51 @@ namespace HPASharp.Smoother
             }
         }
 
-        private int AdvanceNode(int nodeId, int direction)
+        private Id<ConcreteNode> AdvanceNode(Id<ConcreteNode> nodeId, int direction)
         {
-            var nodeInfo = this._concreteMap.Graph.GetNodeInfo(nodeId);
+            var nodeInfo = _concreteMap.Graph.GetNodeInfo(nodeId);
             var y = nodeInfo.Position.Y;
             var x = nodeInfo.Position.X;
 
-			var tilingGraph = this._concreteMap.Graph;
+			var tilingGraph = _concreteMap.Graph;
 			Func<int, int, ConcreteNode> getNode =
 				(top, left) => tilingGraph.GetNode(_concreteMap.GetNodeIdFromPos(top, left));
 			switch ((Direction)direction)
             {
                 case Direction.North:
                     if (y == 0)
-                        return Constants.NO_NODE;
+                        return INVALID_ID;
                     return getNode(x, y - 1).NodeId;
                 case Direction.East:
-                    if (x == this._concreteMap.Width - 1)
-                        return Constants.NO_NODE;
+                    if (x == _concreteMap.Width - 1)
+                        return INVALID_ID;
                     return getNode(x + 1, y).NodeId;
                 case Direction.South:
-                    if (y == this._concreteMap.Height - 1)
-                        return Constants.NO_NODE;
+                    if (y == _concreteMap.Height - 1)
+                        return INVALID_ID;
                     return getNode(x, y + 1).NodeId;
                 case Direction.West:
                     if (x == 0)
-                        return Constants.NO_NODE;
+                        return INVALID_ID;
                     return getNode(x - 1, y).NodeId;
                 case Direction.NorthEast:
-                    if (y == 0 || x == this._concreteMap.Width - 1)
-                        return Constants.NO_NODE;
+                    if (y == 0 || x == _concreteMap.Width - 1)
+                        return INVALID_ID;
                     return getNode(x + 1, y - 1).NodeId;
                 case Direction.SouthEast:
-                    if (y == this._concreteMap.Height - 1 || x == this._concreteMap.Width - 1)
-                        return Constants.NO_NODE;
+                    if (y == _concreteMap.Height - 1 || x == _concreteMap.Width - 1)
+                        return INVALID_ID;
                     return getNode(x + 1, y + 1).NodeId;
                 case Direction.SouthWest:
-                    if (y == this._concreteMap.Height - 1 || x == 0)
-                        return Constants.NO_NODE;
+                    if (y == _concreteMap.Height - 1 || x == 0)
+                        return INVALID_ID;
                     return getNode(x - 1, y + 1).NodeId;
                 case Direction.NorthWest:
                     if (y == 0 || x == 0)
-                        return Constants.NO_NODE;
+                        return INVALID_ID;
                     return getNode(x - 1, y - 1).NodeId;
                 default:
-                    return Constants.NO_NODE;
+                    return INVALID_ID;
             }
         }
     }

@@ -1,20 +1,42 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using HPASharp.Graph;
+using HPASharp.Infrastructure;
 
 namespace HPASharp
 {
-    public struct PathNode
-    {
-        public int Id;
+	public interface IPathNode
+	{
+		int IdValue { get; }
+	}
+
+    public struct AbstractPathNode : IPathNode
+	{
+        public Id<AbstractNode> Id;
         public int Level;
 
-        public PathNode(int id, int lvl)
+        public AbstractPathNode(Id<AbstractNode> id, int lvl)
         {
             Id = id;
             Level = lvl;
         }
-    }
+
+		public int IdValue
+		{
+			get { return Id; }
+		}
+	}
+
+	public struct ConcretePathNode : IPathNode
+	{
+		public Id<ConcreteNode> Id;
+
+		public ConcretePathNode(Id<ConcreteNode> id)
+		{
+			Id = id;
+		}
+
+		public int IdValue
+		{
+			get { return Id; }
+		}
+	}
 }

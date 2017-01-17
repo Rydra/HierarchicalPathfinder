@@ -5,6 +5,7 @@ using HPASharp.Factories;
 using HPASharp.Graph;
 using HPASharp.Infrastructure;
 using HPASharp.Search;
+using HPASharp.Smoother;
 
 namespace HPASharp
 {
@@ -144,13 +145,28 @@ namespace HPASharp
             var hierarchicalSearch = new HierarchicalSearch();
             var abstractPath = hierarchicalSearch.DoHierarchicalSearch(hierarchicalMap, startAbsNode, targetAbsNode, maxLevel, maxPathsToRefine);
 			var path = hierarchicalSearch.AbstractPathToLowLevelPath(hierarchicalMap, abstractPath, hierarchicalMap.Width, maxPathsToRefine);
+			
+
+			//var smoother = new SmoothWizard(concreteMap, path);
+            //path = smoother.SmoothPath();
+		    var posPath = path.Select(p =>
+		    {
+			    if (p is ConcretePathNode)
+			    {
+				    var concretePathNode = (ConcretePathNode) p;
+				    return concreteMap.Graph.GetNodeInfo(concretePathNode.Id).Position;
+			    }
+
+				var abstractPathNode = (AbstractPathNode)p;
+				return hierarchicalMap.AbstractGraph.GetNodeInfo(abstractPathNode.Id).Position;
+		    }).ToList();
+
 			factory.RemoveAbstractNode(hierarchicalMap, targetAbsNode, 1);
 			factory.RemoveAbstractNode(hierarchicalMap, startAbsNode, 0);
-            //var smoother = new SmoothWizard(concreteMap, path);
-            //path = smoother.SmoothPath();
-		    return path.Select(p => concreteMap.Graph.GetNodeInfo(p.Id).Position).ToList();
-			//return path.Select(n => n.Level == 0 ? concreteMap.Graph.GetNodeInfo(n.EntranceId).Position : hierarchicalMap.AbstractGraph.GetNodeInfo(n.EntranceId).Position).ToList();
-        }
+
+		    return posPath;
+		    //return path.Select(n => n.Level == 0 ? concreteMap.Graph.GetNodeInfo(n.EntranceId).Position : hierarchicalMap.AbstractGraph.GetNodeInfo(n.EntranceId).Position).ToList();
+	    }
 
 	    private static List<Position> RegularSearch(ConcreteMap concreteMap)
 	    {

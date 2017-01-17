@@ -42,7 +42,7 @@ namespace HPASharp
 	    /// </summary>
 	    private readonly Dictionary<Tuple<Id<AbstractNode>, Id<AbstractNode>>, int> _distances;
 
-	    private readonly Dictionary<Tuple<Id<AbstractNode>, Id<AbstractNode>>, List<int>> _cachedPaths;
+	    private readonly Dictionary<Tuple<Id<AbstractNode>, Id<AbstractNode>>, List<Id<ConcreteNode>>> _cachedPaths;
 
         // Tells whether a path has already been calculated for 2 node ids
 	    private readonly Dictionary<Tuple<Id<AbstractNode>, Id<AbstractNode>>, bool> _distanceCalculated;
@@ -64,7 +64,7 @@ namespace HPASharp
             Origin = origin;
             Size = size;
             _distances = new Dictionary<Tuple<Id<AbstractNode>, Id<AbstractNode>>, int>();
-			_cachedPaths = new Dictionary<Tuple<Id<AbstractNode>, Id<AbstractNode>>, List<int>>();
+			_cachedPaths = new Dictionary<Tuple<Id<AbstractNode>, Id<AbstractNode>>, List<Id<ConcreteNode>>>();
 			_distanceCalculated = new Dictionary<Tuple<Id<AbstractNode>, Id<AbstractNode>>, bool>();
             EntrancePoints = new List<EntrancePoint>();
         }
@@ -86,8 +86,8 @@ namespace HPASharp
         
         private void ComputePathBetweenEntrances(EntrancePoint e1, EntrancePoint e2)
         {
-            var startNodeId = GetEntrancePositionIndex(e1);
-            var targetNodeId = GetEntrancePositionIndex(e2);
+            var startNodeId = Id<ConcreteNode>.From(GetEntrancePositionIndex(e1));
+            var targetNodeId = Id<ConcreteNode>.From(GetEntrancePositionIndex(e2));
 	        var tuple = Tuple.Create(e1.AbstractNodeId, e2.AbstractNodeId);
 			var invtuple = Tuple.Create(e2.AbstractNodeId, e1.AbstractNodeId);
 
@@ -104,7 +104,10 @@ namespace HPASharp
 				// Yeah, we are supposing reaching A - B is the same like reaching B - A. Which
 				// depending on the game this is NOT necessarily true (e.g climbing, downstepping a mountain)
 		        _distances[tuple] = _distances[invtuple] = path.PathCost;
-		        _cachedPaths[tuple] = _cachedPaths[invtuple] = path.PathNodes;
+		        _cachedPaths[tuple] = path.PathNodes.Select(Id<ConcreteNode>.From).ToList();
+		        path.PathNodes.Reverse();
+		        _cachedPaths[invtuple] = path.PathNodes.Select(Id<ConcreteNode>.From).ToList();
+
 	        }
 
             _distanceCalculated[tuple] = _distanceCalculated[invtuple] = true;
@@ -123,7 +126,7 @@ namespace HPASharp
             return _distances[Tuple.Create(abstractNodeId1,AbstractNodeId2)];
         }
 
-		public List<int> GetPath(Id<AbstractNode> abstractNodeId1, Id<AbstractNode> abstractNodeId2)
+		public List<Id<ConcreteNode>> GetPath(Id<AbstractNode> abstractNodeId1, Id<AbstractNode> abstractNodeId2)
 		{
 			return _cachedPaths[Tuple.Create(abstractNodeId1, abstractNodeId2)];
 		}

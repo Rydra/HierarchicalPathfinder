@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using HPASharp.Graph;
 using HPASharp.Infrastructure;
 
@@ -10,20 +7,19 @@ namespace HPASharp.Search
 {
     public class HierarchicalSearch
     {
-        public List<PathNode> DoHierarchicalSearch(HierarchicalMap map, int startNodeId, int targetNodeId, int maxSearchLevel, int maxPathsToRefine = int.MaxValue)
+        public List<AbstractPathNode> DoHierarchicalSearch(HierarchicalMap map, Id<AbstractNode> startNodeId, Id<AbstractNode> targetNodeId, int maxSearchLevel, int maxPathsToRefine = int.MaxValue)
         {
-            var path = this.PerformSearch(map, startNodeId, targetNodeId, maxSearchLevel, true)
-                .Select(n => new PathNode(n, maxSearchLevel)).ToList();
+	        var path = PerformSearch(map, startNodeId, targetNodeId, maxSearchLevel, true);
 
             if (path.Count == 0) return path;
 
             for (var level = maxSearchLevel; level > 1; level--)
-                path = this.RefineAbstractPath(map, path, level, maxPathsToRefine);
+                path = RefineAbstractPath(map, path, level, maxPathsToRefine);
 
             return path;
         }
 
-        public List<int> PerformSearch(HierarchicalMap map, int startNodeId, int targetNodeId, int level, bool mainSearch)
+        private List<AbstractPathNode> PerformSearch(HierarchicalMap map, Id<AbstractNode> startNodeId, Id<AbstractNode> targetNodeId, int level, bool mainSearch)
         {
             var search = new AStar();
             map.SetCurrentLevel(level);
@@ -37,11 +33,10 @@ namespace HPASharp.Search
             var path = search.FindPath(map, startNodeId, targetNodeId);
             if (path.PathCost == -1)
             {
-                // No path found
-                return new List<int>();
+                return new List<AbstractPathNode>();
             }
 
-            var result = path.PathNodes;
+            var result = path.PathNodes.Select(n => new AbstractPathNode(Id<AbstractNode>.From(n), level)).ToList();
             result.Reverse();
             return result;
         }
@@ -49,9 +44,9 @@ namespace HPASharp.Search
         /// <summary>
         /// Refines all the nodes that belong to a certain level to a lower level
         /// </summary>
-        public List<PathNode> RefineAbstractPath(HierarchicalMap map, List<PathNode> path, int level, int maxPathsToRefine = int.MaxValue)
+        public List<AbstractPathNode> RefineAbstractPath(HierarchicalMap map, List<AbstractPathNode> path, int level, int maxPathsToRefine = int.MaxValue)
         {
-            var result = new List<PathNode>();
+            var result = new List<AbstractPathNode>();
             var calculatedPaths = 0;
 
             for (var i = 0; i < path.Count - 1; i++)
@@ -61,9 +56,7 @@ namespace HPASharp.Search
                 if (path[i].Level == path[i + 1].Level && path[i].Level == level &&
                     map.BelongToSameCluster(path[i].Id, path[i + 1].Id, level) && calculatedPaths < maxPathsToRefine)
                 {
-                    var tmp = this.PerformSearch(map, path[i].Id, path[i + 1].Id, level - 1, false)
-                        .Select(n => new PathNode(n, level - 1))
-                        .ToList();
+	                var tmp = PerformSearch(map, path[i].Id, path[i + 1].Id, level - 1, false);
                     result.AddRange(tmp);
 
                     calculatedPaths++;
@@ -73,7 +66,7 @@ namespace HPASharp.Search
                     i++;
                 }
                 else
-                    result.Add(new PathNode(path[i].Id, level - 1));
+                    result.Add(new AbstractPathNode(path[i].Id, level - 1));
             }
 
             // make sure last elem is added
@@ -83,10 +76,11 @@ namespace HPASharp.Search
             return result;
         }
 
-        public List<PathNode> AbstractPathToLowLevelPath(HierarchicalMap map, List<PathNode> abstractPath, int width, int maxPathsToCalculate = int.MaxValue)
+        public List<IPathNode> AbstractPathToLowLevelPath(HierarchicalMap map, List<AbstractPathNode> abstractPath, int mapWidth, int maxPathsToCalculate = int.MaxValue)
         {
-            var result = new List<PathNode>(abstractPath.Count * 10);
-            if (abstractPath.Count == 0) return result;
+            var result = new List<IPathNode>();
+            if (abstractPath.Count == 0)
+				return result;
 
             var calculatedPaths = 0;
             var lastAbstractNodeId = abstractPath[0].Id;
@@ -99,7 +93,7 @@ namespace HPASharp.Search
 
                 // We cannot compute a low level path from a level which is higher than lvl 1
                 // (obvious...) therefore, ignore any non-refined path
-                if (abstractPath[currentPoint].Level > 1)
+                if (abstractPath[currentPoint].Level != 1)
                 {
                     result.Add(abstractPath[currentPoint]);
                     continue;
@@ -113,27 +107,28 @@ namespace HPASharp.Search
                     if (lastAbstractNodeId != currentAbstractNodeId)
                     {
 						var cluster = map.GetCluster(eClusterId);
+						
 						var localPath = cluster.GetPath(Id<AbstractNode>.From(lastAbstractNodeId), Id<AbstractNode>.From(currentAbstractNodeId))
                             .Select(
                                 localId =>
                                 {
-                                    int localPoint = LocalClusterId2GlobalId(localId, cluster, width);
-                                    return new PathNode(localPoint, 0);
+                                    int localPoint = LocalClusterId2GlobalId(localId, cluster, mapWidth);
+                                    return new ConcretePathNode(Id<ConcreteNode>.From(localPoint));
                                 });
 
-                        result.AddRange(localPath);
+                        result.AddRange(localPath.Cast<IPathNode>());
 
                         calculatedPaths++;
                     }
                 }
                 else
                 {
-                    var lastVal = lastNodeInfo.ConcreteNodeId;
-                    var currentVal = currentNodeInfo.ConcreteNodeId;
-                    if (result[result.Count - 1].Id != lastVal)
-                        result.Add(new PathNode(lastVal, 0));
+                    var lastConcreteNodeId = lastNodeInfo.ConcreteNodeId;
+                    var currentConcreteNodeId = currentNodeInfo.ConcreteNodeId;
+                    if (((ConcretePathNode)result[result.Count - 1]).Id != lastConcreteNodeId)
+                        result.Add(new ConcretePathNode(lastConcreteNodeId));
 
-                    result.Add(new PathNode(currentVal, 0));
+                    result.Add(new ConcretePathNode(currentConcreteNodeId));
                 }
 
                 lastAbstractNodeId = currentAbstractNodeId;

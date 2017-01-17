@@ -153,6 +153,7 @@ namespace HPASharp.Search
 			}
 
 			pathNodes.Add(currnode);
+			pathNodes.Reverse();
 
 			return new Path(pathNodes, pathCost);
 		}
