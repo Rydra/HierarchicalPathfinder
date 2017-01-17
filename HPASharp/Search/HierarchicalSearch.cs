@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using HPASharp.Graph;
 using HPASharp.Infrastructure;
 
@@ -21,7 +20,7 @@ namespace HPASharp.Search
 
         private List<AbstractPathNode> PerformSearch(HierarchicalMap map, Id<AbstractNode> startNodeId, Id<AbstractNode> targetNodeId, int level, bool mainSearch)
         {
-            var search = new AStar();
+            var search = new AStar<AbstractNode>();
             map.SetCurrentLevel(level);
             var nodeInfo = map.AbstractGraph.GetNodeInfo(startNodeId);
             if (mainSearch)
@@ -36,7 +35,12 @@ namespace HPASharp.Search
                 return new List<AbstractPathNode>();
             }
 
-            var result = path.PathNodes.Select(n => new AbstractPathNode(Id<AbstractNode>.From(n), level)).ToList();
+            var result = new List<AbstractPathNode>(path.PathNodes.Count);
+            for (int i = 0; i < result.Count; i++)
+            {
+                result[i] = new AbstractPathNode(path.PathNodes[i], level);
+            }
+
             return result;
         }
 

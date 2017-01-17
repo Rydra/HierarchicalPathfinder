@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using HPASharp.Factories;
 using HPASharp.Graph;
 using HPASharp.Infrastructure;
@@ -18,7 +17,7 @@ namespace HPASharp
         Tile
     }
 
-    public class ConcreteMap : IMap
+    public class ConcreteMap : IMap<ConcreteNode>
     {
 		public IPassability Passability { get; set; }
 
@@ -66,7 +65,7 @@ namespace HPASharp
 		    return y * Width + x;
 	    }
 
-        public int GetHeuristic(int startNodeId, int targetNodeId)
+        public int GetHeuristic(Id<ConcreteNode> startNodeId, Id<ConcreteNode> targetNodeId)
         {
             var startPosition = Graph.GetNodeInfo(startNodeId).Position;
             var targetPosition = Graph.GetNodeInfo(targetNodeId).Position;
@@ -121,9 +120,9 @@ namespace HPASharp
             }
         }
 
-        public IEnumerable<Neighbour> GetNeighbours(int nodeId)
+        public IEnumerable<Neighbour<ConcreteNode>> GetNeighbours(Id<ConcreteNode> nodeId)
         {
-            var result = new List<Neighbour>();
+            var result = new List<Neighbour<ConcreteNode>>();
             var node = Graph.GetNode(nodeId);
             var nodeInfo = node.Info;
 
@@ -132,7 +131,7 @@ namespace HPASharp
                 var targetNodeId = edge.TargetNodeId;
                 var targetNodeInfo = Graph.GetNodeInfo(targetNodeId);
                 if (CanJump(targetNodeInfo.Position, nodeInfo.Position) && !targetNodeInfo.IsObstacle)
-                    result.Add(new Neighbour(targetNodeId, edge.Info.Cost));
+                    result.Add(new Neighbour<ConcreteNode>(targetNodeId, edge.Info.Cost));
             }
 
             return result;
@@ -199,8 +198,8 @@ namespace HPASharp
                     chars[i] = 'x';
                 }
 
-                chars[path.First()] = 'T';
-                chars[path.Last()] = 'S';
+                chars[path[0]] = 'T';
+                chars[path[path.Count - 1]] = 'S';
             }
 
             PrintFormatted(chars);

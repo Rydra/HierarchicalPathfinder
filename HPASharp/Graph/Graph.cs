@@ -9,8 +9,7 @@ namespace HPASharp.Graph
 		Id<TId> NodeId { get; set; }
 		TInfo Info { get; set; }
 		List<TEdge> Edges { get; set; }
-
-		void RemoveEdge(Id<TId> targetNodeId);
+        void RemoveEdge(Id<TId> targetNodeId);
 	}
 
 	public interface IEdge<TNode, TEdgeInfo>
@@ -18,8 +17,6 @@ namespace HPASharp.Graph
 		Id<TNode> TargetNodeId { get; set; }
 		TEdgeInfo Info { get; set; }
 	}
-
-
 
 	/// <summary>
 	/// A graph is a set of nodes connected with edges. Each node and edge can hold

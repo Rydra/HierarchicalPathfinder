@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using HPASharp.Graph;
 using HPASharp.Infrastructure;
 using HPASharp.Search;
@@ -12,12 +9,12 @@ namespace HPASharp
 {
     #region Abstract ConcreteMap support classes
 
-    public struct Neighbour
+    public struct Neighbour<TNode>
     {
-        public int Target;
+        public Id<TNode> Target;
         public int Cost;
 
-        public Neighbour(int target, int cost)
+        public Neighbour(Id<TNode> target, int cost)
         {
             Target = target;
             Cost = cost;
@@ -36,7 +33,7 @@ namespace HPASharp
     /// Abstract maps represent, as the name implies, an abstraction
     /// built over the concrete map.
     /// </summary>
-    public class HierarchicalMap : IMap
+    public class HierarchicalMap : IMap<AbstractNode>
     {
         public int Height { get; set; }
         public int Width { get; set; }
@@ -93,7 +90,7 @@ namespace HPASharp
             AbstractGraph = new AbstractGraph();
         }
 
-        public int GetHeuristic(int startNodeId, int targetNodeId)
+        public int GetHeuristic(Id<AbstractNode> startNodeId, Id<AbstractNode> targetNodeId)
         {
             var startPos = AbstractGraph.GetNodeInfo(startNodeId).Position;
             var targetPos = AbstractGraph.GetNodeInfo(targetNodeId).Position;
@@ -124,14 +121,21 @@ namespace HPASharp
         #region Stal Operations - SHOULD EXPORT IT TO THE FACTORY PROBABLY
 		
 		public Cluster FindClusterForPosition(Position pos)
-        {
-            var cluster = Clusters
-                .First(cl =>
-                    cl.Origin.Y <= pos.Y &&
-                    pos.Y < cl.Origin.Y + cl.Size.Height &&
-                    cl.Origin.X <= pos.X &&
-                    pos.X < cl.Origin.X + cl.Size.Width);
-            return cluster;
+		{
+		    Cluster foundCluster = null;
+            foreach (var cluster in Clusters)
+            {
+                if (cluster.Origin.Y <= pos.Y &&
+                    pos.Y < cluster.Origin.Y + cluster.Size.Height &&
+                    cluster.Origin.X <= pos.X &&
+                    pos.X < cluster.Origin.X + cluster.Size.Width)
+                {
+                    foundCluster = cluster;
+                    break;
+                }
+            }
+
+		    return foundCluster;
         }
 
         public void AddEdge(Id<AbstractNode> sourceNodeId, Id<AbstractNode> destNodeId, int cost, int level = 1, bool inter = false)
@@ -155,11 +159,11 @@ namespace HPASharp
 		/// <summary>
 		/// Gets the neighbours(successors) of the nodeId for the level set in the currentLevel
 		/// </summary>
-		public IEnumerable<Neighbour> GetNeighbours(int nodeId)
+		public IEnumerable<Neighbour<AbstractNode>> GetNeighbours(Id<AbstractNode> nodeId)
 		{
 			var node = AbstractGraph.GetNode(nodeId);
 			var edges = node.Edges;
-			var result = new List<Neighbour>(edges.Count);
+			var result = new List<Neighbour<AbstractNode>>();
 			foreach (var edge in edges)
 			{
 				var edgeInfo = edge.Info;
@@ -168,12 +172,12 @@ namespace HPASharp
 					// If the node is an interCluster edge and the edge is of a lower level than
 					// the current level, we have to ignore it
 					// This means we can use higher level interEdges.
-					if (edgeInfo.Level < this.currentLevel) continue;
+					if (edgeInfo.Level < currentLevel) continue;
 				}
 				else
 				{
 					// If it is NOT an interCluster edge (local edge for example) but that edge belongs to another level... ignore it
-					if (edgeInfo.Level != this.currentLevel) continue;
+					if (edgeInfo.Level != currentLevel) continue;
 				}
 
 				var targetNodeId = edge.TargetNodeId;
@@ -182,10 +186,10 @@ namespace HPASharp
 				// NOTE: Sure this if happens? Previous validations should ensure that the edge is connected to
 				// a node of the same level. Also... why are we checking if the target node is in the current Cluster?
 				// We should be able to navigate to that edge!
-				if (targetNodeInfo.Level < this.currentLevel || !this.PositionInCurrentCluster(targetNodeInfo.Position))
+				if (targetNodeInfo.Level < currentLevel || !PositionInCurrentCluster(targetNodeInfo.Position))
 					continue;
 
-				result.Add(new Neighbour(targetNodeId, edgeInfo.Cost));
+				result.Add(new Neighbour<AbstractNode>(targetNodeId, edgeInfo.Cost));
 			}
 
 			return result;
@@ -318,7 +322,7 @@ namespace HPASharp
             if (srcAbstractNodeId == destAbstractNodeId || !IsValidAbstractNodeForLevel(destAbstractNodeId, level))
                 return;
 
-            var search = new AStar();
+            var search = new AStar<AbstractNode>();
             var path = search.FindPath(this, srcAbstractNodeId, destAbstractNodeId);
             if (path.PathCost >= 0)
             {
@@ -331,16 +335,17 @@ namespace HPASharp
         {
             SetCurrentLevel(level - 1);
             SetCurrentClusterByPositionAndLevel(abstractNodeInfo.Position, level);
-
-            var entrances = Clusters
-                .Where(cl =>
-                    cl.Origin.X >= currentClusterX0 && cl.Origin.X <= currentClusterX1 &&
-                    cl.Origin.Y >= currentClusterY0 && cl.Origin.Y <= currentClusterY1)
-                .SelectMany(cl => cl.EntrancePoints);
-
-            foreach (var entrance in entrances)
+            
+            foreach (var cluster in Clusters)
             {
-                AddEdgesBetweenAbstractNodes(abstractNodeInfo.Id, entrance.AbstractNodeId, level);
+                if (cluster.Origin.X >= currentClusterX0 && cluster.Origin.X <= currentClusterX1 &&
+                    cluster.Origin.Y >= currentClusterY0 && cluster.Origin.Y <= currentClusterY1)
+                {
+                    foreach (var entrance in cluster.EntrancePoints)
+                    {
+                        AddEdgesBetweenAbstractNodes(abstractNodeInfo.Id, entrance.AbstractNodeId, level);
+                    }
+                }
             }
         }
     }

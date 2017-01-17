@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using HPASharp.Graph;
 using HPASharp.Infrastructure;
 using HPASharp.Search;
@@ -95,7 +94,7 @@ namespace HPASharp
 			if (_distanceCalculated.ContainsKey(tuple) || e1.AbstractNodeId == e2.AbstractNodeId)
                 return;
 
-            var search = new AStar();
+            var search = new AStar<ConcreteNode>();
             var path = search.FindPath(SubConcreteMap, startNodeId, targetNodeId);
 
             // TODO: Store the path as well, not only the cost. This will make everything faster!
@@ -104,9 +103,9 @@ namespace HPASharp
 				// Yeah, we are supposing reaching A - B is the same like reaching B - A. Which
 				// depending on the game this is NOT necessarily true (e.g climbing, downstepping a mountain)
 		        _distances[tuple] = _distances[invtuple] = path.PathCost;
-		        _cachedPaths[tuple] = path.PathNodes.Select(Id<ConcreteNode>.From).ToList();
+		        _cachedPaths[tuple] = new List<Id<ConcreteNode>>(path.PathNodes);
 		        path.PathNodes.Reverse();
-		        _cachedPaths[invtuple] = path.PathNodes.Select(Id<ConcreteNode>.From).ToList();
+		        _cachedPaths[invtuple] = path.PathNodes;
 
 	        }
 
@@ -147,16 +146,25 @@ namespace HPASharp
 
         public void RemoveLastEntranceRecord()
         {
-            EntrancePoints.RemoveAt(EntrancePoints.Count - 1);
-            var idx = EntrancePoints.Count;
-
-	        var keysToRemove = _distanceCalculated.Keys.Where(k => k.Item1 == idx || k.Item2 == idx).ToList();
+            var entrancePoint = EntrancePoints[EntrancePoints.Count - 1];
+            EntrancePoints.Remove(entrancePoint);
+            var abstractNodeToRemove = entrancePoint.AbstractNodeId;
+            
+            var keysToRemove = new List<Tuple<Id<AbstractNode>, Id<AbstractNode>>>();
+            foreach (var key in _distanceCalculated.Keys)
+            {
+                if (key.Item1 == abstractNodeToRemove || key.Item2 == abstractNodeToRemove)
+                {
+                    keysToRemove.Add(key);
+                }
+            }
 
 			foreach (var key in keysToRemove)
 			{
 				_distanceCalculated.Remove(key);
 				_distances.Remove(key);
-            }
+			    _cachedPaths.Remove(key);
+			}
         }
     }
 }

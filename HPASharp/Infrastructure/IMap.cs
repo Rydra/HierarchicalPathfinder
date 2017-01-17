@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 
-namespace HPASharp
+namespace HPASharp.Infrastructure
 {
     /** Interface to search environment. */
-    public interface IMap
+    public interface IMap<TNode>
     {
         int NrNodes { get; }
         
@@ -16,8 +12,8 @@ namespace HPASharp
             Can be used to prune nodes,
             (is set to NO_NODE in Search::checkPathExists).
         */
-        IEnumerable<Neighbour> GetNeighbours(int nodeId);
+        IEnumerable<Neighbour<TNode>> GetNeighbours(Id<TNode> nodeId);
 
-        int GetHeuristic(int startNodeId, int targetNodeId);
+        int GetHeuristic(Id<TNode> startNodeId, Id<TNode> targetNodeId);
     }
 }

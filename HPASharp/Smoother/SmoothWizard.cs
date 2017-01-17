@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using HPASharp.Graph;
 using HPASharp.Infrastructure;
 using HPASharp.Search;
@@ -69,7 +68,10 @@ namespace HPASharp.Smoother
                     if (!AreAdjacent(GetPosition(lastNodeInSmoothedPath.Id), GetPosition(currentNodeInPath.Id)))
                     {
                         var intermediatePath = GenerateIntermediateNodes(smoothedConcretePath[smoothedConcretePath.Count - 1].Id, pathNode.Id);
-						smoothedConcretePath.AddRange(intermediatePath.Skip(1).Select(n => new ConcretePathNode(Id<ConcreteNode>.From(n))));
+	                    for (int i = 1; i < intermediatePath.Count; i++)
+	                    {
+							smoothedConcretePath.Add(new ConcretePathNode(intermediatePath[i]));
+						}
                     }
 
 					smoothedConcretePath.Add(pathNode);
@@ -78,7 +80,10 @@ namespace HPASharp.Smoother
                 index = DecideNextNodeToConsider(index);
             }
 
-			smoothedPath.AddRange(smoothedConcretePath.Cast<IPathNode>());
+	        foreach (var pathNode in smoothedConcretePath)
+	        {
+				smoothedPath.Add(pathNode);
+			}
 
 	        for (;index < InitialPath.Count; index++)
 		    {
@@ -126,11 +131,11 @@ namespace HPASharp.Smoother
             return Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y) <= 2;
         }
 
-        private IEnumerable<Id<ConcreteNode>> GenerateIntermediateNodes(Id<ConcreteNode> nodeid1, Id<ConcreteNode> nodeid2)
+        private List<Id<ConcreteNode>> GenerateIntermediateNodes(Id<ConcreteNode> nodeid1, Id<ConcreteNode> nodeid2)
         {
-            var search = new AStar();
+            var search = new AStar<ConcreteNode>();
             var path = search.FindPath(_concreteMap, nodeid1, nodeid2);
-            return path.PathNodes.Select(Id<ConcreteNode>.From);
+	        return path.PathNodes;
         }
 
         /// <summary>
