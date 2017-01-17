@@ -37,7 +37,6 @@ namespace HPASharp.Search
             }
 
             var result = path.PathNodes.Select(n => new AbstractPathNode(Id<AbstractNode>.From(n), level)).ToList();
-            result.Reverse();
             return result;
         }
 
@@ -85,11 +84,26 @@ namespace HPASharp.Search
             var calculatedPaths = 0;
             var lastAbstractNodeId = abstractPath[0].Id;
 
-            for (var currentPoint = 1; currentPoint < abstractPath.Count; currentPoint++)
+	        if (abstractPath[0].Level != 1)
+	        {
+		        result.Add(abstractPath[0]);
+	        }
+	        else
+	        {
+				var abstractNode = map.AbstractGraph.GetNodeInfo(lastAbstractNodeId);
+				result.Add(new ConcretePathNode(abstractNode.ConcreteNodeId));
+	        }
+
+			for (var currentPoint = 1; currentPoint < abstractPath.Count; currentPoint++)
             {
                 var currentAbstractNodeId = abstractPath[currentPoint].Id;
-                var currentNodeInfo = map.AbstractGraph.GetNodeInfo(currentAbstractNodeId);
-                var lastNodeInfo = map.AbstractGraph.GetNodeInfo(lastAbstractNodeId);
+				var lastNodeInfo = map.AbstractGraph.GetNodeInfo(lastAbstractNodeId);
+				var currentNodeInfo = map.AbstractGraph.GetNodeInfo(currentAbstractNodeId);
+                
+	            if (lastAbstractNodeId == currentAbstractNodeId)
+	            {
+		            continue;
+	            }
 
                 // We cannot compute a low level path from a level which is higher than lvl 1
                 // (obvious...) therefore, ignore any non-refined path
@@ -99,36 +113,38 @@ namespace HPASharp.Search
                     continue;
                 }
 
-                var eClusterId = currentNodeInfo.ClusterId;
-                var leClusterId = lastNodeInfo.ClusterId;
+                var currentNodeClusterId = currentNodeInfo.ClusterId;
+                var lastNodeClusterId = lastNodeInfo.ClusterId;
 
-                if (eClusterId == leClusterId && calculatedPaths < maxPathsToCalculate)
+                if (currentNodeClusterId == lastNodeClusterId && calculatedPaths < maxPathsToCalculate)
                 {
-                    if (lastAbstractNodeId != currentAbstractNodeId)
-                    {
-						var cluster = map.GetCluster(eClusterId);
-						
-						var localPath = cluster.GetPath(Id<AbstractNode>.From(lastAbstractNodeId), Id<AbstractNode>.From(currentAbstractNodeId))
-                            .Select(
-                                localId =>
-                                {
-                                    int localPoint = LocalClusterId2GlobalId(localId, cluster, mapWidth);
-                                    return new ConcretePathNode(Id<ConcreteNode>.From(localPoint));
-                                });
+					var cluster = map.GetCluster(currentNodeClusterId);
 
-                        result.AddRange(localPath.Cast<IPathNode>());
+	                var localPath = cluster.GetPath(Id<AbstractNode>.From(lastAbstractNodeId),
+		                Id<AbstractNode>.From(currentAbstractNodeId));
 
-                        calculatedPaths++;
-                    }
+	                var concretePath = new List<IPathNode>();
+	                for (int i = 1; i < localPath.Count; i++)
+	                {
+						int concreteNodeId = LocalNodeId2ConcreteNodeId(localPath[i], cluster, mapWidth);
+						concretePath.Add(new ConcretePathNode(Id<ConcreteNode>.From(concreteNodeId)));
+					}
+
+                    result.AddRange(concretePath);
+
+                    calculatedPaths++;
                 }
                 else
                 {
+					// Inter-cluster edge
                     var lastConcreteNodeId = lastNodeInfo.ConcreteNodeId;
                     var currentConcreteNodeId = currentNodeInfo.ConcreteNodeId;
+
                     if (((ConcretePathNode)result[result.Count - 1]).Id != lastConcreteNodeId)
                         result.Add(new ConcretePathNode(lastConcreteNodeId));
 
-                    result.Add(new ConcretePathNode(currentConcreteNodeId));
+					if (((ConcretePathNode)result[result.Count - 1]).Id != currentConcreteNodeId)
+						result.Add(new ConcretePathNode(currentConcreteNodeId));
                 }
 
                 lastAbstractNodeId = currentAbstractNodeId;
@@ -137,7 +153,7 @@ namespace HPASharp.Search
             return result;
         }
 
-        private static int LocalClusterId2GlobalId(int localId, Cluster cluster, int width)
+        private static int LocalNodeId2ConcreteNodeId(int localId, Cluster cluster, int width)
         {
             var localX = localId % cluster.Size.Width;
             var localY = localId / cluster.Size.Width;

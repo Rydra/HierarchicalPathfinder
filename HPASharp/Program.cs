@@ -131,8 +131,8 @@ namespace HPASharp
             Console.WriteLine();
             Console.WriteLine();
             Console.WriteLine();
-            Console.WriteLine("Press any key to quit...");
-            Console.ReadKey();
+            //Console.WriteLine("Press any key to quit...");
+            //Console.ReadKey();
         }
 
 	    private static List<Position> HierarchicalSearch(HierarchicalMap hierarchicalMap, int maxLevel, ConcreteMap concreteMap)
@@ -146,9 +146,8 @@ namespace HPASharp
             var abstractPath = hierarchicalSearch.DoHierarchicalSearch(hierarchicalMap, startAbsNode, targetAbsNode, maxLevel, maxPathsToRefine);
 			var path = hierarchicalSearch.AbstractPathToLowLevelPath(hierarchicalMap, abstractPath, hierarchicalMap.Width, maxPathsToRefine);
 			
-
-			//var smoother = new SmoothWizard(concreteMap, path);
-            //path = smoother.SmoothPath();
+			var smoother = new SmoothWizard(concreteMap, path);
+            path = smoother.SmoothPath();
 		    var posPath = path.Select(p =>
 		    {
 			    if (p is ConcretePathNode)
