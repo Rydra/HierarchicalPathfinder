@@ -3,6 +3,7 @@ using HPASharp.Factories;
 using Moq;
 using NUnit.Framework;
 using System.Linq;
+using HPASharp.Infrastructure;
 
 namespace HPAsharp.Tests
 {

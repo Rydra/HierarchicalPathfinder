@@ -1,18 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Xml;
-using HPASharp.Graph;
 using HPASharp.Infrastructure;
 
-namespace HPASharp
+namespace HPASharp.Graph
 {
-	public interface INode<Tid, TInfo, TEdge>
+	public interface INode<TId, TInfo, TEdge>
 	{
-		Id<Tid> NodeId { get; set; }
+		Id<TId> NodeId { get; set; }
 		TInfo Info { get; set; }
 		List<TEdge> Edges { get; set; }
 
-		void RemoveEdge(Id<Tid> targetNodeId);
+		void RemoveEdge(Id<TId> targetNodeId);
 	}
 
 	public interface IEdge<TNode, TEdgeInfo>
