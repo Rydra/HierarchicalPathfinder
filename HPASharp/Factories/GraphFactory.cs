@@ -21,7 +21,7 @@ namespace HPASharp.Factories
 		
 		public static Id<ConcreteNode> GetNodeIdFromPos(int left, int top, int width)
 		{
-			return (Id<ConcreteNode>)(top * width + left);
+			return Id<ConcreteNode>.From(top * width + left);
 		}
 
 		private static void AddEdge(ConcreteGraph graph, Id<ConcreteNode> nodeId, int x, int y, int width, int height, bool isDiag = false)

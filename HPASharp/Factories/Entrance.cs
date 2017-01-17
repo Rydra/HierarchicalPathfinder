@@ -1,8 +1,10 @@
-﻿namespace HPASharp.Factories
+﻿using HPASharp.Infrastructure;
+
+namespace HPASharp.Factories
 {
     public class Entrance
     {
-        public int Id { get; set; }
+        public Id<Entrance> Id { get; set; }
         public Cluster Cluster1 { get; set; }
         public Cluster Cluster2 { get; set; }
 
@@ -11,7 +13,7 @@
 		public Orientation Orientation { get; set; }
 		
         
-        public Entrance(int id, Cluster cluster1, Cluster cluster2, ConcreteNode srcNode, ConcreteNode destNode, Orientation orientation)
+        public Entrance(Id<Entrance> id, Cluster cluster1, Cluster cluster2, ConcreteNode srcNode, ConcreteNode destNode, Orientation orientation)
         {
             Id = id;
             Cluster1 = cluster1;

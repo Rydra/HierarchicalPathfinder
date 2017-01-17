@@ -80,7 +80,7 @@ namespace HPASharp.Factories
 
 		public Id<AbstractNode> InsertAbstractNode(HierarchicalMap map, Position pos, int start)
 		{
-			var nodeId = (Id<ConcreteNode>)(pos.Y * map.Width + pos.X);
+			var nodeId = Id<ConcreteNode>.From(pos.Y * map.Width + pos.X);
 			var result = InsertStal(map, nodeId, pos, start);
 			InsertStalHEdges(map, nodeId);
 			return result;
@@ -123,7 +123,7 @@ namespace HPASharp.Factories
 			var cluster = map.FindClusterForPosition(pos);
 
 			// create global entrance
-			var abstractNodeId = (Id<AbstractNode>)map.NrNodes;
+			var abstractNodeId = Id<AbstractNode>.From(map.NrNodes);
 			var entrance = cluster.AddEntrance(abstractNodeId, new Position(pos.X - cluster.Origin.X, pos.Y - cluster.Origin.Y));
 			cluster.UpdatePathsForLocalEntrance(entrance);
 
@@ -251,9 +251,11 @@ namespace HPASharp.Factories
             {
                 var width = Math.Min(ClusterSize, ConcreteMap.Width - left);
                 var height = Math.Min(ClusterSize, ConcreteMap.Height - top);
-                var cluster = new Cluster(ConcreteMap, clusterId++, clusterX, clusterY, new Position(left, top), new Size(width, height));
+                var cluster = new Cluster(ConcreteMap, Id<Cluster>.From(clusterId), clusterX, clusterY, new Position(left, top), new Size(width, height));
 				clusters.Add(cluster);
-                
+
+                clusterId++;
+
                 var clusterAbove = top > 0 ? GetCluster(clusters, clusterX, clusterY - 1) : null;
                 var clusterOnLeft = left > 0 ? GetCluster(clusters, clusterX - 1, clusterY) : null;
 
@@ -349,7 +351,7 @@ namespace HPASharp.Factories
                     var srcNode = nodes.Item1;
                     var destNode = nodes.Item2;
 
-                    var entrance1 = new Entrance(currentEntranceId, precedentCluster, currentCluster, srcNode, destNode, orientation);
+                    var entrance1 = new Entrance(Id<Entrance>.From(currentEntranceId), precedentCluster, currentCluster, srcNode, destNode, orientation);
 
                     currentEntranceId++;
 
@@ -357,7 +359,7 @@ namespace HPASharp.Factories
                     srcNode = nodes.Item1;
                     destNode = nodes.Item2;
 
-                    var entrance2 = new Entrance(currentEntranceId, precedentCluster, currentCluster, srcNode, destNode, orientation);
+                    var entrance2 = new Entrance(Id<Entrance>.From(currentEntranceId), precedentCluster, currentCluster, srcNode, destNode, orientation);
 
                     currentEntranceId++;
 
@@ -370,7 +372,7 @@ namespace HPASharp.Factories
                     var srcNode = nodes.Item1;
                     var destNode = nodes.Item2;
 
-                    var entrance = new Entrance(currentEntranceId, precedentCluster, currentCluster, srcNode, destNode, orientation);
+                    var entrance = new Entrance(Id<Entrance>.From(currentEntranceId), precedentCluster, currentCluster, srcNode, destNode, orientation);
 
                     currentEntranceId++;
                     entrances.Add(entrance);
@@ -462,11 +464,11 @@ namespace HPASharp.Factories
 			if (!abstractNodes.TryGetValue(srcNode.NodeId, out abstractNodeInfo))
 			{
 				cluster.AddEntrance(
-					(Id<AbstractNode>)abstractNodeId,
+					Id<AbstractNode>.From(abstractNodeId),
 					new Position(srcNode.Info.Position.X - cluster.Origin.X, srcNode.Info.Position.Y - cluster.Origin.Y));
 
 				abstractNodeInfo = new AbstractNodeInfo(
-					(Id<AbstractNode>)abstractNodeId,
+					Id<AbstractNode>.From(abstractNodeId),
 					level,
 					cluster.Id,
 					new Position(srcNode.Info.Position.X, srcNode.Info.Position.Y),

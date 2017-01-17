@@ -8,7 +8,7 @@
 	{
 		private readonly int _value;
 
-		public Id(int value)
+		private Id(int value)
 		{
 			_value = value;
 		}
@@ -18,9 +18,9 @@
 			return id._value;
 		}
 
-		public static explicit operator Id<T>(int value)
-		{
-			return new Id<T>(value);
-		}
+	    public static Id<T> From(int value)
+	    {
+	        return new Id<T>(value);
+	    }
 	}
 }

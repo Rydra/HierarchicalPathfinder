@@ -112,7 +112,7 @@ namespace HPASharp.Search
                     if (lastAbstractNodeId != currentAbstractNodeId)
                     {
 						var cluster = map.GetCluster(eClusterId);
-						var localPath = cluster.GetPath((Id<AbstractNode>)lastAbstractNodeId, (Id<AbstractNode>)currentAbstractNodeId)
+						var localPath = cluster.GetPath(Id<AbstractNode>.From(lastAbstractNodeId), Id<AbstractNode>.From(currentAbstractNodeId))
                             .Select(
                                 localId =>
                                 {

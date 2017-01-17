@@ -30,7 +30,7 @@ namespace HPASharp
 
     public class Cluster
     {
-        public int Id { get; set; }
+        public Id<Cluster> Id { get; set; }
         public int ClusterY { get; set; }
         public int ClusterX { get; set; }
 
@@ -54,7 +54,7 @@ namespace HPASharp
         public Size Size { get; set; }
         public Position Origin { get; set; }
 
-        public Cluster(ConcreteMap concreteMap, int id, int clusterX, int clusterY, Position origin, Size size)
+        public Cluster(ConcreteMap concreteMap, Id<Cluster> id, int clusterX, int clusterY, Position origin, Size size)
         {
             SubConcreteMap = concreteMap.Slice(origin.X, origin.Y, size.Width, size.Height, concreteMap.Passability);
             Id = id;
