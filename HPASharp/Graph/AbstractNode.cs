@@ -9,19 +9,27 @@ namespace HPASharp.Graph
     {
         public Id<AbstractNode> NodeId { get; set; }
         public AbstractNodeInfo Info { get; set; }
-        public List<AbstractEdge> Edges { get; set; }
+        public IDictionary<Id<AbstractNode>, AbstractEdge> Edges { get; set; }
 
         public AbstractNode(Id<AbstractNode> nodeId, AbstractNodeInfo info)
         {
             NodeId = nodeId;
             Info = info;
-            Edges = new List<AbstractEdge>();
+            Edges = new Dictionary<Id<AbstractNode>, AbstractEdge>();
         }
 
         public void RemoveEdge(Id<AbstractNode> targetNodeId)
         {
-            Edges.RemoveAll(e => e.TargetNodeId == targetNodeId);
+            Edges.Remove(targetNodeId);
         }
+
+	    public void AddEdge(AbstractEdge edge)
+	    {
+		    if (!Edges.ContainsKey(edge.TargetNodeId) || Edges[edge.TargetNodeId].Info.Level < edge.Info.Level)
+		    {
+			    Edges[edge.TargetNodeId] = edge;
+			}
+	    }
     }
 
     public class AbstractEdge : IEdge<AbstractNode, AbstractEdgeInfo>
@@ -40,17 +48,19 @@ namespace HPASharp.Graph
     {
         public int Cost { get; set; }
         public int Level { get; set; }
-        public bool IsInterEdge { get; set; }
+        public bool IsInterClusterEdge { get; set; }
+		public List<Id<AbstractNode>> InnerLowerLevelPath { get; set; }
 
-        public AbstractEdgeInfo(int cost, int level = 1, bool inter = true)
+        public AbstractEdgeInfo(int cost, int level = 1, bool interCluster = true)
         {
             Cost = cost;
             Level = level;
-            IsInterEdge = inter;
+            IsInterClusterEdge = interCluster;
         }
+
         public override string ToString()
         {
-            return ("cost: " + Cost + "; level: " + Level + "; inter: " + IsInterEdge);
+            return ("cost: " + Cost + "; level: " + Level + "; interCluster: " + IsInterClusterEdge);
         }
 
         public void PrintInfo()
@@ -64,11 +74,11 @@ namespace HPASharp.Graph
     {
         public Id<AbstractNode> Id { get; set; }
         public Position Position { get; set; }
-        public int ClusterId { get; set; }
+        public Id<Cluster> ClusterId { get; set; }
         public Id<ConcreteNode> ConcreteNodeId { get; set; }
         public int Level { get; set; }
 
-        public AbstractNodeInfo(Id<AbstractNode> id, int level, int clId,
+        public AbstractNodeInfo(Id<AbstractNode> id, int level, Id<Cluster> clId,
                     Position position, Id<ConcreteNode> concreteNodeId)
         {
             Id = id;

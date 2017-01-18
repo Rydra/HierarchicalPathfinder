@@ -54,9 +54,9 @@ namespace HPASharp.Factories
 					var targetNodeId = edge.TargetNodeId;
 
 					map.AddEdge(nodeId, targetNodeId, edge.Info.Cost,
-							   edge.Info.Level, edge.Info.IsInterEdge);
+							   edge.Info.Level, edge.Info.IsInterClusterEdge);
 					map.AddEdge(targetNodeId, nodeId, edge.Info.Cost,
-							   edge.Info.Level, edge.Info.IsInterEdge);
+							   edge.Info.Level, edge.Info.IsInterClusterEdge);
 				}
 			}
 			else
@@ -64,7 +64,7 @@ namespace HPASharp.Factories
 				// Just delete the node from the graph
 				var currentNodeInfo = abstractGraph.GetNodeInfo(nodeId);
 				var clusterId = currentNodeInfo.ClusterId;
-				var cluster = map.Clusters[clusterId];
+				var cluster = map.Clusters[clusterId.IdValue];
 				cluster.RemoveLastEntranceRecord();
 				map.ConcreteNodeIdToAbstractNodeIdMap.Remove(currentNodeInfo.ConcreteNodeId);
 				abstractGraph.RemoveEdgesFromNode(nodeId);
@@ -162,7 +162,8 @@ namespace HPASharp.Factories
 
 			foreach (var cluster in clusters)
 			{
-				CreateInterClusterEdges(cluster);
+				cluster.CreateIntraClusterEdges();
+				CreateIntraClusterEdges(cluster);
 			}
 
 			HierarchicalMap.CreateHierarchicalEdges();
@@ -213,20 +214,18 @@ namespace HPASharp.Factories
 			HierarchicalMap.AbstractGraph.AddEdge(destAbstractNodeId, srcAbstractNodeId, new AbstractEdgeInfo(cost, level, true));
 		}
         
-		private void CreateInterClusterEdges(Cluster cluster)
+		private void CreateIntraClusterEdges(Cluster cluster)
 		{
-			cluster.ComputeInternalPaths();
-
 			foreach (var point1 in cluster.EntrancePoints)
 			foreach (var point2 in cluster.EntrancePoints)
 			{
 				if (point1 != point2 && cluster.AreConnected(point1.AbstractNodeId, point2.AbstractNodeId))
 				{
-					var abtractEdgeInfo = new AbstractEdgeInfo(cluster.GetDistance(point1.AbstractNodeId, point2.AbstractNodeId), 1, false);
+					var abstractEdgeInfo = new AbstractEdgeInfo(cluster.GetDistance(point1.AbstractNodeId, point2.AbstractNodeId), 1, false);
 					HierarchicalMap.AbstractGraph.AddEdge(
 						point1.AbstractNodeId,
 						point2.AbstractNodeId,
-						abtractEdgeInfo);
+						abstractEdgeInfo);
 				}
 			}
 		}
@@ -434,7 +433,7 @@ namespace HPASharp.Factories
 		private IEnumerable<AbstractNodeInfo> GenerateAbstractNodes(List<Entrance> entrances)
 		{
 			var abstractNodeId = 0;
-			var abstractNodesDict = new Dictionary<int, AbstractNodeInfo>();
+			var abstractNodesDict = new Dictionary<Id<ConcreteNode>, AbstractNodeInfo>();
 			foreach (var entrance in entrances)
 			{
 				var level = entrance.GetEntranceLevel(ClusterSize, MaxLevel);
@@ -452,7 +451,7 @@ namespace HPASharp.Factories
 			Cluster cluster,
 			ref int abstractNodeId,
 			int level,
-			Dictionary<int, AbstractNodeInfo> abstractNodes)
+			Dictionary<Id<ConcreteNode>, AbstractNodeInfo> abstractNodes)
 		{
 			AbstractNodeInfo abstractNodeInfo;
 			if (!abstractNodes.TryGetValue(srcNode.NodeId, out abstractNodeInfo))

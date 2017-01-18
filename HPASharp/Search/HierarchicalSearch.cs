@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using HPASharp.Graph;
 using HPASharp.Infrastructure;
 
@@ -10,7 +11,8 @@ namespace HPASharp.Search
         {
 	        var path = PerformSearch(map, startNodeId, targetNodeId, maxSearchLevel, true);
 
-            if (path.Count == 0) return path;
+            if (path.Count == 0)
+				return path;
 
             for (var level = maxSearchLevel; level > 1; level--)
                 path = RefineAbstractPath(map, path, level, maxPathsToRefine);
@@ -29,16 +31,26 @@ namespace HPASharp.Search
                 map.SetCurrentClusterByPositionAndLevel(nodeInfo.Position, level + 1);
 
             // TODO: This could be perfectly replaced by cached paths in the clusters!
-            var path = search.FindPath(map, startNodeId, targetNodeId);
-            if (path.PathCost == -1)
+	        Path<AbstractNode> path;
+	        if (!mainSearch)
+	        {
+		        var edgeInfo = map.AbstractGraph.GetEdges(startNodeId)[targetNodeId].Info;
+				path = new Path<AbstractNode>(edgeInfo.InnerLowerLevelPath, edgeInfo.Cost);
+			}
+	        else
+	        {
+		        path = search.FindPath(map, startNodeId, targetNodeId);
+	        }
+
+	        if (path.PathCost == -1)
             {
                 return new List<AbstractPathNode>();
             }
 
             var result = new List<AbstractPathNode>(path.PathNodes.Count);
-            for (int i = 0; i < result.Count; i++)
+            for (int i = 0; i < path.PathNodes.Count; i++)
             {
-                result[i] = new AbstractPathNode(path.PathNodes[i], level);
+                result.Add(new AbstractPathNode(path.PathNodes[i], level));
             }
 
             return result;
@@ -124,13 +136,12 @@ namespace HPASharp.Search
                 {
 					var cluster = map.GetCluster(currentNodeClusterId);
 
-	                var localPath = cluster.GetPath(Id<AbstractNode>.From(lastAbstractNodeId),
-		                Id<AbstractNode>.From(currentAbstractNodeId));
+	                var localPath = cluster.GetPath(lastAbstractNodeId, currentAbstractNodeId);
 
 	                var concretePath = new List<IPathNode>();
 	                for (int i = 1; i < localPath.Count; i++)
 	                {
-						int concreteNodeId = LocalNodeId2ConcreteNodeId(localPath[i], cluster, mapWidth);
+						int concreteNodeId = LocalNodeId2ConcreteNodeId(localPath[i].IdValue, cluster, mapWidth);
 						concretePath.Add(new ConcretePathNode(Id<ConcreteNode>.From(concreteNodeId)));
 					}
 

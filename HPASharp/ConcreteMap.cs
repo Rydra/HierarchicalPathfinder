@@ -60,9 +60,9 @@ namespace HPASharp
 
 	    public int NrNodes => Width * Height;
 
-        public int GetNodeIdFromPos(int x, int y)
+        public Id<ConcreteNode> GetNodeIdFromPos(int x, int y)
 	    {
-		    return y * Width + x;
+		    return Id<ConcreteNode>.From(y * Width + x);
 	    }
 
         public int GetHeuristic(Id<ConcreteNode> startNodeId, Id<ConcreteNode> targetNodeId)
@@ -126,7 +126,7 @@ namespace HPASharp
             var node = Graph.GetNode(nodeId);
             var nodeInfo = node.Info;
 
-            foreach (var edge in node.Edges)
+            foreach (var edge in node.Edges.Values)
             {
                 var targetNodeId = edge.TargetNodeId;
                 var targetNodeInfo = Graph.GetNodeInfo(targetNodeId);
@@ -164,7 +164,7 @@ namespace HPASharp
             var result = new List<char>();
             var numberNodes = NrNodes;
             for (var i = 0; i < numberNodes; ++i)
-                result.Add(Graph.GetNodeInfo(i).IsObstacle ? '@' : '.');
+                result.Add(Graph.GetNodeInfo(Id<ConcreteNode>.From(i)).IsObstacle ? '@' : '.');
 
             return result;
         }
@@ -181,7 +181,7 @@ namespace HPASharp
                 for (var x = 0; x < Width; ++x)
                 {
                     var nodeId = this.GetNodeIdFromPos(x, y);
-                    Console.Write(chars[nodeId]);
+                    Console.Write(chars[nodeId.IdValue]);
                 }
 
                 Console.WriteLine();

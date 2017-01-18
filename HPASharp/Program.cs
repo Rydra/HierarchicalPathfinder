@@ -91,14 +91,22 @@ namespace HPASharp
 				return false;
 			}
 		}
-        
+
 		// Params
 		private static readonly int Height = 70;
 		private static readonly int Width = 70;
-		private static readonly int ClusterSize = 8;
-		private static readonly int MaxLevel = 2;
+
 		private static readonly Position StartPosition = new Position(1, 0);
 		private static readonly Position EndPosition = new Position(69, 69);
+
+		//private static readonly int Height = 16;
+		//private static readonly int Width = 16;
+
+		//private static readonly Position StartPosition = new Position(1, 0);
+		//private static readonly Position EndPosition = new Position(15, 15);
+
+		private static readonly int ClusterSize = 8;
+		private static readonly int MaxLevel = 2;
 
 		public static void Main(string[] args)
         {
@@ -122,7 +130,7 @@ namespace HPASharp
             Console.WriteLine("Number of nodes: " + regularSearchPath.Count);
 
             Console.WriteLine("Hierachical search: " + hierarchicalSearchTime + " ms");
-            Console.WriteLine("hierarchicalSearchPath: " + hierarchicalSearchPath.Count);
+            Console.WriteLine("Number of nodes: " + hierarchicalSearchPath.Count);
 #endif
 
 #if DEBUG
@@ -138,10 +146,12 @@ namespace HPASharp
             Console.WriteLine();
             Console.WriteLine();
             Console.WriteLine();
+
+			Console.WriteLine("Press any key to quit...");
+			Console.ReadKey();
 #endif
-            //Console.WriteLine("Press any key to quit...");
-            //Console.ReadKey();
-        }
+
+		}
 
         private static List<Position> HierarchicalSearch(HierarchicalMap hierarchicalMap, int maxLevel, ConcreteMap concreteMap)
 	    {
@@ -193,7 +203,7 @@ namespace HPASharp
             var numberNodes = concreteMap.NrNodes;
             for (var i = 0; i < numberNodes; ++i)
             {
-                result.Add(concreteMap.Graph.GetNodeInfo(i).IsObstacle ? '@' : '.');
+                result.Add(concreteMap.Graph.GetNodeInfo(Id<ConcreteNode>.From(i)).IsObstacle ? '@' : '.');
             }
 
             return result;
@@ -226,7 +236,7 @@ namespace HPASharp
                                 break;
                         }
                         
-                    Console.Write(path.Any(n => n.X == x && n.Y == y) ? 'X' : chars[nodeId]);
+                    Console.Write(path.Any(n => n.X == x && n.Y == y) ? 'X' : chars[nodeId.IdValue]);
                 }
 
                 Console.WriteLine();

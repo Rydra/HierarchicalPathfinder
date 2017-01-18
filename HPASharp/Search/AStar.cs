@@ -76,14 +76,15 @@ namespace HPASharp.Search
 			// The open list lookup is indexed by the number of nodes in the graph/map,
 			// and it is useful to check quickly the status of any node that has been processed
 			var nodeLookup = new AStarNode<TNode>?[map.NrNodes];
-			nodeLookup[startNodeId] = startNode;
-
+			nodeLookup[startNodeId.IdValue] = startNode;
+	        int iterations = 0;
             while (openQueue.Count != 0)
             {
                 var nodeId = openQueue.Dequeue();
-                var node = nodeLookup[nodeId].Value;
-				
-                if (isGoal(nodeId))
+                var node = nodeLookup[nodeId.IdValue].Value;
+	            iterations++;
+
+				if (isGoal(nodeId))
                 {
                     return ReconstructPath(nodeId, nodeLookup);
                 }
@@ -92,7 +93,7 @@ namespace HPASharp.Search
 
 				// Close the node. I hope some day the will implement something
 				// like the records in F# with the "with" keyword
-				nodeLookup[nodeId] = new AStarNode<TNode>(node.Parent, node.G, node.H, CellStatus.Closed);
+				nodeLookup[nodeId.IdValue] = new AStarNode<TNode>(node.Parent, node.G, node.H, CellStatus.Closed);
 			}
 
 			// No path found. We could return a null, but since I read the book "Code Complete" I decided
@@ -112,7 +113,7 @@ namespace HPASharp.Search
 			{
 				var newg = node.G + successor.Cost;
 				var successorTarget = successor.Target;
-				var targetAStarNode = nodeLookup[successorTarget];
+				var targetAStarNode = nodeLookup[successorTarget.IdValue];
 				if (targetAStarNode.HasValue)
 				{
 					// If we already processed the neighbour in the past or we already found in the past
@@ -122,7 +123,7 @@ namespace HPASharp.Search
 						continue;
 
 					targetAStarNode = new AStarNode<TNode>(nodeId, newg, targetAStarNode.Value.H, CellStatus.Open);
-					nodeLookup[successorTarget] = targetAStarNode;
+					nodeLookup[successorTarget.IdValue] = targetAStarNode;
 					openQueue.UpdatePriority(successorTarget, targetAStarNode.Value.F);
 				}
 				else
@@ -130,7 +131,7 @@ namespace HPASharp.Search
 					var newHeuristic = calculateHeuristic(successorTarget);
 					var newAStarNode = new AStarNode<TNode>(nodeId, newg, newHeuristic, CellStatus.Open);
 					openQueue.Enqueue(successorTarget, newAStarNode.F);
-					nodeLookup[successorTarget] = newAStarNode;
+					nodeLookup[successorTarget.IdValue] = newAStarNode;
 				}
 			}
 		}
@@ -144,12 +145,12 @@ namespace HPASharp.Search
 		private Path<TNode> ReconstructPath(Id<TNode> destination, AStarNode<TNode>?[] nodeLookup)
 		{
 			var pathNodes = new List<Id<TNode>>();
-			var pathCost = nodeLookup[destination].Value.F;
+			var pathCost = nodeLookup[destination.IdValue].Value.F;
 			var currnode = destination;
-			while (nodeLookup[currnode].Value.Parent != currnode)
+			while (nodeLookup[currnode.IdValue].Value.Parent != currnode)
 			{
 				pathNodes.Add(currnode);
-				currnode = nodeLookup[currnode].Value.Parent;
+				currnode = nodeLookup[currnode.IdValue].Value.Parent;
 			}
 
 			pathNodes.Add(currnode);

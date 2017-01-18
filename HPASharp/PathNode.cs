@@ -21,7 +21,7 @@ namespace HPASharp
 
 		public int IdValue
 		{
-			get { return Id; }
+			get { return Id.IdValue; }
 		}
 	}
 
@@ -36,7 +36,7 @@ namespace HPASharp
 
 		public int IdValue
 		{
-			get { return Id; }
+			get { return Id.IdValue; }
 		}
 	}
 }

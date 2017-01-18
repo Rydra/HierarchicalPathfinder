@@ -8,8 +8,9 @@ namespace HPASharp.Graph
 	{
 		Id<TId> NodeId { get; set; }
 		TInfo Info { get; set; }
-		List<TEdge> Edges { get; set; }
+		IDictionary<Id<TId>, TEdge> Edges { get; set; }
         void RemoveEdge(Id<TId> targetNodeId);
+		void AddEdge(TEdge targetNodeId);
 	}
 
 	public interface IEdge<TNode, TEdgeInfo>
@@ -51,28 +52,28 @@ namespace HPASharp.Graph
 		/// </summary>
         public void AddNode(Id<TNode> nodeId, TNodeInfo info)
         {
-            var size = nodeId + 1;
+            var size = nodeId.IdValue + 1;
             if (Nodes.Count < size)
                 Nodes.Add(_nodeCreator(nodeId, info));
             else
-                Nodes[nodeId] = _nodeCreator(nodeId, info);
+                Nodes[nodeId.IdValue] = _nodeCreator(nodeId, info);
         }
 
 		#region AbstractGraph updating
 
 		public void AddEdge(Id<TNode> sourceNodeId, Id<TNode> targetNodeId, TEdgeInfo info)
         {
-            Nodes[sourceNodeId].Edges.Add(_edgeCreator(targetNodeId, info));
+            Nodes[sourceNodeId.IdValue].AddEdge(_edgeCreator(targetNodeId, info));
         }
         
         public void RemoveEdgesFromNode(Id<TNode> nodeId)
         {
-            foreach (var edge in Nodes[nodeId].Edges)
+            foreach (var edge in Nodes[nodeId.IdValue].Edges.Values)
             {
-                Nodes[edge.TargetNodeId].RemoveEdge(nodeId);
+                Nodes[edge.TargetNodeId.IdValue].RemoveEdge(nodeId);
             }
 
-            Nodes[nodeId].Edges.Clear();
+            Nodes[nodeId.IdValue].Edges.Clear();
         }
 
         public void RemoveLastNode()
@@ -82,19 +83,19 @@ namespace HPASharp.Graph
 
         #endregion
 
-        public TNode GetNode(int nodeId)
+        public TNode GetNode(Id<TNode> nodeId)
         {
-            return Nodes[nodeId];
+            return Nodes[nodeId.IdValue];
         }
 
-        public TNodeInfo GetNodeInfo(int nodeId)
+        public TNodeInfo GetNodeInfo(Id<TNode> nodeId)
         {
             return GetNode(nodeId).Info;
         }
         
-        public List<TEdge> GetEdges(int nodeId)
+        public IDictionary<Id<TNode>, TEdge> GetEdges(Id<TNode> nodeId)
         {
-            return Nodes[nodeId].Edges;
+            return Nodes[nodeId.IdValue].Edges;
         }
     }
 

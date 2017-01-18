@@ -8,19 +8,24 @@ namespace HPASharp.Graph
     {
         public Id<ConcreteNode> NodeId { get; set; }
         public ConcreteNodeInfo Info { get; set; }
-        public List<ConcreteEdge> Edges { get; set; }
+        public IDictionary<Id<ConcreteNode>, ConcreteEdge> Edges { get; set; }
 
         public ConcreteNode(Id<ConcreteNode> nodeId, ConcreteNodeInfo info)
         {
             NodeId = nodeId;
             Info = info;
-            Edges = new List<ConcreteEdge>();
+            Edges = new Dictionary<Id<ConcreteNode>, ConcreteEdge>();
         }
 
         public void RemoveEdge(Id<ConcreteNode> targetNodeId)
         {
-            Edges.RemoveAll(e => e.TargetNodeId == targetNodeId);
+            Edges.Remove(targetNodeId);
         }
+
+	    public void AddEdge(ConcreteEdge edge)
+	    {
+		    Edges[edge.TargetNodeId] = edge;
+		}
     }
 
     public class ConcreteEdge : IEdge<ConcreteNode, ConcreteEdgeInfo>

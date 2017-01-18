@@ -138,20 +138,23 @@ namespace HPASharp
 		    return foundCluster;
         }
 
-        public void AddEdge(Id<AbstractNode> sourceNodeId, Id<AbstractNode> destNodeId, int cost, int level = 1, bool inter = false)
+        public void AddEdge(Id<AbstractNode> sourceNodeId, Id<AbstractNode> destNodeId, int cost, int level = 1, bool inter = false, List<Id<AbstractNode>> pathPathNodes = null)
         {
-            AbstractGraph.AddEdge(sourceNodeId, destNodeId, new AbstractEdgeInfo(cost, level, inter));
+	        var edgeInfo = new AbstractEdgeInfo(cost, level, inter);
+	        edgeInfo.InnerLowerLevelPath = pathPathNodes;
+
+			AbstractGraph.AddEdge(sourceNodeId, destNodeId, edgeInfo);
         }
 
         public List<AbstractEdge> GetNodeEdges(Id<ConcreteNode> nodeId)
         {
             var node = AbstractGraph.GetNode(ConcreteNodeIdToAbstractNodeIdMap[nodeId]);
-            return node.Edges;
+            return node.Edges.Values.ToList();
         }
 
-        public Cluster GetCluster(int id)
+        public Cluster GetCluster(Id<Cluster> id)
         {
-            return Clusters[id];
+            return Clusters[id.IdValue];
         }
 
 	    #endregion
@@ -164,29 +167,16 @@ namespace HPASharp
 			var node = AbstractGraph.GetNode(nodeId);
 			var edges = node.Edges;
 			var result = new List<Neighbour<AbstractNode>>();
-			foreach (var edge in edges)
+			foreach (var edge in edges.Values)
 			{
 				var edgeInfo = edge.Info;
-				if (edgeInfo.IsInterEdge)
-				{
-					// If the node is an interCluster edge and the edge is of a lower level than
-					// the current level, we have to ignore it
-					// This means we can use higher level interEdges.
-					if (edgeInfo.Level < currentLevel) continue;
-				}
-				else
-				{
-					// If it is NOT an interCluster edge (local edge for example) but that edge belongs to another level... ignore it
-					if (edgeInfo.Level != currentLevel) continue;
-				}
+				if (!IsValidEdgeForLevel(edgeInfo, currentLevel))
+					continue;
 
 				var targetNodeId = edge.TargetNodeId;
 				var targetNodeInfo = AbstractGraph.GetNodeInfo(targetNodeId);
-
-				// NOTE: Sure this if happens? Previous validations should ensure that the edge is connected to
-				// a node of the same level. Also... why are we checking if the target node is in the current Cluster?
-				// We should be able to navigate to that edge!
-				if (targetNodeInfo.Level < currentLevel || !PositionInCurrentCluster(targetNodeInfo.Position))
+				
+				if (!PositionInCurrentCluster(targetNodeInfo.Position))
 					continue;
 
 				result.Add(new Neighbour<AbstractNode>(targetNodeId, edgeInfo.Cost));
@@ -195,7 +185,17 @@ namespace HPASharp
 			return result;
 		}
 
-		public bool PositionInCurrentCluster(Position position)
+	    private static bool IsValidEdgeForLevel(AbstractEdgeInfo edgeInfo, int level)
+	    {
+		    if (edgeInfo.IsInterClusterEdge)
+		    {
+			    return edgeInfo.Level >= level;
+		    }
+
+		    return edgeInfo.Level == level;
+	    }
+
+	    public bool PositionInCurrentCluster(Position position)
 		{
 			var y = position.Y;
 			var x = position.X;
@@ -243,7 +243,7 @@ namespace HPASharp
 			currentClusterX1 = Math.Min(this.Width - 1, x + offset - 1);
 		}
         
-		public bool BelongToSameCluster(int node1Id, int node2Id, int level)
+		public bool BelongToSameCluster(Id<AbstractNode> node1Id, Id<AbstractNode> node2Id, int level)
 		{
 			var node1Pos = AbstractGraph.GetNodeInfo(node1Id).Position;
 			var node2Pos = AbstractGraph.GetNodeInfo(node2Id).Position;
@@ -264,10 +264,10 @@ namespace HPASharp
 
 		public void SetCurrentLevel(int level)
 		{
-			this.currentLevel = level;
+			currentLevel = level;
 		}
 
-        private bool IsValidAbstractNodeForLevel(int abstractNodeId, int level)
+        private bool IsValidAbstractNodeForLevel(Id<AbstractNode> abstractNodeId, int level)
         {
             return AbstractGraph.GetNodeInfo(abstractNodeId).Level >= level;
         }
@@ -300,19 +300,22 @@ namespace HPASharp
                         .Where(entrance => GetEntrancePointLevel(entrance) >= level)
                         .ToList();
 
-                    var firstEntrance = entrancesInClusterGroup.First();
-	                var entrancePosition = AbstractGraph.GetNode(firstEntrance.AbstractNodeId).Info.Position;
+                    var firstEntrance = entrancesInClusterGroup.FirstOrDefault();
+	                if (firstEntrance != null)
+	                {
+		                var entrancePosition = AbstractGraph.GetNode(firstEntrance.AbstractNodeId).Info.Position;
 
-                    SetCurrentClusterByPositionAndLevel(
-                        entrancePosition,
-                        level);
+		                SetCurrentClusterByPositionAndLevel(
+			                entrancePosition,
+			                level);
 
-                    foreach (var point1 in entrancesInClusterGroup)
-                        foreach (var point2 in entrancesInClusterGroup)
-                        {
-                            if (point1 == point2) continue;
-                            AddEdgesBetweenAbstractNodes(point1.AbstractNodeId, point2.AbstractNodeId, level);
-                        }
+		                foreach (var point1 in entrancesInClusterGroup)
+		                foreach (var point2 in entrancesInClusterGroup)
+		                {
+			                if (point1 == point2) continue;
+			                AddEdgesBetweenAbstractNodes(point1.AbstractNodeId, point2.AbstractNodeId, level);
+		                }
+	                }
                 }
             }
         }
@@ -326,8 +329,9 @@ namespace HPASharp
             var path = search.FindPath(this, srcAbstractNodeId, destAbstractNodeId);
             if (path.PathCost >= 0)
             {
-                AddEdge(srcAbstractNodeId, destAbstractNodeId, path.PathCost, level, false);
-                AddEdge(destAbstractNodeId, srcAbstractNodeId, path.PathCost, level, false);
+                AddEdge(srcAbstractNodeId, destAbstractNodeId, path.PathCost, level, false, new List<Id<AbstractNode>>(path.PathNodes));
+	            path.PathNodes.Reverse();
+                AddEdge(destAbstractNodeId, srcAbstractNodeId, path.PathCost, level, false, path.PathNodes);
             }
         }
 

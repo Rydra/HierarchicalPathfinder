@@ -40,7 +40,7 @@ namespace HPASharp.Smoother
 			}
         }
 
-        private Position GetPosition(int nodeId)
+        private Position GetPosition(Id<ConcreteNode> nodeId)
         {
             return _concreteMap.Graph.GetNodeInfo(nodeId).Position;
         }
@@ -103,19 +103,19 @@ namespace HPASharp.Smoother
 
 			    var seenPathNode = AdvanceThroughDirection(Id<ConcreteNode>.From(InitialPath[index].IdValue), dir);
 
-			    if (seenPathNode == Constants.NO_NODE)
+			    if (seenPathNode == INVALID_ID)
 				    // No node in advance in that direction, just continue
 				    continue;
-			    if (index > 0 && seenPathNode == InitialPath[index - 1].IdValue)
+			    if (index > 0 && seenPathNode.IdValue == InitialPath[index - 1].IdValue)
 				    // If the point we are advancing is the same as the previous one, we didn't
 				    // improve at all. Just continue looking other directions
 				    continue;
-			    if (index < InitialPath.Count - 1 && seenPathNode == InitialPath[index + 1].IdValue)
+			    if (index < InitialPath.Count - 1 && seenPathNode.IdValue == InitialPath[index + 1].IdValue)
 				    // If the point we are advancing is the same as a next node in the path,
 				    // we didn't improve either. Continue next direction
 				    continue;
 
-				newIndex = _pathMap[seenPathNode] - 2;
+				newIndex = _pathMap[seenPathNode.IdValue] - 2;
 
 			    // count the path reduction (e.g., 2)
 			    break;
@@ -142,7 +142,7 @@ namespace HPASharp.Smoother
         /// Returns the next node in the init path in a straight line that
         /// lies in the same direction as the origin node
         /// </summary>
-        private int AdvanceThroughDirection(Id<ConcreteNode> originId, int direction)
+        private Id<ConcreteNode> AdvanceThroughDirection(Id<ConcreteNode> originId, int direction)
         {
             var nodeId = originId;
             var lastNodeId = originId;
@@ -153,12 +153,12 @@ namespace HPASharp.Smoother
 
                 // If in the direction we advanced there was an invalid node or we cannot enter the node,
                 // just return that no node was found
-                if (nodeId == Constants.NO_NODE || !_concreteMap.CanJump(GetPosition(nodeId), GetPosition(lastNodeId)))
-                    return Constants.NO_NODE;
+                if (nodeId == INVALID_ID || !_concreteMap.CanJump(GetPosition(nodeId), GetPosition(lastNodeId)))
+                    return INVALID_ID;
 
                 // Otherwise, if the node we advanced was contained in the original path, and
                 // it was positioned after the node we are analyzing, return it
-                if (_pathMap.ContainsKey(nodeId) && _pathMap[nodeId] > _pathMap[originId])
+                if (_pathMap.ContainsKey(nodeId.IdValue) && _pathMap[nodeId.IdValue] > _pathMap[originId.IdValue])
                 {
                     return nodeId;
                 }
@@ -166,7 +166,7 @@ namespace HPASharp.Smoother
                 // If we have found an obstacle, just return that no next node to advance was found
                 var newNodeInfo = _concreteMap.Graph.GetNodeInfo(nodeId);
                 if (newNodeInfo.IsObstacle)
-                    return Constants.NO_NODE;
+                    return INVALID_ID;
 
                 lastNodeId = nodeId;
             }

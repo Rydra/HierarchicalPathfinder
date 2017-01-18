@@ -68,7 +68,7 @@ namespace HPASharp
             EntrancePoints = new List<EntrancePoint>();
         }
         
-        public void ComputeInternalPaths()
+        public void CreateIntraClusterEdges()
         {
             foreach (var point1 in EntrancePoints)
             foreach (var point2 in EntrancePoints)
@@ -85,19 +85,20 @@ namespace HPASharp
         
         private void ComputePathBetweenEntrances(EntrancePoint e1, EntrancePoint e2)
         {
-            var startNodeId = Id<ConcreteNode>.From(GetEntrancePositionIndex(e1));
-            var targetNodeId = Id<ConcreteNode>.From(GetEntrancePositionIndex(e2));
+	        if (e1.AbstractNodeId == e2.AbstractNodeId)
+		        return;
+			
 	        var tuple = Tuple.Create(e1.AbstractNodeId, e2.AbstractNodeId);
 			var invtuple = Tuple.Create(e2.AbstractNodeId, e1.AbstractNodeId);
-
-			// If a path already existed, or both are the same node, just return
-			if (_distanceCalculated.ContainsKey(tuple) || e1.AbstractNodeId == e2.AbstractNodeId)
+			
+			if (_distanceCalculated.ContainsKey(tuple))
                 return;
 
             var search = new AStar<ConcreteNode>();
-            var path = search.FindPath(SubConcreteMap, startNodeId, targetNodeId);
-
-            // TODO: Store the path as well, not only the cost. This will make everything faster!
+			var startNodeId = Id<ConcreteNode>.From(GetEntrancePositionIndex(e1));
+			var targetNodeId = Id<ConcreteNode>.From(GetEntrancePositionIndex(e2));
+			var path = search.FindPath(SubConcreteMap, startNodeId, targetNodeId);
+			
 	        if (path.PathCost != -1)
 	        {
 				// Yeah, we are supposing reaching A - B is the same like reaching B - A. Which
