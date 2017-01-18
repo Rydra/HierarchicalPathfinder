@@ -66,11 +66,11 @@ namespace HPASharp.Graph
             Nodes[sourceNodeId.IdValue].AddEdge(_edgeCreator(targetNodeId, info));
         }
         
-        public void RemoveEdgesFromNode(Id<TNode> nodeId)
+        public void RemoveEdgesFromAndToNode(Id<TNode> nodeId)
         {
-            foreach (var edge in Nodes[nodeId.IdValue].Edges.Values)
+            foreach (var targetNodeId in Nodes[nodeId.IdValue].Edges.Keys)
             {
-                Nodes[edge.TargetNodeId.IdValue].RemoveEdge(nodeId);
+                Nodes[targetNodeId.IdValue].RemoveEdge(nodeId);
             }
 
             Nodes[nodeId.IdValue].Edges.Clear();

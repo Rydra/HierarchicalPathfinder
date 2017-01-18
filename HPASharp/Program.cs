@@ -163,10 +163,10 @@ namespace HPASharp
             var hierarchicalSearch = new HierarchicalSearch();
             var abstractPath = hierarchicalSearch.DoHierarchicalSearch(hierarchicalMap, startAbsNode, targetAbsNode, maxLevel, maxPathsToRefine);
 			var path = hierarchicalSearch.AbstractPathToLowLevelPath(hierarchicalMap, abstractPath, hierarchicalMap.Width, maxPathsToRefine);
-			
+
 			var smoother = new SmoothWizard(concreteMap, path);
-            path = smoother.SmoothPath();
-		    var posPath = path.Select(p =>
+			path = smoother.SmoothPath();
+			var posPath = path.Select(p =>
 		    {
 			    if (p is ConcretePathNode)
 			    {
@@ -181,7 +181,7 @@ namespace HPASharp
 			factory.RemoveAbstractNode(hierarchicalMap, targetAbsNode, 1);
 			factory.RemoveAbstractNode(hierarchicalMap, startAbsNode, 0);
 
-		    return posPath;
+			return posPath;
 	    }
 
 	    private static List<Position> RegularSearch(ConcreteMap concreteMap)

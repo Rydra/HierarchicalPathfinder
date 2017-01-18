@@ -23,7 +23,7 @@ namespace HPASharp.Search
         private List<AbstractPathNode> PerformSearch(HierarchicalMap map, Id<AbstractNode> startNodeId, Id<AbstractNode> targetNodeId, int level, bool mainSearch)
         {
             var search = new AStar<AbstractNode>();
-            map.SetCurrentLevel(level);
+            map.SetCurrentLevelForSearches(level);
             var nodeInfo = map.AbstractGraph.GetNodeInfo(startNodeId);
             if (mainSearch)
                 map.SetCurrentClusterByPositionAndLevel(nodeInfo.Position, map.MaxLevel + 1);

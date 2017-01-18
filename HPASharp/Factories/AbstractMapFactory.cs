@@ -47,7 +47,7 @@ namespace HPASharp.Factories
 				// the information we kept when inserting
 				var nodeInfo = abstractGraph.GetNodeInfo(nodeId);
 				nodeInfo.Level = m_stalLevel[stal];
-				abstractGraph.RemoveEdgesFromNode(nodeId);
+				abstractGraph.RemoveEdgesFromAndToNode(nodeId);
 				abstractGraph.AddNode(nodeId, nodeInfo);
 				foreach (var edge in m_stalEdges[stal])
 				{
@@ -67,7 +67,7 @@ namespace HPASharp.Factories
 				var cluster = map.Clusters[clusterId.IdValue];
 				cluster.RemoveLastEntranceRecord();
 				map.ConcreteNodeIdToAbstractNodeIdMap.Remove(currentNodeInfo.ConcreteNodeId);
-				abstractGraph.RemoveEdgesFromNode(nodeId);
+				abstractGraph.RemoveEdgesFromAndToNode(nodeId);
 				abstractGraph.RemoveLastNode();
 			}
 		}

@@ -24,7 +24,7 @@
 
 		public override int GetHashCode()
 		{
-			return _value;
+			return _value.GetHashCode();
 		}
 
 		public static bool operator ==(Id<T> left, Id<T> right)

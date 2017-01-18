@@ -262,7 +262,7 @@ namespace HPASharp
 			return true;
 		}
 
-		public void SetCurrentLevel(int level)
+		public void SetCurrentLevelForSearches(int level)
 		{
 			currentLevel = level;
 		}
@@ -287,7 +287,7 @@ namespace HPASharp
             // used by the clusters.
             for (var level = 2; level <= MaxLevel; level++)
             {
-                SetCurrentLevel(level - 1);
+                SetCurrentLevelForSearches(level - 1);
 
                 int n = 1 << (level - 1);
                 // Group clusters by their level. Each subsequent level doubles the amount of clusters in each group
@@ -337,7 +337,7 @@ namespace HPASharp
 
         public void AddEdgesToOtherEntrancesInCluster(AbstractNodeInfo abstractNodeInfo, int level)
         {
-            SetCurrentLevel(level - 1);
+            SetCurrentLevelForSearches(level - 1);
             SetCurrentClusterByPositionAndLevel(abstractNodeInfo.Position, level);
             
             foreach (var cluster in Clusters)
