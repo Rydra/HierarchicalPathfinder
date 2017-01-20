@@ -264,7 +264,7 @@ namespace HPASharp.Factories
             
             if (clusterAbove != null)
             {
-                var hEntrances = CreateVerticalEntrances(
+                var hEntrances = CreateEntrancesOnTop(
                     left,
                     left + cluster.Size.Width - 1,
                     top - 1,
@@ -277,7 +277,7 @@ namespace HPASharp.Factories
 
             if (clusterOnLeft != null)
             {
-                var vEntrances = CreateHorizontalEntrances(
+                var vEntrances = CreateEntrancesOnLeft(
                     top,
                     top + cluster.Size.Height - 1,
                     left - 1,
@@ -291,32 +291,32 @@ namespace HPASharp.Factories
             return entrances;
         }
 
-        private List<Entrance> CreateHorizontalEntrances(
+        private List<Entrance> CreateEntrancesOnLeft(
             int rowStart,
             int rowEnd,
             int column,
-			Cluster clusterAbove,
+			Cluster clusterOnLeft,
 			Cluster cluster,
             ref int currentEntranceId)
         {
             Func<int, Tuple<ConcreteNode, ConcreteNode>> getNodesForRow =
                 row => Tuple.Create(GetNode(column, row), GetNode(column + 1, row));
 
-            return CreateEntrancesAlongEdge(rowStart, rowEnd, clusterAbove, cluster, ref currentEntranceId, getNodesForRow, Orientation.Horizontal);
+            return CreateEntrancesAlongEdge(rowStart, rowEnd, clusterOnLeft, cluster, ref currentEntranceId, getNodesForRow, Orientation.Horizontal);
         }
 
-        private List<Entrance> CreateVerticalEntrances(
+        private List<Entrance> CreateEntrancesOnTop(
             int colStart,
             int colEnd,
             int row,
-            Cluster clusterOnLeft,
+            Cluster clusterOnTop,
 			Cluster cluster,
             ref int currentEntranceId)
         {
             Func<int, Tuple<ConcreteNode, ConcreteNode>> getNodesForColumn =
                 column => Tuple.Create(GetNode(column, row), GetNode(column, row + 1));
 
-            return CreateEntrancesAlongEdge(colStart, colEnd, clusterOnLeft, cluster, ref currentEntranceId, getNodesForColumn, Orientation.Vertical);
+            return CreateEntrancesAlongEdge(colStart, colEnd, clusterOnTop, cluster, ref currentEntranceId, getNodesForColumn, Orientation.Vertical);
         }
 
         private List<Entrance> CreateEntrancesAlongEdge(
@@ -334,7 +334,7 @@ namespace HPASharp.Factories
             {
                 var size = GetEntranceSize(entranceStart, endPoint, getNodesInEdge);
 
-                var entranceEnd = entranceStart + size;
+                var entranceEnd = entranceStart + size - 1;
                 if (size == 0)
                     continue;
 
@@ -347,15 +347,8 @@ namespace HPASharp.Factories
                     var entrance1 = new Entrance(Id<Entrance>.From(currentEntranceId), precedentCluster, currentCluster, srcNode, destNode, orientation);
 
                     currentEntranceId++;
-
-                    if (entranceEnd > endPoint)
-                    {
-                        nodes = getNodesInEdge(entranceEnd);
-                    }
-                    else
-                    {
-                        nodes = getNodesInEdge(entranceEnd - 1);
-                    }
+					
+                    nodes = getNodesInEdge(entranceEnd);
                     srcNode = nodes.Item1;
                     destNode = nodes.Item2;
 
@@ -368,7 +361,7 @@ namespace HPASharp.Factories
                 }
                 else
                 {
-                    var nodes = getNodesInEdge(((entranceEnd) + entranceStart) / 2);
+                    var nodes = getNodesInEdge((entranceEnd + entranceStart) / 2);
                     var srcNode = nodes.Item1;
                     var destNode = nodes.Item2;
 
@@ -387,24 +380,9 @@ namespace HPASharp.Factories
         private int GetEntranceSize(int entranceStart, int end, Func<int, Tuple<ConcreteNode, ConcreteNode>> getNodesInEdge)
         {
             var size = 0;
-            var nodes = getNodesInEdge(entranceStart);
-            if (NodesAreBlocked(nodes.Item1, nodes.Item2))
-                return size;
-
-            while (true)
+            while (entranceStart + size <= end && !EntranceIsBlocked(entranceStart + size, getNodesInEdge))
             {
                 size++;
-
-                if (entranceStart + size >= end)
-                {
-                    break;
-                }
-
-                nodes = getNodesInEdge(entranceStart + size);
-                if (NodesAreBlocked(nodes.Item1, nodes.Item2))
-                {
-                    break;
-                }
             }
 
             return size;
@@ -415,9 +393,10 @@ namespace HPASharp.Factories
             return ConcreteMap.Graph.GetNode(ConcreteMap.GetNodeIdFromPos(left, top));
         }
 
-        private bool NodesAreBlocked(ConcreteNode node1, ConcreteNode node2)
+        private bool EntranceIsBlocked(int entrancePoint, Func<int, Tuple<ConcreteNode, ConcreteNode>> getNodesInEdge)
         {
-            return node1.Info.IsObstacle || node2.Info.IsObstacle;
+			var nodes = getNodesInEdge(entrancePoint);
+			return nodes.Item1.Info.IsObstacle || nodes.Item2.Info.IsObstacle;
         }
 		
 		private Cluster GetCluster(List<Cluster> clusters, int left, int top)
