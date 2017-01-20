@@ -9,7 +9,7 @@ namespace HPASharp.Search
     {
         public List<AbstractPathNode> DoHierarchicalSearch(HierarchicalMap map, Id<AbstractNode> startNodeId, Id<AbstractNode> targetNodeId, int maxSearchLevel, int maxPathsToRefine = int.MaxValue)
         {
-	        var path = PerformSearch(map, startNodeId, targetNodeId, maxSearchLevel, true);
+	        List<AbstractPathNode> path = GetPath(map, startNodeId, targetNodeId, maxSearchLevel, true);
 
             if (path.Count == 0)
 				return path;
@@ -20,26 +20,24 @@ namespace HPASharp.Search
             return path;
         }
 
-        private List<AbstractPathNode> PerformSearch(HierarchicalMap map, Id<AbstractNode> startNodeId, Id<AbstractNode> targetNodeId, int level, bool mainSearch)
+        private List<AbstractPathNode> GetPath(HierarchicalMap map, Id<AbstractNode> startNodeId, Id<AbstractNode> targetNodeId, int level, bool mainSearch)
         {
             var search = new AStar<AbstractNode>();
             map.SetCurrentLevelForSearches(level);
             var nodeInfo = map.AbstractGraph.GetNodeInfo(startNodeId);
-            if (mainSearch)
-                map.SetCurrentClusterByPositionAndLevel(nodeInfo.Position, map.MaxLevel + 1);
-            else
-                map.SetCurrentClusterByPositionAndLevel(nodeInfo.Position, level + 1);
 
             // TODO: This could be perfectly replaced by cached paths in the clusters!
 	        Path<AbstractNode> path;
 	        if (!mainSearch)
 	        {
-		        var edgeInfo = map.AbstractGraph.GetEdges(startNodeId)[targetNodeId].Info;
+                map.SetCurrentClusterByPositionAndLevel(nodeInfo.Position, level + 1);
+                var edgeInfo = map.AbstractGraph.GetEdges(startNodeId)[targetNodeId].Info;
 				path = new Path<AbstractNode>(edgeInfo.InnerLowerLevelPath, edgeInfo.Cost);
 			}
 	        else
 	        {
-		        path = search.FindPath(map, startNodeId, targetNodeId);
+                map.SetCurrentClusterByPositionAndLevel(nodeInfo.Position, map.MaxLevel + 1);
+                path = search.FindPath(map, startNodeId, targetNodeId);
 	        }
 
 	        if (path.PathCost == -1)
@@ -48,31 +46,28 @@ namespace HPASharp.Search
             }
 
             var result = new List<AbstractPathNode>(path.PathNodes.Count);
-            for (int i = 0; i < path.PathNodes.Count; i++)
+            foreach (Id<AbstractNode> abstractNodeId in path.PathNodes)
             {
-                result.Add(new AbstractPathNode(path.PathNodes[i], level));
+                result.Add(new AbstractPathNode(abstractNodeId, level));
             }
 
             return result;
         }
-
-        /// <summary>
-        /// Refines all the nodes that belong to a certain level to a lower level
-        /// </summary>
+        
         public List<AbstractPathNode> RefineAbstractPath(HierarchicalMap map, List<AbstractPathNode> path, int level, int maxPathsToRefine = int.MaxValue)
         {
-            var result = new List<AbstractPathNode>();
+            var refinedAbstractPath = new List<AbstractPathNode>();
             var calculatedPaths = 0;
 
             for (var i = 0; i < path.Count - 1; i++)
             {
-                // if the two consecutive points belong to the same cluster, compute the path between them and
-                // add the resulting nodes of that path to the list
-                if (path[i].Level == path[i + 1].Level && path[i].Level == level &&
+                if (path[i].Level == level && path[i].Level == path[i + 1].Level &&
                     map.BelongToSameCluster(path[i].Id, path[i + 1].Id, level) && calculatedPaths < maxPathsToRefine)
                 {
-	                var tmp = PerformSearch(map, path[i].Id, path[i + 1].Id, level - 1, false);
-                    result.AddRange(tmp);
+                    foreach (var abstractNodeId in GetPath(map, path[i].Id, path[i + 1].Id, level - 1, false))
+                    {
+                        refinedAbstractPath.Add(abstractNodeId);
+                    }
 
                     calculatedPaths++;
 
@@ -81,14 +76,14 @@ namespace HPASharp.Search
                     i++;
                 }
                 else
-                    result.Add(new AbstractPathNode(path[i].Id, level - 1));
+                    refinedAbstractPath.Add(new AbstractPathNode(path[i].Id, level - 1));
             }
 
             // make sure last elem is added
-            if (result[result.Count - 1].Id != path[path.Count - 1].Id)
-                result.Add(path[path.Count - 1]);
+            if (refinedAbstractPath[refinedAbstractPath.Count - 1].Id != path[path.Count - 1].Id)
+                refinedAbstractPath.Add(path[path.Count - 1]);
 
-            return result;
+            return refinedAbstractPath;
         }
 
         public List<IPathNode> AbstractPathToLowLevelPath(HierarchicalMap map, List<AbstractPathNode> abstractPath, int mapWidth, int maxPathsToCalculate = int.MaxValue)

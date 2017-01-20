@@ -47,7 +47,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Factories\TilingFactory.cs" />
+    <Compile Include="Factories\ConcreteMapFactory.cs" />
+    <Compile Include="Passabilities\ExamplePassability.cs" />
+    <Compile Include="Passabilities\FakePassability.cs" />
     <Compile Include="Graph\AbstractNode.cs" />
     <Compile Include="Graph\ConcreteNode.cs" />
     <Compile Include="HierarchicalMap.cs" />

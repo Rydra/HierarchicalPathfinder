@@ -3,7 +3,7 @@
     /// <summary>
     /// Constructs ConcreteMap objects
     /// </summary>
-    public static class TilingFactory
+    public static class ConcreteMapFactory
     {
         public static ConcreteMap CreateTiling(int width, int height, IPassability passability, TileType tilingType = TileType.Octile)
         {

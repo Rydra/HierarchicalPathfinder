@@ -77,12 +77,13 @@ namespace HPASharp.Search
 			// and it is useful to check quickly the status of any node that has been processed
 			var nodeLookup = new AStarNode<TNode>?[map.NrNodes];
 			nodeLookup[startNodeId.IdValue] = startNode;
-	        int iterations = 0;
+
+            int expanded = 0;
             while (openQueue.Count != 0)
             {
+                expanded++; 
                 var nodeId = openQueue.Dequeue();
                 var node = nodeLookup[nodeId.IdValue].Value;
-	            iterations++;
 
 				if (isGoal(nodeId))
                 {
