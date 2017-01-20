@@ -22,7 +22,7 @@ namespace HPASharp
             public bool CanEnter(Position pos, out int cost)
             {
                 cost = Constants.COST_ONE;
-                return !obstacles[pos.X, pos.Y];
+                return !obstacles[pos.Y, pos.X];
             }
 
             /// <summary>

@@ -19,7 +19,7 @@ namespace HPASharp
 		//private static readonly Position StartPosition = new Position(1, 0);
 		//private static readonly Position EndPosition = new Position(15, 15);
         
-		public static void Main2(string[] args)
+		public static void Main(string[] args)
         {
             const int clusterSize = 8;
             const int maxLevel = 2;
@@ -75,7 +75,7 @@ namespace HPASharp
 
 		}
 
-        public static void Main(string[] args)
+        public static void Main1(string[] args)
         {
             const int clusterSize = 10;
             const int maxLevel = 1;
@@ -98,6 +98,7 @@ namespace HPASharp
             var regularSearchTime = watch.ElapsedMilliseconds;
 
             // Se siguen repitiendo nodos!
+            // Se repite el 0,19 al hacer smoothing
             watch = Stopwatch.StartNew();
             var hierarchicalSearchPath = HierarchicalSearch(absTiling, maxLevel, tiling, startPosition, endPosition);
             var hierarchicalSearchTime = watch.ElapsedMilliseconds;
@@ -177,7 +178,7 @@ namespace HPASharp
         {
             var result = new List<char>();
             var numberNodes = concreteMap.NrNodes;
-            for (var i = 0; i < numberNodes; ++i)
+            for (var i = 0; i < numberNodes; i++)
             {
                 result.Add(concreteMap.Graph.GetNodeInfo(Id<ConcreteNode>.From(i)).IsObstacle ? '@' : '.');
             }
@@ -192,16 +193,16 @@ namespace HPASharp
 
         private static void PrintFormatted(List<char> chars, ConcreteMap concreteMap, HierarchicalMap hierarchicalGraph, int clusterSize, List<Position> path)
         {
-            for (var y = 0; y < concreteMap.Height; ++y)
+            for (var y = 0; y < concreteMap.Height; y++)
             {
                 if (y % clusterSize == 0) Console.WriteLine("---------------------------------------------------------");
-                for (var x = 0; x < concreteMap.Width; ++x)
+                for (var x = 0; x < concreteMap.Width; x++)
                 {
                     Console.ForegroundColor = ConsoleColor.White;
                     if (x % clusterSize == 0) Console.Write('|');
 
                     var nodeId = concreteMap.GetNodeIdFromPos(x, y);
-                    var hasAbsNode = hierarchicalGraph.AbstractGraph.Nodes.FirstOrDefault(n => n.Info.ConcreteNodeId == nodeId);
+                    var hasAbsNode = hierarchicalGraph.AbstractGraph.Nodes.SingleOrDefault(n => n.Info.ConcreteNodeId == nodeId);
                     
                     if (hasAbsNode != null)
                         switch (hasAbsNode.Info.Level)
@@ -212,7 +213,7 @@ namespace HPASharp
                                 break;
                         }
                         
-                    Console.Write(path.Any(n => n.X == x && n.Y == y) ? 'X' : chars[nodeId.IdValue]);
+                    Console.Write(path.Any(node => node.X == x && node.Y == y) ? 'X' : chars[nodeId.IdValue]);
                 }
 
                 Console.WriteLine();

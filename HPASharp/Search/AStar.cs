@@ -81,7 +81,6 @@ namespace HPASharp.Search
             int expanded = 0;
             while (openQueue.Count != 0)
             {
-                expanded++; 
                 var nodeId = openQueue.Dequeue();
                 var node = nodeLookup[nodeId.IdValue].Value;
 
@@ -89,7 +88,7 @@ namespace HPASharp.Search
                 {
                     return ReconstructPath(nodeId, nodeLookup);
                 }
-
+                expanded++;
                 ProcessNeighbours(nodeId, node, nodeLookup, openQueue);
 
 				// Close the node. I hope some day the will implement something

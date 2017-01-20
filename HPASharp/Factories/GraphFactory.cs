@@ -86,7 +86,7 @@ namespace HPASharp.Factories
 					var position = new Position(left, top);
 					int movementCost;
 					var isObstacle = !passability.CanEnter(position, out movementCost);
-					var info = new ConcreteNodeInfo(isObstacle, movementCost, new Position(left, top));
+					var info = new ConcreteNodeInfo(isObstacle, movementCost, position);
 
 					graph.AddNode(nodeId, info);
 				}
