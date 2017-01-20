@@ -332,13 +332,13 @@ namespace HPASharp.Factories
 
             for (var entranceStart = startPoint; entranceStart <= endPoint; entranceStart++)
             {
-                var entranceEnd = GetEntranceEnd(entranceStart, endPoint, getNodesInEdge);
+                var size = GetEntranceSize(entranceStart, endPoint, getNodesInEdge);
 
-                var entranceWidth = entranceEnd - entranceStart;
-                if (entranceWidth == 0)
+                var entranceEnd = entranceStart + size;
+                if (size == 0)
                     continue;
 
-                if (EntranceStyle == EntranceStyle.EndEntrance && entranceWidth > MAX_ENTRANCE_WIDTH)
+                if (EntranceStyle == EntranceStyle.EndEntrance && size > MAX_ENTRANCE_WIDTH)
                 {
                     var nodes = getNodesInEdge(entranceStart);
                     var srcNode = nodes.Item1;
@@ -384,31 +384,30 @@ namespace HPASharp.Factories
             return entrances;
         }
 
-        private int GetEntranceEnd(int entranceStart, int end, Func<int, Tuple<ConcreteNode, ConcreteNode>> getNodesInEdge)
+        private int GetEntranceSize(int entranceStart, int end, Func<int, Tuple<ConcreteNode, ConcreteNode>> getNodesInEdge)
         {
-            var entranceEnd = entranceStart;
-
-            var nodes = getNodesInEdge(entranceEnd);
+            var size = 0;
+            var nodes = getNodesInEdge(entranceStart);
             if (NodesAreBlocked(nodes.Item1, nodes.Item2))
-                return entranceEnd;
+                return size;
 
             while (true)
             {
-                entranceEnd++;
+                size++;
 
-                if (entranceEnd >= end)
+                if (entranceStart + size >= end)
                 {
                     break;
                 }
 
-                nodes = getNodesInEdge(entranceEnd);
+                nodes = getNodesInEdge(entranceStart + size);
                 if (NodesAreBlocked(nodes.Item1, nodes.Item2))
                 {
                     break;
                 }
             }
 
-            return entranceEnd;
+            return size;
         }
 
         private ConcreteNode GetNode(int left, int top)

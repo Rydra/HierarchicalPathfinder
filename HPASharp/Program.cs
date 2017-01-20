@@ -19,7 +19,7 @@ namespace HPASharp
 		//private static readonly Position StartPosition = new Position(1, 0);
 		//private static readonly Position EndPosition = new Position(15, 15);
         
-		public static void Main(string[] args)
+		public static void Main1(string[] args)
         {
             const int clusterSize = 8;
             const int maxLevel = 2;
@@ -75,7 +75,7 @@ namespace HPASharp
 
 		}
 
-        public static void Main1(string[] args)
+        public static void Main(string[] args)
         {
             const int clusterSize = 10;
             const int maxLevel = 1;
