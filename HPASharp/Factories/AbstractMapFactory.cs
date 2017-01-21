@@ -264,7 +264,7 @@ namespace HPASharp.Factories
             
             if (clusterAbove != null)
             {
-                var hEntrances = CreateEntrancesOnTop(
+                var entrancesOnTop = CreateEntrancesOnTop(
                     left,
                     left + cluster.Size.Width - 1,
                     top - 1,
@@ -272,12 +272,12 @@ namespace HPASharp.Factories
                     cluster,
                     ref entranceId);
 
-                entrances.AddRange(hEntrances);
+                entrances.AddRange(entrancesOnTop);
             }
 
             if (clusterOnLeft != null)
             {
-                var vEntrances = CreateEntrancesOnLeft(
+                var entrancesOnLeft = CreateEntrancesOnLeft(
                     top,
                     top + cluster.Size.Height - 1,
                     left - 1,
@@ -285,7 +285,7 @@ namespace HPASharp.Factories
                     cluster,
                     ref entranceId);
 
-                entrances.AddRange(vEntrances);
+                entrances.AddRange(entrancesOnLeft);
             }
 
             return entrances;
@@ -429,7 +429,6 @@ namespace HPASharp.Factories
 
 				CreateOrUpdateAbstractNodeFromConcreteNode(entrance.SrcNode, entrance.Cluster1, ref abstractNodeId, level, abstractNodesDict);
 				CreateOrUpdateAbstractNodeFromConcreteNode(entrance.DestNode, entrance.Cluster2, ref abstractNodeId, level, abstractNodesDict);
-
 			}
 
 			return abstractNodesDict.Values;

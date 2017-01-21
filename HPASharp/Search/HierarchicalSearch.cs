@@ -36,7 +36,7 @@ namespace HPASharp.Search
 			}
 	        else
 	        {
-                map.SetCurrentClusterByPositionAndLevel(nodeInfo.Position, map.MaxLevel + 1);
+                map.SetAllMapAsCurrentCluster();
                 path = search.FindPath(map, startNodeId, targetNodeId);
 	        }
 
