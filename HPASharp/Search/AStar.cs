@@ -88,6 +88,7 @@ namespace HPASharp.Search
                 {
                     return ReconstructPath(nodeId, nodeLookup);
                 }
+
                 expanded++;
                 ProcessNeighbours(nodeId, node, nodeLookup, openQueue);
 

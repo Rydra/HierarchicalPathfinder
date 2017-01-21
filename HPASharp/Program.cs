@@ -78,7 +78,7 @@ namespace HPASharp
         public static void Main(string[] args)
         {
             const int clusterSize = 10;
-            const int maxLevel = 1;
+            const int maxLevel = 2;
             const int height = 40;
             const int width = 40;
 

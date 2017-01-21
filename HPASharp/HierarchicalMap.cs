@@ -208,21 +208,19 @@ namespace HPASharp
 			return ClusterSize * (1 << (level - 1));
 		}
 
+	    public void SetAllMapAsCurrentCluster()
+	    {
+			currentClusterY0 = 0;
+			currentClusterY1 = Height - 1;
+			currentClusterX0 = 0;
+			currentClusterX1 = Width - 1;
+		}
+
 		/// <summary>
 		/// Defines the bounding box of the cluster we want to process based on a given level and a position in the grid
 		/// </summary>
 		public void SetCurrentClusterByPositionAndLevel(Position pos, int level)
 		{
-			// if the level surpasses the MaxLevel, just set the whole map as a cluster
-			if (level > MaxLevel)
-			{
-				currentClusterY0 = 0;
-				currentClusterY1 = Height - 1;
-				currentClusterX0 = 0;
-				currentClusterX1 = Width - 1;
-				return;
-			}
-
 			var offset = GetOffset(level);
 			var nodeY = pos.Y; // nodeId / this.Width;
 			var nodeX = pos.X; // nodeId % this.Width;

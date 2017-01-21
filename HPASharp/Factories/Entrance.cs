@@ -37,10 +37,10 @@ namespace HPASharp.Factories
 			switch (Orientation)
 			{
 				case Orientation.Horizontal:
-					level = DetermineLevel(clusterSize, maxLevel, SrcNode.Info.Position.Y);
+					level = DetermineLevel(clusterSize, maxLevel, SrcNode.Info.Position.X);
 					break;
 				case Orientation.Vertical:
-					level = DetermineLevel(clusterSize, maxLevel, SrcNode.Info.Position.X);
+					level = DetermineLevel(clusterSize, maxLevel, SrcNode.Info.Position.Y);
 					break;
 				default:
 					level = -1;
@@ -51,20 +51,24 @@ namespace HPASharp.Factories
 
 		private int DetermineLevel(int clusterSize, int maxLevel, int y)
 		{
-			var level = 1;
+			int level = 1;
+
 			if (y % clusterSize != 0)
 				y++;
 
-			var clusterY = y / clusterSize;
+			if (y < clusterSize)
+			{
+				return 1;
+			}
+
+			int clusterY = y / clusterSize;
 			while (clusterY % 2 == 0 && level < maxLevel)
 			{
 				clusterY /= 2;
 				level++;
 			}
 
-			if (level > maxLevel)
-				level = maxLevel;
-			return level;
+			return level > maxLevel ? maxLevel : level;
 		}
 	}
 }
