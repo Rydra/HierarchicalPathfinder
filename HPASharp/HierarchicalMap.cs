@@ -96,26 +96,30 @@ namespace HPASharp
             var targetPos = AbstractGraph.GetNodeInfo(targetNodeId).Position;
             var diffY = Math.Abs(startPos.Y - targetPos.Y);
             var diffX = Math.Abs(startPos.X - targetPos.X);
+            // Manhattan distance, after testing a bit for hierarchical searches we do not need
+            // the level of precision of Diagonal distance or euclidean distance
+            return (diffY + diffX) * Constants.COST_ONE;
+            //switch (Type)
+            //{
+            //    case AbsType.ABSTRACT_TILE:
+            //        // Manhattan distance
+            //        return (diffY + diffX) * Constants.COST_ONE;
+            //    case AbsType.ABSTRACT_OCTILE:
+            //        // Diagonal distance
+            //        {
+            //            var diag = Math.Min(diffX, diffY);
+            //            var straight = Math.Max(diffX, diffY) - diag;
 
-            switch (Type)
-            {
-                case AbsType.ABSTRACT_TILE:
-					// Manhattan distance
-                    return (diffY + diffX) * Constants.COST_ONE;
-                case AbsType.ABSTRACT_OCTILE:
-					// Diagonal distance
-                    {
-                        var diag = Math.Min(diffX, diffY);
-                        var straight = diffX + diffY;
+            //            // According to the information link, this is the shape of the function.
+            //            // We just extract factors to simplify.
+            //            // Possible simplification: var h = Constants.CellCost * (straight + (Constants.Sqrt2 - 2) * diag);
 
-                        // According to the information link, this is the shape of the function.
-                        // We just extract factors to simplify.
-                        // Possible simplification: var h = Constants.CellCost * (straight + (Constants.Sqrt2 - 2) * diag);
-                        return Constants.COST_ONE * straight + (Constants.COST_ONE * 34 / 24 - 2 * Constants.COST_ONE) * diag;
-                    }
-                default:
-                    return 0;
-            }
+            //            return straight * Constants.COST_ONE + diag * (Constants.COST_ONE * 34) / 24;
+            //            //return Constants.COST_ONE * straight + (Constants.COST_ONE * 34 / 24 - 2 * Constants.COST_ONE) * diag;
+            //        }
+            //    default:
+            //        return 0;
+            //}
         }
 		
         #region Stal Operations - SHOULD EXPORT IT TO THE FACTORY PROBABLY
@@ -307,11 +311,13 @@ namespace HPASharp
 			                entrancePosition,
 			                level);
 
-		                foreach (var point1 in entrancesInClusterGroup)
-		                foreach (var point2 in entrancesInClusterGroup)
+		                foreach (var entrance1 in entrancesInClusterGroup)
+		                foreach (var entrance2 in entrancesInClusterGroup)
 		                {
-			                if (point1 == point2) continue;
-			                AddEdgesBetweenAbstractNodes(point1.AbstractNodeId, point2.AbstractNodeId, level);
+			                if (entrance1 == entrance2 || !IsValidAbstractNodeForLevel(entrance1.AbstractNodeId, level) || !IsValidAbstractNodeForLevel(entrance2.AbstractNodeId, level))
+                                continue;
+
+			                AddEdgesBetweenAbstractNodes(entrance1.AbstractNodeId, entrance2.AbstractNodeId, level);
 		                }
 	                }
                 }
@@ -320,9 +326,6 @@ namespace HPASharp
 
         public void AddEdgesBetweenAbstractNodes(Id<AbstractNode> srcAbstractNodeId, Id<AbstractNode> destAbstractNodeId, int level)
         {
-            if (srcAbstractNodeId == destAbstractNodeId || !IsValidAbstractNodeForLevel(destAbstractNodeId, level))
-                return;
-
             var search = new AStar<AbstractNode>();
             var path = search.FindPath(this, srcAbstractNodeId, destAbstractNodeId);
             if (path.PathCost >= 0)
@@ -345,6 +348,9 @@ namespace HPASharp
                 {
                     foreach (var entrance in cluster.EntrancePoints)
                     {
+                        if (abstractNodeInfo.Id == entrance.AbstractNodeId || !IsValidAbstractNodeForLevel(entrance.AbstractNodeId, level))
+                            continue;
+
                         AddEdgesBetweenAbstractNodes(abstractNodeInfo.Id, entrance.AbstractNodeId, level);
                     }
                 }

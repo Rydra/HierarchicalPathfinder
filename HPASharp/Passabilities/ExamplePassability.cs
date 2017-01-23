@@ -63,7 +63,21 @@ namespace HPASharp
                     {
                         obstacles[i, j] = charlines[i][j] == '1';
                     }
+            }
 
+            Random rnd = new Random(700);
+
+            public Position GetRandomFreePosition()
+            {
+                var x = rnd.Next(40);
+                var y = rnd.Next(40);
+                while (obstacles[x, y])
+                {
+                    x = rnd.Next(40);
+                    y = rnd.Next(40);
+                }
+
+                return new Position(x, y);
             }
             
             private bool[,] obstacles;
