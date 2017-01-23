@@ -56,21 +56,21 @@ namespace HPASharp
 #endif
 
 #if DEBUG
-            Console.WriteLine("Regular search: " + regularSearchTime + " ms");
-			Console.WriteLine($"{regularSearchPath.Count} path nodes");
-			PrintFormatted(concreteMap, absTiling, clusterSize, regularSearchPath);
-			Console.WriteLine();
-            Console.WriteLine();
-            Console.WriteLine();
-			Console.WriteLine("Hierachical search: " + hierarchicalSearchTime + " ms");
-			Console.WriteLine($"{hierarchicalSearchPath.Count} path nodes");
-			PrintFormatted(concreteMap, absTiling, clusterSize, hierarchicalSearchPath);
-            Console.WriteLine();
-            Console.WriteLine();
-            Console.WriteLine();
+   //         Console.WriteLine("Regular search: " + regularSearchTime + " ms");
+			//Console.WriteLine($"{regularSearchPath.Count} path nodes");
+			//PrintFormatted(concreteMap, absTiling, clusterSize, regularSearchPath);
+			//Console.WriteLine();
+   //         Console.WriteLine();
+   //         Console.WriteLine();
+			//Console.WriteLine("Hierachical search: " + hierarchicalSearchTime + " ms");
+			//Console.WriteLine($"{hierarchicalSearchPath.Count} path nodes");
+			//PrintFormatted(concreteMap, absTiling, clusterSize, hierarchicalSearchPath);
+   //         Console.WriteLine();
+   //         Console.WriteLine();
+   //         Console.WriteLine();
 
-			Console.WriteLine("Press any key to quit...");
-			Console.ReadKey();
+			//Console.WriteLine("Press any key to quit...");
+			//Console.ReadKey();
 #endif
 
 		}
@@ -82,55 +82,117 @@ namespace HPASharp
             const int height = 40;
             const int width = 40;
 
-            Position startPosition = new Position(18, 0);
-            Position endPosition = new Position(20, 0);
             IPassability passability = new ExamplePassability();
-            var tiling = ConcreteMapFactory.CreateTiling(width, height, passability);
-            var wizard = new AbstractMapFactory();
-            wizard.CreateHierarchicalMap(tiling, clusterSize, maxLevel, EntranceStyle.EndEntrance);
-            var absTiling = wizard.HierarchicalMap;
+            
+            var concreteMap = ConcreteMapFactory.CreateTiling(width, height, passability);
+
+            var abstractMapFactory = new AbstractMapFactory();
+            abstractMapFactory.CreateHierarchicalMap(concreteMap, clusterSize, maxLevel, EntranceStyle.EndEntrance);
+            var absTiling = abstractMapFactory.HierarchicalMap;
             //var edges = absTiling.AbstractGraph.Nodes.SelectMany(x => x.Edges.Values)
             //    .GroupBy(x => x.Info.Level)
             //    .ToDictionary(x => x.Key, x => x.Count());
 
-            var watch = Stopwatch.StartNew();
-            var regularSearchPath = RegularSearch(tiling, startPosition, endPosition);
-            var regularSearchTime = watch.ElapsedMilliseconds;
+            Func<Position, Position, List<IPathNode>> doHierarchicalSearch = (startPosition, endPosition)
+                => HierarchicalSearch(absTiling, maxLevel, concreteMap, startPosition, endPosition);
 
-            // Se siguen repitiendo nodos!
-            // Se repite el 0,19 al hacer smoothing
-            watch = Stopwatch.StartNew();
-            var hierarchicalSearchPath = HierarchicalSearch(absTiling, maxLevel, tiling, startPosition, endPosition);
-            var hierarchicalSearchTime = watch.ElapsedMilliseconds;
+            Func<Position, Position, List<IPathNode>> doRegularSearch = (startPosition, endPosition)
+                => RegularSearch(concreteMap, startPosition, endPosition);
 
-#if !DEBUG
-            Console.WriteLine("Regular search: " + regularSearchTime + " ms");
-            Console.WriteLine("Number of nodes: " + regularSearchPath.Count);
+            Func<List<IPathNode>, List<Position>> toPositionPath = (path) =>
+                path.Select(p =>
+                {
+                    if (p is ConcretePathNode)
+                    {
+                        var concretePathNode = (ConcretePathNode) p;
+                        return concreteMap.Graph.GetNodeInfo(concretePathNode.Id).Position;
+                    }
 
-            Console.WriteLine("Hierachical search: " + hierarchicalSearchTime + " ms");
-            Console.WriteLine("Number of nodes: " + hierarchicalSearchPath.Count);
-#endif
+                    var abstractPathNode = (AbstractPathNode) p;
+                    return absTiling.AbstractGraph.GetNodeInfo(abstractPathNode.Id).Position;
+                }).ToList();
 
-#if DEBUG
-            Console.WriteLine("Regular search: " + regularSearchTime + " ms");
-            Console.WriteLine($"{regularSearchPath.Count} path nodes");
-            PrintFormatted(tiling, absTiling, clusterSize, regularSearchPath);
-            Console.WriteLine();
-            Console.WriteLine();
-            Console.WriteLine();
-            Console.WriteLine("Hierachical search: " + hierarchicalSearchTime + " ms");
-            Console.WriteLine($"{hierarchicalSearchPath.Count} path nodes");
-            PrintFormatted(tiling, absTiling, clusterSize, hierarchicalSearchPath);
-            Console.WriteLine();
-            Console.WriteLine();
-            Console.WriteLine();
+            //Position startPosition2 = new Position(18, 0);
+            //Position endPosition2 = new Position(20, 0);
 
-            Console.WriteLine("Press any key to quit...");
-            Console.ReadKey();
-#endif
+            var points = Enumerable.Range(0, 500).Select(_ =>
+            {
+                var pos1 = ((ExamplePassability) passability).GetRandomFreePosition();
+                var pos2 = ((ExamplePassability) passability).GetRandomFreePosition();
+                while (Math.Abs(pos1.X - pos2.X) + Math.Abs(pos1.Y - pos2.Y) < 10)
+                {
+                    pos2 = ((ExamplePassability) passability).GetRandomFreePosition();
+                }
+
+                return Tuple.Create(pos1, pos2);
+            }).ToArray();
+            
+            var searchStrategies = new[] {doRegularSearch, doHierarchicalSearch};
+
+            foreach (var searchStrategy in searchStrategies)
+            {
+                var watch = Stopwatch.StartNew();
+                for (int i = 0; i < points.Length; i++)
+                {
+                    Position startPosition2 = points[i].Item1;
+                    Position endPosition2 = points[i].Item2;
+                    var regularSearchPath = searchStrategy(startPosition2, endPosition2);
+                    var posPath1 = toPositionPath(regularSearchPath);
+                }
+
+                var regularSearchTime = watch.ElapsedMilliseconds;
+                Console.WriteLine(regularSearchTime);
+            }
+            
+            //foreach (var searchStrategy in searchStrategies)
+            //{
+            //    var watch = Stopwatch.StartNew();
+            //    for (int i = 0; i < points.Length; i++)
+            //    {
+            //        Position startPosition2 = points[i].Item1;
+            //        Position endPosition2 = points[i].Item2;
+            //        var regularSearchPath = searchStrategy(startPosition2, endPosition2);
+            //        var posPath1 = toPositionPath(regularSearchPath);
+            //    }
+
+            //    var regularSearchTime = watch.ElapsedMilliseconds;
+            //    Console.WriteLine(regularSearchTime);
+            //}
+//            // Se siguen repitiendo nodos!
+//            // Se repite el 0,19 al hacer smoothing
+//            watch = Stopwatch.StartNew();
+//            var hierarchicalSearchPath = doHierarchicalSearch(startPosition2, endPosition2);
+//            var hierarchicalSearchTime = watch.ElapsedMilliseconds;
+//            var posPath = toPositionPath(hierarchicalSearchPath);
+
+//#if !DEBUG
+//            Console.WriteLine("Regular search: " + regularSearchTime + " ms");
+//            Console.WriteLine("Number of nodes: " + regularSearchPath.Count);
+
+//            Console.WriteLine("Hierachical search: " + hierarchicalSearchTime + " ms");
+//            Console.WriteLine("Number of nodes: " + hierarchicalSearchPath.Count);
+//#endif
+
+//#if DEBUG
+//            Console.WriteLine("Regular search: " + regularSearchTime + " ms");
+//            Console.WriteLine($"{regularSearchPath.Count} path nodes");
+//            PrintFormatted(tiling, absTiling, clusterSize, posPath1);
+//            Console.WriteLine();
+//            Console.WriteLine();
+//            Console.WriteLine();
+//            Console.WriteLine("Hierachical search: " + hierarchicalSearchTime + " ms");
+//            Console.WriteLine($"{hierarchicalSearchPath.Count} path nodes");
+//            PrintFormatted(tiling, absTiling, clusterSize, posPath);
+//            Console.WriteLine();
+//            Console.WriteLine();
+//            Console.WriteLine();
+
+//            Console.WriteLine("Press any key to quit...");
+//            Console.ReadKey();
+//#endif
         }
 
-        private static List<Position> HierarchicalSearch(HierarchicalMap hierarchicalMap, int maxLevel, ConcreteMap concreteMap, Position startPosition, Position endPosition)
+        private static List<IPathNode> HierarchicalSearch(HierarchicalMap hierarchicalMap, int maxLevel, ConcreteMap concreteMap, Position startPosition, Position endPosition)
 	    {
 			// Hierarchical pathfinding
 			var factory = new AbstractMapFactory();
@@ -141,27 +203,16 @@ namespace HPASharp
             var abstractPath = hierarchicalSearch.DoHierarchicalSearch(hierarchicalMap, startAbsNode, targetAbsNode, maxLevel, maxPathsToRefine);
 			var path = hierarchicalSearch.AbstractPathToLowLevelPath(hierarchicalMap, abstractPath, hierarchicalMap.Width, maxPathsToRefine);
 
-			var smoother = new SmoothWizard(concreteMap, path);
-			path = smoother.SmoothPath();
-			var posPath = path.Select(p =>
-		    {
-			    if (p is ConcretePathNode)
-			    {
-				    var concretePathNode = (ConcretePathNode) p;
-				    return concreteMap.Graph.GetNodeInfo(concretePathNode.Id).Position;
-			    }
-
-				var abstractPathNode = (AbstractPathNode)p;
-				return hierarchicalMap.AbstractGraph.GetNodeInfo(abstractPathNode.Id).Position;
-		    }).ToList();
-
+			//var smoother = new SmoothWizard(concreteMap, path);
+			//path = smoother.SmoothPath();
+			
 			factory.RemoveAbstractNode(hierarchicalMap, targetAbsNode, 1);
 			factory.RemoveAbstractNode(hierarchicalMap, startAbsNode, 0);
 
-			return posPath;
+			return path;
 	    }
 
-	    private static List<Position> RegularSearch(ConcreteMap concreteMap, Position startPosition, Position endPosition)
+	    private static List<IPathNode> RegularSearch(ConcreteMap concreteMap, Position startPosition, Position endPosition)
 	    {
 			var tilingGraph = concreteMap.Graph;
 			Func<int, int, ConcreteNode> getNode =
@@ -171,7 +222,7 @@ namespace HPASharp
 			var searcher = new AStar<ConcreteNode>();
 			var path = searcher.FindPath(concreteMap, getNode(startPosition.X, startPosition.Y).NodeId, getNode(endPosition.X, endPosition.Y).NodeId);
 	        var path2 = path.PathNodes;
-		    return path2.Select(n => concreteMap.Graph.GetNodeInfo(n).Position).ToList();
+	        return new List<IPathNode>(path2.Select(p => (IPathNode)new ConcretePathNode(p)));
 	    }
 
 	    private static List<char> GetCharVector(ConcreteMap concreteMap)

@@ -99,6 +99,27 @@ namespace HPASharp
             // Manhattan distance, after testing a bit for hierarchical searches we do not need
             // the level of precision of Diagonal distance or euclidean distance
             return (diffY + diffX) * Constants.COST_ONE;
+            //switch (Type)
+            //{
+            //    case AbsType.ABSTRACT_TILE:
+            //        // Manhattan distance
+            //        return (diffY + diffX) * Constants.COST_ONE;
+            //    case AbsType.ABSTRACT_OCTILE:
+            //        // Diagonal distance
+            //        {
+            //            var diag = Math.Min(diffX, diffY);
+            //            var straight = Math.Max(diffX, diffY) - diag;
+
+            //            // According to the information link, this is the shape of the function.
+            //            // We just extract factors to simplify.
+            //            // Possible simplification: var h = Constants.CellCost * (straight + (Constants.Sqrt2 - 2) * diag);
+
+            //            return straight * Constants.COST_ONE + diag * (Constants.COST_ONE * 34) / 24;
+            //            //return Constants.COST_ONE * straight + (Constants.COST_ONE * 34 / 24 - 2 * Constants.COST_ONE) * diag;
+            //        }
+            //    default:
+            //        return 0;
+            //}
         }
 		
         #region Stal Operations - SHOULD EXPORT IT TO THE FACTORY PROBABLY
