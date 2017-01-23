@@ -1,20 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using HPASharp;
+﻿using HPASharp;
+using HPASharp.Factories;
 using Moq;
 using NUnit.Framework;
 
 namespace HPAsharp.Tests
 {
 	[TestFixture]
-    public class TilingTests
+    public class AbstractMapFactoryTests
     {
 		[Test]
 		public void CreateTilingTest()
 		{
+			var abstractMapFactory = new AbstractMapFactory();
 			var passability = new Mock<IPassability>();
 			var tiling = new ConcreteMap(TileType.Octile, 10, 10, passability.Object);
 			

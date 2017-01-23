@@ -58,7 +58,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
-    <Compile Include="TilingTests.cs" />
+    <Compile Include="AbstractMapFactoryTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\HPASharp\HPASharp.csproj">

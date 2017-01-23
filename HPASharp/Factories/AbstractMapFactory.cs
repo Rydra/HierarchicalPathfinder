@@ -54,9 +54,12 @@ namespace HPASharp.Factories
 					var targetNodeId = edge.TargetNodeId;
 
 					map.AddEdge(nodeId, targetNodeId, edge.Info.Cost,
-							   edge.Info.Level, edge.Info.IsInterClusterEdge);
+							   edge.Info.Level, edge.Info.IsInterClusterEdge, edge.Info.InnerLowerLevelPath != null ? new List<Id<AbstractNode>>(edge.Info.InnerLowerLevelPath) : null);
+
+					edge.Info.InnerLowerLevelPath?.Reverse();
+
 					map.AddEdge(targetNodeId, nodeId, edge.Info.Cost,
-							   edge.Info.Level, edge.Info.IsInterClusterEdge);
+							   edge.Info.Level, edge.Info.IsInterClusterEdge, edge.Info.InnerLowerLevelPath);
 				}
 			}
 			else
