@@ -1,87 +1,84 @@
 ﻿using System;
 using HPASharp.Infrastructure;
 
-namespace HPASharp
+namespace HPASharp.Passabilities
 {
-    public partial class Program
-    {
-        public class FakePassability : IPassability
-        {
-            float obstaclePercentage = 0.20f;
+	public class FakePassability : IPassability
+	{
+		float obstaclePercentage = 0.20f;
 
-            private bool[,] obstacles;
+		private bool[,] obstacles;
 
-            public FakePassability(int width, int height)
-            {
-                obstacles = new bool[width,height];
-                CreateObstacles(obstaclePercentage, width, height, true);
-            }
+		public FakePassability(int width, int height)
+		{
+			obstacles = new bool[width, height];
+			CreateObstacles(obstaclePercentage, width, height, true);
+		}
 
-            private Random random = new Random(1000);
+		private Random random = new Random(1000);
 
-            public bool CanEnter(Position pos, out int cost)
-            {
-                cost = Constants.COST_ONE;
-                return !obstacles[pos.Y, pos.X];
-            }
+		public bool CanEnter(Position pos, out int cost)
+		{
+			cost = Constants.COST_ONE;
+			return !obstacles[pos.Y, pos.X];
+		}
 
-            /// <summary>
-            /// Creates obstacles in the map
-            /// </summary>
-            private void CreateObstacles(float obstaclePercentage, int width, int height, bool avoidDiag = false)
-            {
-                var RAND_MAX = 0x7fff;
+		/// <summary>
+		/// Creates obstacles in the map
+		/// </summary>
+		private void CreateObstacles(float obstaclePercentage, int width, int height, bool avoidDiag = false)
+		{
+			var RAND_MAX = 0x7fff;
 
-                var numberNodes = width * height;
-                var numberObstacles = (int)(obstaclePercentage * numberNodes);
-                for (var count = 0; count < numberObstacles; )
-                {
-                    var nodeId = random.Next() / (RAND_MAX / numberNodes + 1) % (width * height);
-                    var x = nodeId % width;
-                    var y = nodeId / width;
-                    if (!obstacles[x, y])
-                    {
-                        if (avoidDiag)
-                        {
-                            if (!ConflictDiag(y, x, -1, -1, width, height) &&
-                                !ConflictDiag(y, x, -1, +1, width, height) &&
-                                !ConflictDiag(y, x, +1, -1, width, height) &&
-                                !ConflictDiag(y, x, +1, +1, width, height))
-                            {
-                                obstacles[x, y] = true;
-                                ++count;
-                            }
-                        }
-                        else
-                        {
-                            obstacles[x, y] = true;
-                            ++count;
-                        }
-                    }
-                }
-            }
+			var numberNodes = width * height;
+			var numberObstacles = (int)(obstaclePercentage * numberNodes);
+			for (var count = 0; count < numberObstacles;)
+			{
+				var nodeId = random.Next() / (RAND_MAX / numberNodes + 1) % (width * height);
+				var x = nodeId % width;
+				var y = nodeId / width;
+				if (!obstacles[x, y])
+				{
+					if (avoidDiag)
+					{
+						if (!ConflictDiag(y, x, -1, -1, width, height) &&
+							!ConflictDiag(y, x, -1, +1, width, height) &&
+							!ConflictDiag(y, x, +1, -1, width, height) &&
+							!ConflictDiag(y, x, +1, +1, width, height))
+						{
+							obstacles[x, y] = true;
+							++count;
+						}
+					}
+					else
+					{
+						obstacles[x, y] = true;
+						++count;
+					}
+				}
+			}
+		}
 
-            private bool ConflictDiag(int row, int col, int roff, int coff, int width, int height)
-            {
-                // Avoid generating cofigurations like:
-                //
-                //    @   or   @
-                //     @      @
-                //
-                // that favor one grid topology over another.
-                if ((row + roff < 0) || (row + roff >= height) ||
-                    (col + coff < 0) || (col + coff >= width))
-                    return false;
+		private bool ConflictDiag(int row, int col, int roff, int coff, int width, int height)
+		{
+			// Avoid generating cofigurations like:
+			//
+			//    @   or   @
+			//     @      @
+			//
+			// that favor one grid topology over another.
+			if ((row + roff < 0) || (row + roff >= height) ||
+				(col + coff < 0) || (col + coff >= width))
+				return false;
 
-                if (obstacles[col + coff, row + roff])
-                {
-                    if (!obstacles[col + coff, row] &&
-                        !obstacles[col, row + roff])
-                        return true;
-                }
+			if (obstacles[col + coff, row + roff])
+			{
+				if (!obstacles[col + coff, row] &&
+					!obstacles[col, row + roff])
+					return true;
+			}
 
-                return false;
-            }
-        }
-    }
+			return false;
+		}
+	}
 }

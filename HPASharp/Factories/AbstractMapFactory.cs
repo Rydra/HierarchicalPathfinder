@@ -7,33 +7,35 @@ namespace HPASharp.Factories
 {
     public class AbstractMapFactory
     {
-        const int MAX_ENTRANCE_WIDTH = 6;
+        private const int MAX_ENTRANCE_WIDTH = 6;
 
-        public HierarchicalMap HierarchicalMap { get; set; }
-        public ConcreteMap ConcreteMap { get; set; }
-        public EntranceStyle EntranceStyle { get; set; }
-        public int ClusterSize { get; set; }
-		public int MaxLevel { get; set; }
+	    private HierarchicalMap _hierarchicalMap;
+	    private ConcreteMap _concreteMap;
+	    private EntranceStyle _entranceStyle;
+	    private int _clusterSize;
+	    private int _maxLevel;
 		
 		int[] m_stalLevel = new int[2];
 		bool[] m_stalUsed = new bool[2];
 		List<AbstractEdge>[] m_stalEdges = new List<AbstractEdge>[2];
 
-		public void CreateHierarchicalMap(ConcreteMap concreteMap, int clusterSize, int maxLevel, EntranceStyle style)
+		public HierarchicalMap CreateHierarchicalMap(ConcreteMap concreteMap, int clusterSize, int maxLevel, EntranceStyle style)
         {
-            ClusterSize = clusterSize;
-            EntranceStyle = style;
-            MaxLevel = maxLevel;
-            ConcreteMap = concreteMap;
-            HierarchicalMap = new HierarchicalMap(concreteMap, clusterSize, maxLevel);
+            _clusterSize = clusterSize;
+            _entranceStyle = style;
+            _maxLevel = maxLevel;
+            _concreteMap = concreteMap;
+            _hierarchicalMap = new HierarchicalMap(concreteMap, clusterSize, maxLevel);
 
             List<Entrance> entrances;
             List<Cluster> clusters; 
             CreateEntrancesAndClusters(out entrances, out clusters);
-            HierarchicalMap.Clusters = clusters;
+            _hierarchicalMap.Clusters = clusters;
 			
             CreateAbstractNodes(entrances);
             CreateEdges(entrances, clusters);
+
+	        return _hierarchicalMap;
         }
 
 		#region Graph manipulation
@@ -160,7 +162,7 @@ namespace HPASharp.Factories
 		{
 			foreach (var entrance in entrances)
 			{
-				CreateEntranceEdges(entrance, HierarchicalMap.Type);
+				CreateEntranceEdges(entrance, _hierarchicalMap.Type);
 			}
 
 			foreach (var cluster in clusters)
@@ -169,15 +171,15 @@ namespace HPASharp.Factories
 				CreateIntraClusterEdges(cluster);
 			}
 
-			HierarchicalMap.CreateHierarchicalEdges();
+			_hierarchicalMap.CreateHierarchicalEdges();
 		}
 
 		private void CreateEntranceEdges(Entrance entrance, AbsType type)
 		{
-			var level = entrance.GetEntranceLevel(ClusterSize, MaxLevel);
+			var level = entrance.GetEntranceLevel(_clusterSize, _maxLevel);
 
-			var srcAbstractNodeId = HierarchicalMap.ConcreteNodeIdToAbstractNodeIdMap[entrance.SrcNode.NodeId];
-			var destAbstractNodeId = HierarchicalMap.ConcreteNodeIdToAbstractNodeIdMap[entrance.DestNode.NodeId];
+			var srcAbstractNodeId = _hierarchicalMap.ConcreteNodeIdToAbstractNodeIdMap[entrance.SrcNode.NodeId];
+			var destAbstractNodeId = _hierarchicalMap.ConcreteNodeIdToAbstractNodeIdMap[entrance.DestNode.NodeId];
 			
 			var orientation = entrance.Orientation;
 			int cost = Constants.COST_ONE;
@@ -213,8 +215,8 @@ namespace HPASharp.Factories
 					break;
 			}
 			
-			HierarchicalMap.AbstractGraph.AddEdge(srcAbstractNodeId, destAbstractNodeId, new AbstractEdgeInfo(cost, level, true));
-			HierarchicalMap.AbstractGraph.AddEdge(destAbstractNodeId, srcAbstractNodeId, new AbstractEdgeInfo(cost, level, true));
+			_hierarchicalMap.AbstractGraph.AddEdge(srcAbstractNodeId, destAbstractNodeId, new AbstractEdgeInfo(cost, level, true));
+			_hierarchicalMap.AbstractGraph.AddEdge(destAbstractNodeId, srcAbstractNodeId, new AbstractEdgeInfo(cost, level, true));
 		}
         
 		private void CreateIntraClusterEdges(Cluster cluster)
@@ -225,7 +227,7 @@ namespace HPASharp.Factories
 				if (point1 != point2 && cluster.AreConnected(point1.AbstractNodeId, point2.AbstractNodeId))
 				{
 					var abstractEdgeInfo = new AbstractEdgeInfo(cluster.GetDistance(point1.AbstractNodeId, point2.AbstractNodeId), 1, false);
-					HierarchicalMap.AbstractGraph.AddEdge(
+					_hierarchicalMap.AbstractGraph.AddEdge(
 						point1.AbstractNodeId,
 						point2.AbstractNodeId,
 						abstractEdgeInfo);
@@ -242,12 +244,12 @@ namespace HPASharp.Factories
             entrances = new List<Entrance>();
 			clusters = new List<Cluster>();
             
-			for (int top = 0, clusterY = 0; top < ConcreteMap.Height; top += ClusterSize, clusterY++)
-            for (int left = 0, clusterX = 0; left < ConcreteMap.Width; left += ClusterSize, clusterX++)
+			for (int top = 0, clusterY = 0; top < _concreteMap.Height; top += _clusterSize, clusterY++)
+            for (int left = 0, clusterX = 0; left < _concreteMap.Width; left += _clusterSize, clusterX++)
             {
-                var width = Math.Min(ClusterSize, ConcreteMap.Width - left);
-                var height = Math.Min(ClusterSize, ConcreteMap.Height - top);
-                var cluster = new Cluster(ConcreteMap, Id<Cluster>.From(clusterId), clusterX, clusterY, new Position(left, top), new Size(width, height));
+                var width = Math.Min(_clusterSize, _concreteMap.Width - left);
+                var height = Math.Min(_clusterSize, _concreteMap.Height - top);
+                var cluster = new Cluster(_concreteMap, Id<Cluster>.From(clusterId), clusterX, clusterY, new Position(left, top), new Size(width, height));
 				clusters.Add(cluster);
 
                 clusterId++;
@@ -341,7 +343,7 @@ namespace HPASharp.Factories
                 if (size == 0)
                     continue;
 
-                if (EntranceStyle == EntranceStyle.EndEntrance && size > MAX_ENTRANCE_WIDTH)
+                if (_entranceStyle == EntranceStyle.EndEntrance && size > MAX_ENTRANCE_WIDTH)
                 {
                     var nodes = getNodesInEdge(entranceStart);
                     var srcNode = nodes.Item1;
@@ -393,7 +395,7 @@ namespace HPASharp.Factories
 
         private ConcreteNode GetNode(int left, int top)
         {
-            return ConcreteMap.Graph.GetNode(ConcreteMap.GetNodeIdFromPos(left, top));
+            return _concreteMap.Graph.GetNode(_concreteMap.GetNodeIdFromPos(left, top));
         }
 
         private bool EntranceIsBlocked(int entrancePoint, Func<int, Tuple<ConcreteNode, ConcreteNode>> getNodesInEdge)
@@ -404,8 +406,8 @@ namespace HPASharp.Factories
 		
 		private Cluster GetCluster(List<Cluster> clusters, int left, int top)
 		{
-			var clustersW = HierarchicalMap.Width / ClusterSize;
-			if (HierarchicalMap.Width % ClusterSize > 0)
+			var clustersW = _hierarchicalMap.Width / _clusterSize;
+			if (_hierarchicalMap.Width % _clusterSize > 0)
 				clustersW++;
 
 			return clusters[top * clustersW + left];
@@ -417,8 +419,8 @@ namespace HPASharp.Factories
 		{
 			foreach (var abstractNode in GenerateAbstractNodes(entrancesList))
 			{
-				HierarchicalMap.ConcreteNodeIdToAbstractNodeIdMap[abstractNode.ConcreteNodeId] = abstractNode.Id;
-				HierarchicalMap.AbstractGraph.AddNode(abstractNode.Id, abstractNode);
+				_hierarchicalMap.ConcreteNodeIdToAbstractNodeIdMap[abstractNode.ConcreteNodeId] = abstractNode.Id;
+				_hierarchicalMap.AbstractGraph.AddNode(abstractNode.Id, abstractNode);
 			}
 		}
 
@@ -428,7 +430,7 @@ namespace HPASharp.Factories
 			var abstractNodesDict = new Dictionary<Id<ConcreteNode>, AbstractNodeInfo>();
 			foreach (var entrance in entrances)
 			{
-				var level = entrance.GetEntranceLevel(ClusterSize, MaxLevel);
+				var level = entrance.GetEntranceLevel(_clusterSize, _maxLevel);
 
 				CreateOrUpdateAbstractNodeFromConcreteNode(entrance.SrcNode, entrance.Cluster1, ref abstractNodeId, level, abstractNodesDict);
 				CreateOrUpdateAbstractNodeFromConcreteNode(entrance.DestNode, entrance.Cluster2, ref abstractNodeId, level, abstractNodesDict);

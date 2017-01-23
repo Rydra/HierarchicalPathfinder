@@ -1,5 +1,6 @@
 ﻿using HPASharp;
 using HPASharp.Factories;
+using HPASharp.Passabilities;
 using Moq;
 using NUnit.Framework;
 
@@ -12,9 +13,10 @@ namespace HPAsharp.Tests
 		public void CreateTilingTest()
 		{
 			var abstractMapFactory = new AbstractMapFactory();
-			var passability = new Mock<IPassability>();
-			var tiling = new ConcreteMap(TileType.Octile, 10, 10, passability.Object);
-			
+
+			var passability = new FakePassability(10, 10);
+			var concreteMap = ConcreteMapFactory.CreateConcreteMap(10, 10, passability);
+			var hierarchicalMap = abstractMapFactory.CreateHierarchicalMap(concreteMap, 10, 2, EntranceStyle.EndEntrance);
 		}
     }
 }

@@ -31,10 +31,9 @@ namespace HPASharp
 
             // Prepare the abstract graph beforehand
             IPassability passability = new FakePassability(width, height);
-            var concreteMap = ConcreteMapFactory.CreateTiling(width, height, passability);
+            var concreteMap = ConcreteMapFactory.CreateConcreteMap(width, height, passability);
             var abstractMapFactory = new AbstractMapFactory();
-			abstractMapFactory.CreateHierarchicalMap(concreteMap, clusterSize, maxLevel, EntranceStyle.EndEntrance);
-			var absTiling = abstractMapFactory.HierarchicalMap;
+			var absTiling = abstractMapFactory.CreateHierarchicalMap(concreteMap, clusterSize, maxLevel, EntranceStyle.EndEntrance);
             //var edges = absTiling.AbstractGraph.Nodes.SelectMany(x => x.Edges.Values)
             //    .GroupBy(x => x.Info.Level)
             //    .ToDictionary(x => x.Key, x => x.Count());
@@ -84,11 +83,10 @@ namespace HPASharp
 
             IPassability passability = new ExamplePassability();
             
-            var concreteMap = ConcreteMapFactory.CreateTiling(width, height, passability);
+            var concreteMap = ConcreteMapFactory.CreateConcreteMap(width, height, passability);
 
             var abstractMapFactory = new AbstractMapFactory();
-            abstractMapFactory.CreateHierarchicalMap(concreteMap, clusterSize, maxLevel, EntranceStyle.EndEntrance);
-            var absTiling = abstractMapFactory.HierarchicalMap;
+			var absTiling = abstractMapFactory.CreateHierarchicalMap(concreteMap, clusterSize, maxLevel, EntranceStyle.EndEntrance);
             //var edges = absTiling.AbstractGraph.Nodes.SelectMany(x => x.Edges.Values)
             //    .GroupBy(x => x.Info.Level)
             //    .ToDictionary(x => x.Key, x => x.Count());
