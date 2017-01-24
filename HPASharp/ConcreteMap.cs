@@ -120,9 +120,9 @@ namespace HPASharp
             }
         }
 
-        public IEnumerable<Neighbour<ConcreteNode>> GetNeighbours(Id<ConcreteNode> nodeId)
+        public IEnumerable<Connection<ConcreteNode>> GetConnections(Id<ConcreteNode> nodeId)
         {
-            var result = new List<Neighbour<ConcreteNode>>();
+            var result = new List<Connection<ConcreteNode>>();
             var node = Graph.GetNode(nodeId);
             var nodeInfo = node.Info;
 
@@ -131,7 +131,7 @@ namespace HPASharp
                 var targetNodeId = edge.TargetNodeId;
                 var targetNodeInfo = Graph.GetNodeInfo(targetNodeId);
                 if (CanJump(targetNodeInfo.Position, nodeInfo.Position) && !targetNodeInfo.IsObstacle)
-                    result.Add(new Neighbour<ConcreteNode>(targetNodeId, edge.Info.Cost));
+                    result.Add(new Connection<ConcreteNode>(targetNodeId, edge.Info.Cost));
             }
 
             return result;

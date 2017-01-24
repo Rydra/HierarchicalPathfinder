@@ -9,12 +9,12 @@ namespace HPASharp
 {
     #region Abstract ConcreteMap support classes
 
-    public struct Neighbour<TNode>
+    public struct Connection<TNode>
     {
         public Id<TNode> Target;
         public int Cost;
 
-        public Neighbour(Id<TNode> target, int cost)
+        public Connection(Id<TNode> target, int cost)
         {
             Target = target;
             Cost = cost;
@@ -141,11 +141,11 @@ namespace HPASharp
 		/// <summary>
 		/// Gets the neighbours(successors) of the nodeId for the level set in the currentLevel
 		/// </summary>
-		public IEnumerable<Neighbour<AbstractNode>> GetNeighbours(Id<AbstractNode> nodeId)
+		public IEnumerable<Connection<AbstractNode>> GetConnections(Id<AbstractNode> nodeId)
 		{
 			var node = AbstractGraph.GetNode(nodeId);
 			var edges = node.Edges;
-			var result = new List<Neighbour<AbstractNode>>();
+			var result = new List<Connection<AbstractNode>>();
 			foreach (var edge in edges.Values)
 			{
 				var edgeInfo = edge.Info;
@@ -158,7 +158,7 @@ namespace HPASharp
 				if (!PositionInCurrentCluster(targetNodeInfo.Position))
 					continue;
 
-				result.Add(new Neighbour<AbstractNode>(targetNodeId, edgeInfo.Cost));
+				result.Add(new Connection<AbstractNode>(targetNodeId, edgeInfo.Cost));
 			}
 
 			return result;
@@ -194,10 +194,7 @@ namespace HPASharp
 			currentClusterX0 = 0;
 			currentClusterX1 = Width - 1;
 		}
-
-		/// <summary>
-		/// Defines the bounding box of the cluster we want to process based on a given level and a position in the grid
-		/// </summary>
+		
 		public void SetCurrentClusterByPositionAndLevel(Position pos, int level)
 		{
 			var offset = GetOffset(level);
@@ -317,5 +314,16 @@ namespace HPASharp
                 }
             }
         }
-    }
+		
+		public void AddHierarchicalEdgesForAbstractNode(Id<AbstractNode> abstractNodeId)
+		{
+			var abstractNodeInfo = AbstractGraph.GetNodeInfo(abstractNodeId);
+			var oldLevel = abstractNodeInfo.Level;
+			abstractNodeInfo.Level = MaxLevel;
+			for (var level = oldLevel + 1; level <= MaxLevel; level++)
+			{
+				AddEdgesToOtherEntrancesInCluster(abstractNodeInfo, level);
+			}
+		}
+	}
 }

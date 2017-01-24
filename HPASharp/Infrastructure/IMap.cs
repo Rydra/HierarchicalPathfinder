@@ -12,7 +12,7 @@ namespace HPASharp.Infrastructure
             Can be used to prune nodes,
             (is set to NO_NODE in Search::checkPathExists).
         */
-        IEnumerable<Neighbour<TNode>> GetNeighbours(Id<TNode> nodeId);
+        IEnumerable<Connection<TNode>> GetConnections(Id<TNode> nodeId);
 
         int GetHeuristic(Id<TNode> startNodeId, Id<TNode> targetNodeId);
     }

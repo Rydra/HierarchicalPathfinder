@@ -52,6 +52,31 @@ namespace HPASharp.Search
 		}
 	}
 
+	public class NodeLookup<TNode>
+	{
+		private AStarNode<TNode>?[] _astarNodes;
+
+		public NodeLookup(int numberOfNodes)
+		{
+			_astarNodes = new AStarNode<TNode>?[numberOfNodes];
+		}
+
+		public void SetNodeValue(Id<TNode> nodeId, AStarNode<TNode> value)
+		{
+			_astarNodes[nodeId.IdValue] = value;
+		}
+
+		public bool NodeIsVisited(Id<TNode> nodeId)
+		{
+			return _astarNodes[nodeId.IdValue].HasValue;
+		}
+
+		public AStarNode<TNode> GetNodeValue(Id<TNode> nodeId)
+		{
+			return _astarNodes[nodeId.IdValue].Value;
+		}
+	}
+
 	public class AStar<TNode>
 	{
 		private Func<Id<TNode>, bool> isGoal;
@@ -67,72 +92,59 @@ namespace HPASharp.Search
 			calculateHeuristic = nodeId => map.GetHeuristic(nodeId, targetNodeId);
 			this.map = map;
 
-			var heuristic = calculateHeuristic(startNodeId);
+			var estimatedCost = calculateHeuristic(startNodeId);
 
-            var startNode = new AStarNode<TNode>(startNodeId, 0, heuristic, CellStatus.Open);
+            var startNode = new AStarNode<TNode>(startNodeId, 0, estimatedCost, CellStatus.Open);
 			var openQueue = new SimplePriorityQueue<Id<TNode>>();
 			openQueue.Enqueue(startNodeId, startNode.F);
-
-			// The open list lookup is indexed by the number of nodes in the graph/map,
-			// and it is useful to check quickly the status of any node that has been processed
-			var nodeLookup = new AStarNode<TNode>?[map.NrNodes];
-			nodeLookup[startNodeId.IdValue] = startNode;
-
-            int expanded = 0;
+			
+			var nodeLookup = new NodeLookup<TNode>(map.NrNodes);
+	        nodeLookup.SetNodeValue(startNodeId, startNode);
+			
             while (openQueue.Count != 0)
             {
                 var nodeId = openQueue.Dequeue();
-                var node = nodeLookup[nodeId.IdValue].Value;
+	            var node = nodeLookup.GetNodeValue(nodeId);
 
 				if (isGoal(nodeId))
                 {
                     return ReconstructPath(nodeId, nodeLookup);
                 }
-
-                expanded++;
+				
                 ProcessNeighbours(nodeId, node, nodeLookup, openQueue);
-
-				// Close the node. I hope some day the will implement something
-				// like the records in F# with the "with" keyword
-				nodeLookup[nodeId.IdValue] = new AStarNode<TNode>(node.Parent, node.G, node.H, CellStatus.Closed);
+				
+				nodeLookup.SetNodeValue(nodeId, new AStarNode<TNode>(node.Parent, node.G, node.H, CellStatus.Closed));
 			}
-
-			// No path found. We could return a null, but since I read the book "Code Complete" I decided
-			// its best to return an empty path, and I'll return a -1 as PathCost
-			// TODO: Additionally, all those magic numbers like this -1 should be converted to explicit,
-			// clearer constants
+			
 	        return new Path<TNode>(new List<Id<TNode>>(), -1);
         }
-
-		/// <summary>
-		/// Processes every open or unexplored successor of nodeId
-		/// </summary>
-		private void ProcessNeighbours(Id<TNode> nodeId, AStarNode<TNode> node, AStarNode<TNode>?[] nodeLookup, SimplePriorityQueue<Id<TNode>> openQueue)
+		
+		private void ProcessNeighbours(Id<TNode> nodeId, AStarNode<TNode> node, NodeLookup<TNode> nodeLookup, SimplePriorityQueue<Id<TNode>> openQueue)
 		{
-			var successors = map.GetNeighbours(nodeId);
-			foreach (var successor in successors)
+			var connections = map.GetConnections(nodeId);
+			foreach (var connection in connections)
 			{
-				var newg = node.G + successor.Cost;
-				var successorTarget = successor.Target;
-				var targetAStarNode = nodeLookup[successorTarget.IdValue];
-				if (targetAStarNode.HasValue)
+				var gCost = node.G + connection.Cost;
+				var neighbour = connection.Target;
+				if (nodeLookup.NodeIsVisited(neighbour))
 				{
+					var targetAStarNode = nodeLookup.GetNodeValue(neighbour);
 					// If we already processed the neighbour in the past or we already found in the past
 					// a better path to reach this node that the current one, just skip it, else create
 					// and replace a new PathNode
-					if (targetAStarNode.Value.Status == CellStatus.Closed || newg >= targetAStarNode.Value.G)
+					if (targetAStarNode.Status == CellStatus.Closed || gCost >= targetAStarNode.G)
 						continue;
 
-					targetAStarNode = new AStarNode<TNode>(nodeId, newg, targetAStarNode.Value.H, CellStatus.Open);
-					nodeLookup[successorTarget.IdValue] = targetAStarNode;
-					openQueue.UpdatePriority(successorTarget, targetAStarNode.Value.F);
+					targetAStarNode = new AStarNode<TNode>(nodeId, gCost, targetAStarNode.H, CellStatus.Open);
+					openQueue.UpdatePriority(neighbour, targetAStarNode.F);
+					nodeLookup.SetNodeValue(neighbour, targetAStarNode);
 				}
 				else
 				{
-					var newHeuristic = calculateHeuristic(successorTarget);
-					var newAStarNode = new AStarNode<TNode>(nodeId, newg, newHeuristic, CellStatus.Open);
-					openQueue.Enqueue(successorTarget, newAStarNode.F);
-					nodeLookup[successorTarget.IdValue] = newAStarNode;
+					var newHeuristic = calculateHeuristic(neighbour);
+					var newAStarNode = new AStarNode<TNode>(nodeId, gCost, newHeuristic, CellStatus.Open);
+					openQueue.Enqueue(neighbour, newAStarNode.F);
+					nodeLookup.SetNodeValue(neighbour, newAStarNode);
 				}
 			}
 		}
@@ -143,18 +155,18 @@ namespace HPASharp.Search
 		/// TODO: Maybe I should guard this with some kind of safetyGuard to prevent
 		/// possible infinite loops in case of bugs, but meh...
 		/// </summary>
-		private Path<TNode> ReconstructPath(Id<TNode> destination, AStarNode<TNode>?[] nodeLookup)
+		private Path<TNode> ReconstructPath(Id<TNode> destination, NodeLookup<TNode> nodeLookup)
 		{
 			var pathNodes = new List<Id<TNode>>();
-			var pathCost = nodeLookup[destination.IdValue].Value.F;
-			var currnode = destination;
-			while (nodeLookup[currnode.IdValue].Value.Parent != currnode)
+			var pathCost = nodeLookup.GetNodeValue(destination).F;
+			var currentNode = destination;
+			while (nodeLookup.GetNodeValue(currentNode).Parent != currentNode)
 			{
-				pathNodes.Add(currnode);
-				currnode = nodeLookup[currnode.IdValue].Value.Parent;
+				pathNodes.Add(currentNode);
+				currentNode = nodeLookup.GetNodeValue(currentNode).Parent;
 			}
 
-			pathNodes.Add(currnode);
+			pathNodes.Add(currentNode);
 			pathNodes.Reverse();
 
 			return new Path<TNode>(pathNodes, pathCost);
