@@ -4,6 +4,7 @@ using System.Linq;
 using HPASharp.Factories;
 using HPASharp.Graph;
 using HPASharp.Infrastructure;
+using HPASharp.Passabilities;
 using HPASharp.Search;
 using HPASharp.Smoother;
 
@@ -74,15 +75,81 @@ namespace HPASharp
 
 		}
 
+        public static void Main2(string[] args)
+        {
+            const int clusterSize = 8;
+            const int maxLevel = 2;
+            const int height = 128;
+            const int width = 128;
+
+            Position startPosition = new Position(17, 38);
+            Position endPosition = new Position(16, 18);
+
+            // Prepare the abstract graph beforehand
+            IPassability passability = new FakePassability(width, height);
+            var concreteMap = ConcreteMapFactory.CreateConcreteMap(width, height, passability);
+            var abstractMapFactory = new AbstractMapFactory();
+            var absTiling = abstractMapFactory.CreateHierarchicalMap(concreteMap, clusterSize, maxLevel, EntranceStyle.EndEntrance);
+
+            var watch = Stopwatch.StartNew();
+            var regularSearchPath = RegularSearch(concreteMap, startPosition, endPosition);
+            var regularSearchTime = watch.ElapsedMilliseconds;
+
+            watch = Stopwatch.StartNew();
+            var hierarchicalSearchPath = HierarchicalSearch(absTiling, maxLevel, concreteMap, startPosition, endPosition);
+            var hierarchicalSearchTime = watch.ElapsedMilliseconds;
+
+            var pospath = hierarchicalSearchPath.Select(p =>
+            {
+                if (p is ConcretePathNode)
+                {
+                    var concretePathNode = (ConcretePathNode)p;
+                    return concreteMap.Graph.GetNodeInfo(concretePathNode.Id).Position;
+                }
+
+                var abstractPathNode = (AbstractPathNode)p;
+                return absTiling.AbstractGraph.GetNodeInfo(abstractPathNode.Id).Position;
+            }).ToList();
+
+#if !DEBUG
+            Console.WriteLine("Regular search: " + regularSearchTime + " ms");
+            Console.WriteLine("Number of nodes: " + regularSearchPath.Count);
+
+            Console.WriteLine("Hierachical search: " + hierarchicalSearchTime + " ms");
+            Console.WriteLine("Number of nodes: " + hierarchicalSearchPath.Count);
+#endif
+
+#if DEBUG
+            //Console.WriteLine("Regular search: " + regularSearchTime + " ms");
+            //Console.WriteLine($"{regularSearchPath.Count} path nodes");
+            //PrintFormatted(concreteMap, absTiling, clusterSize, regularSearchPath);
+            //Console.WriteLine();
+            //Console.WriteLine();
+            //Console.WriteLine();
+            Console.WriteLine("Hierachical search: " + hierarchicalSearchTime + " ms");
+            Console.WriteLine($"{hierarchicalSearchPath.Count} path nodes");
+            PrintFormatted(concreteMap, absTiling, clusterSize, pospath);
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
+
+            Console.WriteLine("Press any key to quit...");
+            Console.ReadKey();
+#endif
+
+        }
+
         public static void Main(string[] args)
         {
-            const int clusterSize = 10;
+            const int clusterSize = 8;
             const int maxLevel = 2;
-            const int height = 40;
-            const int width = 40;
+            const int height = 128;
+            const int width = 128;
 
-            IPassability passability = new ExamplePassability();
-            
+            //IPassability passability = new ExamplePassability();
+
+            IPassability passability = new FakePassability(width, height);
+
             var concreteMap = ConcreteMapFactory.CreateConcreteMap(width, height, passability);
 
             var abstractMapFactory = new AbstractMapFactory();
@@ -113,13 +180,13 @@ namespace HPASharp
             //Position startPosition2 = new Position(18, 0);
             //Position endPosition2 = new Position(20, 0);
 
-            var points = Enumerable.Range(0, 500).Select(_ =>
+            var points = Enumerable.Range(0, 2000).Select(_ =>
             {
-                var pos1 = ((ExamplePassability) passability).GetRandomFreePosition();
-                var pos2 = ((ExamplePassability) passability).GetRandomFreePosition();
+                var pos1 = ((FakePassability) passability).GetRandomFreePosition();
+                var pos2 = ((FakePassability) passability).GetRandomFreePosition();
                 while (Math.Abs(pos1.X - pos2.X) + Math.Abs(pos1.Y - pos2.Y) < 10)
                 {
-                    pos2 = ((ExamplePassability) passability).GetRandomFreePosition();
+                    pos2 = ((FakePassability) passability).GetRandomFreePosition();
                 }
 
                 return Tuple.Create(pos1, pos2);
@@ -141,53 +208,6 @@ namespace HPASharp
                 var regularSearchTime = watch.ElapsedMilliseconds;
                 Console.WriteLine(regularSearchTime);
             }
-            
-            //foreach (var searchStrategy in searchStrategies)
-            //{
-            //    var watch = Stopwatch.StartNew();
-            //    for (int i = 0; i < points.Length; i++)
-            //    {
-            //        Position startPosition2 = points[i].Item1;
-            //        Position endPosition2 = points[i].Item2;
-            //        var regularSearchPath = searchStrategy(startPosition2, endPosition2);
-            //        var posPath1 = toPositionPath(regularSearchPath);
-            //    }
-
-            //    var regularSearchTime = watch.ElapsedMilliseconds;
-            //    Console.WriteLine(regularSearchTime);
-            //}
-//            // Se siguen repitiendo nodos!
-//            // Se repite el 0,19 al hacer smoothing
-//            watch = Stopwatch.StartNew();
-//            var hierarchicalSearchPath = doHierarchicalSearch(startPosition2, endPosition2);
-//            var hierarchicalSearchTime = watch.ElapsedMilliseconds;
-//            var posPath = toPositionPath(hierarchicalSearchPath);
-
-//#if !DEBUG
-//            Console.WriteLine("Regular search: " + regularSearchTime + " ms");
-//            Console.WriteLine("Number of nodes: " + regularSearchPath.Count);
-
-//            Console.WriteLine("Hierachical search: " + hierarchicalSearchTime + " ms");
-//            Console.WriteLine("Number of nodes: " + hierarchicalSearchPath.Count);
-//#endif
-
-//#if DEBUG
-//            Console.WriteLine("Regular search: " + regularSearchTime + " ms");
-//            Console.WriteLine($"{regularSearchPath.Count} path nodes");
-//            PrintFormatted(tiling, absTiling, clusterSize, posPath1);
-//            Console.WriteLine();
-//            Console.WriteLine();
-//            Console.WriteLine();
-//            Console.WriteLine("Hierachical search: " + hierarchicalSearchTime + " ms");
-//            Console.WriteLine($"{hierarchicalSearchPath.Count} path nodes");
-//            PrintFormatted(tiling, absTiling, clusterSize, posPath);
-//            Console.WriteLine();
-//            Console.WriteLine();
-//            Console.WriteLine();
-
-//            Console.WriteLine("Press any key to quit...");
-//            Console.ReadKey();
-//#endif
         }
 
         private static List<IPathNode> HierarchicalSearch(HierarchicalMap hierarchicalMap, int maxLevel, ConcreteMap concreteMap, Position startPosition, Position endPosition)
@@ -201,10 +221,10 @@ namespace HPASharp
             var abstractPath = hierarchicalSearch.DoHierarchicalSearch(hierarchicalMap, startAbsNode, targetAbsNode, maxLevel, maxPathsToRefine);
 			var path = hierarchicalSearch.AbstractPathToLowLevelPath(hierarchicalMap, abstractPath, hierarchicalMap.Width, maxPathsToRefine);
 
-			//var smoother = new SmoothWizard(concreteMap, path);
-			//path = smoother.SmoothPath();
-			
-			factory.RemoveAbstractNode(hierarchicalMap, targetAbsNode, 1);
+            var smoother = new SmoothWizard(concreteMap, path);
+            path = smoother.SmoothPath();
+
+            factory.RemoveAbstractNode(hierarchicalMap, targetAbsNode, 1);
 			factory.RemoveAbstractNode(hierarchicalMap, startAbsNode, 0);
 
 			return path;

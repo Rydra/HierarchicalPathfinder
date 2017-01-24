@@ -121,9 +121,9 @@ namespace HPASharp
 	        }
         }
 		
-        public int GetDistance(Id<AbstractNode> abstractNodeId1, Id<AbstractNode> AbstractNodeId2)
+        public int GetDistance(Id<AbstractNode> abstractNodeId1, Id<AbstractNode> abstractNodeId2)
         {
-            return _distances[Tuple.Create(abstractNodeId1,AbstractNodeId2)];
+            return _distances[Tuple.Create(abstractNodeId1,abstractNodeId2)];
         }
 
 		public List<Id<ConcreteNode>> GetPath(Id<AbstractNode> abstractNodeId1, Id<AbstractNode> abstractNodeId2)

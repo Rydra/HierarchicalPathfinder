@@ -59,7 +59,20 @@ namespace HPASharp.Passabilities
 			}
 		}
 
-		private bool ConflictDiag(int row, int col, int roff, int coff, int width, int height)
+        public Position GetRandomFreePosition()
+        {
+            var x = random.Next(40);
+            var y = random.Next(40);
+            while (obstacles[x, y])
+            {
+                x = random.Next(40);
+                y = random.Next(40);
+            }
+
+            return new Position(x, y);
+        }
+
+        private bool ConflictDiag(int row, int col, int roff, int coff, int width, int height)
 		{
 			// Avoid generating cofigurations like:
 			//

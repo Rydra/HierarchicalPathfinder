@@ -99,30 +99,7 @@ namespace HPASharp
             // Manhattan distance, after testing a bit for hierarchical searches we do not need
             // the level of precision of Diagonal distance or euclidean distance
             return (diffY + diffX) * Constants.COST_ONE;
-            //switch (Type)
-            //{
-            //    case AbsType.ABSTRACT_TILE:
-            //        // Manhattan distance
-            //        return (diffY + diffX) * Constants.COST_ONE;
-            //    case AbsType.ABSTRACT_OCTILE:
-            //        // Diagonal distance
-            //        {
-            //            var diag = Math.Min(diffX, diffY);
-            //            var straight = Math.Max(diffX, diffY) - diag;
-
-            //            // According to the information link, this is the shape of the function.
-            //            // We just extract factors to simplify.
-            //            // Possible simplification: var h = Constants.CellCost * (straight + (Constants.Sqrt2 - 2) * diag);
-
-            //            return straight * Constants.COST_ONE + diag * (Constants.COST_ONE * 34) / 24;
-            //            //return Constants.COST_ONE * straight + (Constants.COST_ONE * 34 / 24 - 2 * Constants.COST_ONE) * diag;
-            //        }
-            //    default:
-            //        return 0;
-            //}
         }
-		
-        #region Stal Operations - SHOULD EXPORT IT TO THE FACTORY PROBABLY
 		
 		public Cluster FindClusterForPosition(Position pos)
 		{
@@ -160,8 +137,6 @@ namespace HPASharp
         {
             return Clusters[id.IdValue];
         }
-
-	    #endregion
 
 		/// <summary>
 		/// Gets the neighbours(successors) of the nodeId for the level set in the currentLevel
@@ -207,7 +182,7 @@ namespace HPASharp
 		}
 
 		// Define the offset between two clusters in this level (each level doubles the cluster size)
-		public int GetOffset(int level)
+		private int GetOffset(int level)
 		{
 			return ClusterSize * (1 << (level - 1));
 		}
@@ -226,23 +201,12 @@ namespace HPASharp
 		public void SetCurrentClusterByPositionAndLevel(Position pos, int level)
 		{
 			var offset = GetOffset(level);
-			var nodeY = pos.Y; // nodeId / this.Width;
-			var nodeX = pos.X; // nodeId % this.Width;
+			var nodeY = pos.Y;
+			var nodeX = pos.X;
 			currentClusterY0 = nodeY - (nodeY % offset);
 			currentClusterY1 = Math.Min(this.Height - 1, this.currentClusterY0 + offset - 1);
 			currentClusterX0 = nodeX - (nodeX % offset);
 			currentClusterX1 = Math.Min(this.Width - 1, this.currentClusterX0 + offset - 1);
-		}
-
-		/// <summary>
-		/// Defines the bounding box of the cluster we want to process
-		/// </summary>
-		public void SetCurrentCluster(int x, int y, int offset)
-		{
-			currentClusterY0 = y;
-			currentClusterX0 = x;
-			currentClusterY1 = Math.Min(this.Height - 1, y + offset - 1);
-			currentClusterX1 = Math.Min(this.Width - 1, x + offset - 1);
 		}
         
 		public bool BelongToSameCluster(Id<AbstractNode> node1Id, Id<AbstractNode> node2Id, int level)
@@ -278,11 +242,7 @@ namespace HPASharp
         {
             return AbstractGraph.GetNodeInfo(entrancePoint.AbstractNodeId).Level;
         }
-
-        // TODO: This can become a HUGE refactor. Basically what this code does is creating entrances
-        // abstract nodes and edges like in the previous case where we created entrances and all that kind of stuff.
-        // We could leverage this new domain knowledge into the code and get rid of this shit with 
-        // a way better design (for instance creating multilevel clusters could be a good approach)!!!!!!!
+        
         public void CreateHierarchicalEdges()
         {
             // Starting from level 2 denotes a serious mess on design, because lvl 1 is
@@ -303,23 +263,24 @@ namespace HPASharp
                         .ToList();
 
                     var firstEntrance = entrancesInClusterGroup.FirstOrDefault();
-	                if (firstEntrance != null)
-	                {
-		                var entrancePosition = AbstractGraph.GetNode(firstEntrance.AbstractNodeId).Info.Position;
 
-		                SetCurrentClusterByPositionAndLevel(
-			                entrancePosition,
-			                level);
+                    if (firstEntrance == null)
+                        continue;
 
-		                foreach (var entrance1 in entrancesInClusterGroup)
-		                foreach (var entrance2 in entrancesInClusterGroup)
-		                {
-			                if (entrance1 == entrance2 || !IsValidAbstractNodeForLevel(entrance1.AbstractNodeId, level) || !IsValidAbstractNodeForLevel(entrance2.AbstractNodeId, level))
+                    var entrancePosition = AbstractGraph.GetNode(firstEntrance.AbstractNodeId).Info.Position;
+
+                    SetCurrentClusterByPositionAndLevel(
+                        entrancePosition,
+                        level);
+
+                    foreach (var entrance1 in entrancesInClusterGroup)
+                        foreach (var entrance2 in entrancesInClusterGroup)
+                        {
+                            if (entrance1 == entrance2 || !IsValidAbstractNodeForLevel(entrance1.AbstractNodeId, level) || !IsValidAbstractNodeForLevel(entrance2.AbstractNodeId, level))
                                 continue;
 
-			                AddEdgesBetweenAbstractNodes(entrance1.AbstractNodeId, entrance2.AbstractNodeId, level);
-		                }
-	                }
+                            AddEdgesBetweenAbstractNodes(entrance1.AbstractNodeId, entrance2.AbstractNodeId, level);
+                        }
                 }
             }
         }

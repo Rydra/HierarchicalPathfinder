@@ -59,30 +59,27 @@ namespace HPASharp.Search
             var refinedAbstractPath = new List<AbstractPathNode>();
             var calculatedPaths = 0;
 
-            for (var i = 0; i < path.Count - 1; i++)
+            if (path.Count == 0)
+                return refinedAbstractPath;
+
+            refinedAbstractPath.Add(new AbstractPathNode(path[0].Id, level - 1));
+            for (var i = 1; i < path.Count; i++)
             {
-                if (path[i].Level == level && path[i].Level == path[i + 1].Level &&
-                    map.BelongToSameCluster(path[i].Id, path[i + 1].Id, level) && calculatedPaths < maxPathsToRefine)
+                if (path[i].Level == level && path[i].Level == path[i - 1].Level &&
+                    map.BelongToSameCluster(path[i].Id, path[i - 1].Id, level) && calculatedPaths < maxPathsToRefine)
                 {
-                    foreach (var abstractNodeId in GetPath(map, path[i].Id, path[i + 1].Id, level - 1, false))
+                    var interNodePath = GetPath(map, path[i - 1].Id, path[i].Id, level - 1, false);
+                    for (int j = 1; j < interNodePath.Count; j++)
                     {
-                        refinedAbstractPath.Add(abstractNodeId);
+                        refinedAbstractPath.Add(interNodePath[j]);
                     }
 
                     calculatedPaths++;
-
-                    // When we have calculated a path between 2 nodes, the next path in the search
-                    // will be an interEdge node. We can safely skip it
-                    i++;
                 }
                 else
                     refinedAbstractPath.Add(new AbstractPathNode(path[i].Id, level - 1));
             }
-
-            // make sure last elem is added
-            if (refinedAbstractPath[refinedAbstractPath.Count - 1].Id != path[path.Count - 1].Id)
-                refinedAbstractPath.Add(path[path.Count - 1]);
-
+            
             return refinedAbstractPath;
         }
 
