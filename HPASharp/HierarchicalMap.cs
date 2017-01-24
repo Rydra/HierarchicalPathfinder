@@ -194,10 +194,7 @@ namespace HPASharp
 			currentClusterX0 = 0;
 			currentClusterX1 = Width - 1;
 		}
-
-		/// <summary>
-		/// Defines the bounding box of the cluster we want to process based on a given level and a position in the grid
-		/// </summary>
+		
 		public void SetCurrentClusterByPositionAndLevel(Position pos, int level)
 		{
 			var offset = GetOffset(level);
@@ -317,5 +314,16 @@ namespace HPASharp
                 }
             }
         }
-    }
+		
+		public void AddHierarchicalEdgesForAbstractNode(Id<AbstractNode> abstractNodeId)
+		{
+			var abstractNodeInfo = AbstractGraph.GetNodeInfo(abstractNodeId);
+			var oldLevel = abstractNodeInfo.Level;
+			abstractNodeInfo.Level = MaxLevel;
+			for (var level = oldLevel + 1; level <= MaxLevel; level++)
+			{
+				AddEdgesToOtherEntrancesInCluster(abstractNodeInfo, level);
+			}
+		}
+	}
 }

@@ -80,31 +80,15 @@ namespace HPASharp.Factories
 		public Id<AbstractNode> InsertAbstractNode(HierarchicalMap map, Position pos, int start)
 		{
 			var nodeId = Id<ConcreteNode>.From(pos.Y * map.Width + pos.X);
-			var result = InsertStal(map, nodeId, pos, start);
-			InsertStalHEdges(map, nodeId);
-			return result;
-		}
-		
-		/// <summary>
-		/// Inserts a node and creates edges around the local points of the cluster it the
-		/// node we try to insert belongs to at each level
-		/// </summary>  
-		private static void InsertStalHEdges(HierarchicalMap map, Id<ConcreteNode> concreteNodeId)
-		{
-			var abstractNodeId = map.ConcreteNodeIdToAbstractNodeIdMap[concreteNodeId];
-			var abstractNodeInfo = map.AbstractGraph.GetNodeInfo(abstractNodeId);
-			var oldLevel = abstractNodeInfo.Level;
-			abstractNodeInfo.Level = map.MaxLevel;
-			for (var level = oldLevel + 1; level <= map.MaxLevel; level++)
-			{
-				map.AddEdgesToOtherEntrancesInCluster(abstractNodeInfo, level);
-			}
+			var abstractNodeId = InsertNodeIntoHierarchicalMap(map, nodeId, pos, start);
+			map.AddHierarchicalEdgesForAbstractNode(abstractNodeId);
+			return abstractNodeId;
 		}
 
         // insert a new node, such as start or target, to the abstract graph and
 		// returns the id of the newly created node in the abstract graph
 		// x and y are the positions where I want to put the node
-		private Id<AbstractNode> InsertStal(HierarchicalMap map, Id<ConcreteNode> concreteNodeId, Position pos, int start)
+		private Id<AbstractNode> InsertNodeIntoHierarchicalMap(HierarchicalMap map, Id<ConcreteNode> concreteNodeId, Position pos, int start)
 		{
 			// If the node already existed (for instance, it was the an entrance point already
 			// existing in the graph, we need to keep track of the previous status in order

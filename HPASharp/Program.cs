@@ -20,7 +20,7 @@ namespace HPASharp
 		//private static readonly Position StartPosition = new Position(1, 0);
 		//private static readonly Position EndPosition = new Position(15, 15);
         
-		public static void Main1(string[] args)
+		public static void Main(string[] args)
         {
             const int clusterSize = 8;
             const int maxLevel = 2;
@@ -47,6 +47,18 @@ namespace HPASharp
             var hierarchicalSearchPath = HierarchicalSearch(absTiling, maxLevel, concreteMap, startPosition, endPosition);
             var hierarchicalSearchTime = watch.ElapsedMilliseconds;
 
+			var pospath = hierarchicalSearchPath.Select(p =>
+			{
+				if (p is ConcretePathNode)
+				{
+					var concretePathNode = (ConcretePathNode)p;
+					return concreteMap.Graph.GetNodeInfo(concretePathNode.Id).Position;
+				}
+
+				var abstractPathNode = (AbstractPathNode)p;
+				return absTiling.AbstractGraph.GetNodeInfo(abstractPathNode.Id).Position;
+			}).ToList();
+
 #if !DEBUG
             Console.WriteLine("Regular search: " + regularSearchTime + " ms");
             Console.WriteLine("Number of nodes: " + regularSearchPath.Count);
@@ -56,26 +68,26 @@ namespace HPASharp
 #endif
 
 #if DEBUG
-   //         Console.WriteLine("Regular search: " + regularSearchTime + " ms");
+			//Console.WriteLine("Regular search: " + regularSearchTime + " ms");
 			//Console.WriteLine($"{regularSearchPath.Count} path nodes");
 			//PrintFormatted(concreteMap, absTiling, clusterSize, regularSearchPath);
 			//Console.WriteLine();
    //         Console.WriteLine();
    //         Console.WriteLine();
-			//Console.WriteLine("Hierachical search: " + hierarchicalSearchTime + " ms");
-			//Console.WriteLine($"{hierarchicalSearchPath.Count} path nodes");
-			//PrintFormatted(concreteMap, absTiling, clusterSize, hierarchicalSearchPath);
-   //         Console.WriteLine();
-   //         Console.WriteLine();
-   //         Console.WriteLine();
+			Console.WriteLine("Hierachical search: " + hierarchicalSearchTime + " ms");
+			Console.WriteLine($"{hierarchicalSearchPath.Count} path nodes");
+			PrintFormatted(concreteMap, absTiling, clusterSize, pospath);
+            Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine();
 
-			//Console.WriteLine("Press any key to quit...");
-			//Console.ReadKey();
+			Console.WriteLine("Press any key to quit...");
+			Console.ReadKey();
 #endif
 
 		}
 
-        public static void Main2(string[] args)
+		public static void Main2(string[] args)
         {
             const int clusterSize = 8;
             const int maxLevel = 2;
@@ -139,7 +151,7 @@ namespace HPASharp
 
         }
 
-        public static void Main(string[] args)
+        public static void Main3(string[] args)
         {
             const int clusterSize = 8;
             const int maxLevel = 2;
