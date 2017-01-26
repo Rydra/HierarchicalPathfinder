@@ -284,8 +284,8 @@ namespace HPASharp
 
         public void AddEdgesBetweenAbstractNodes(Id<AbstractNode> srcAbstractNodeId, Id<AbstractNode> destAbstractNodeId, int level)
         {
-            var search = new AStar<AbstractNode>();
-            var path = search.FindPath(this, srcAbstractNodeId, destAbstractNodeId);
+            var search = new AStar<AbstractNode>(this, srcAbstractNodeId, destAbstractNodeId);
+            var path = search.FindPath();
             if (path.PathCost >= 0)
             {
                 AddEdge(srcAbstractNodeId, destAbstractNodeId, path.PathCost, level, false, new List<Id<AbstractNode>>(path.PathNodes));

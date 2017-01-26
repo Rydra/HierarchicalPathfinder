@@ -249,8 +249,8 @@ namespace HPASharp
 				(top, left) => tilingGraph.GetNode(concreteMap.GetNodeIdFromPos(top, left));
 
 			// Regular pathfinding
-			var searcher = new AStar<ConcreteNode>();
-			var path = searcher.FindPath(concreteMap, getNode(startPosition.X, startPosition.Y).NodeId, getNode(endPosition.X, endPosition.Y).NodeId);
+			var searcher = new AStar<ConcreteNode>(concreteMap, getNode(startPosition.X, startPosition.Y).NodeId, getNode(endPosition.X, endPosition.Y).NodeId);
+			var path = searcher.FindPath();
 	        var path2 = path.PathNodes;
 	        return new List<IPathNode>(path2.Select(p => (IPathNode)new ConcretePathNode(p)));
 	    }

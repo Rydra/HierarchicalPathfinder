@@ -79,56 +79,65 @@ namespace HPASharp.Search
 
 	public class AStar<TNode>
 	{
-		private Func<Id<TNode>, bool> isGoal;
-		private Func<Id<TNode>, int> calculateHeuristic;
-		private IMap<TNode> map;
+		private readonly Func<Id<TNode>, bool> _isGoal;
+		private readonly Func<Id<TNode>, int> _calculateHeuristic;
+		private readonly IMap<TNode> _map;
+		private readonly SimplePriorityQueue<Id<TNode>> _openQueue;
+		private readonly NodeLookup<TNode> _nodeLookup;
 
-		/// <summary>
-		/// Performs an A* search following the Node Array A* implementation
-		/// </summary>
-		public Path<TNode> FindPath(IMap<TNode> map, Id<TNode> startNodeId, Id<TNode> targetNodeId)
-        {
-			isGoal = nodeId => nodeId == targetNodeId;
-			calculateHeuristic = nodeId => map.GetHeuristic(nodeId, targetNodeId);
-			this.map = map;
+		private bool CanExpand => _openQueue.Count != 0;
 
-			var estimatedCost = calculateHeuristic(startNodeId);
+		public AStar(IMap<TNode> map, Id<TNode> startNodeId, Id<TNode> targetNodeId)
+		{
+			_isGoal = nodeId => nodeId == targetNodeId;
+			_calculateHeuristic = nodeId => map.GetHeuristic(nodeId, targetNodeId);
+			_map = map;
 
-            var startNode = new AStarNode<TNode>(startNodeId, 0, estimatedCost, CellStatus.Open);
-			var openQueue = new SimplePriorityQueue<Id<TNode>>();
-			openQueue.Enqueue(startNodeId, startNode.F);
-			
-			var nodeLookup = new NodeLookup<TNode>(map.NrNodes);
-	        nodeLookup.SetNodeValue(startNodeId, startNode);
-			
-            while (openQueue.Count != 0)
+			var estimatedCost = _calculateHeuristic(startNodeId);
+
+			var startNode = new AStarNode<TNode>(startNodeId, 0, estimatedCost, CellStatus.Open);
+			_openQueue = new SimplePriorityQueue<Id<TNode>>();
+			_openQueue.Enqueue(startNodeId, startNode.F);
+
+			_nodeLookup = new NodeLookup<TNode>(map.NrNodes);
+			_nodeLookup.SetNodeValue(startNodeId, startNode);
+		}
+		
+		public Path<TNode> FindPath()
+		{
+            while (CanExpand)
             {
-                var nodeId = openQueue.Dequeue();
-	            var node = nodeLookup.GetNodeValue(nodeId);
-
-				if (isGoal(nodeId))
-                {
-                    return ReconstructPath(nodeId, nodeLookup);
-                }
-				
-                ProcessNeighbours(nodeId, node, nodeLookup, openQueue);
-				
-				nodeLookup.SetNodeValue(nodeId, new AStarNode<TNode>(node.Parent, node.G, node.H, CellStatus.Closed));
-			}
+	            var nodeId = Expand();
+	            if (_isGoal(nodeId))
+				{
+					return ReconstructPathFrom(nodeId);
+				}
+            }
 			
 	        return new Path<TNode>(new List<Id<TNode>>(), -1);
         }
-		
-		private void ProcessNeighbours(Id<TNode> nodeId, AStarNode<TNode> node, NodeLookup<TNode> nodeLookup, SimplePriorityQueue<Id<TNode>> openQueue)
+
+		private Id<TNode> Expand()
 		{
-			var connections = map.GetConnections(nodeId);
+			var nodeId = _openQueue.Dequeue();
+			var node = _nodeLookup.GetNodeValue(nodeId);
+
+			ProcessNeighbours(nodeId, node);
+
+			_nodeLookup.SetNodeValue(nodeId, new AStarNode<TNode>(node.Parent, node.G, node.H, CellStatus.Closed));
+			return nodeId;
+		}
+
+		private void ProcessNeighbours(Id<TNode> nodeId, AStarNode<TNode> node)
+		{
+			var connections = _map.GetConnections(nodeId);
 			foreach (var connection in connections)
 			{
 				var gCost = node.G + connection.Cost;
 				var neighbour = connection.Target;
-				if (nodeLookup.NodeIsVisited(neighbour))
+				if (_nodeLookup.NodeIsVisited(neighbour))
 				{
-					var targetAStarNode = nodeLookup.GetNodeValue(neighbour);
+					var targetAStarNode = _nodeLookup.GetNodeValue(neighbour);
 					// If we already processed the neighbour in the past or we already found in the past
 					// a better path to reach this node that the current one, just skip it, else create
 					// and replace a new PathNode
@@ -136,15 +145,15 @@ namespace HPASharp.Search
 						continue;
 
 					targetAStarNode = new AStarNode<TNode>(nodeId, gCost, targetAStarNode.H, CellStatus.Open);
-					openQueue.UpdatePriority(neighbour, targetAStarNode.F);
-					nodeLookup.SetNodeValue(neighbour, targetAStarNode);
+					_openQueue.UpdatePriority(neighbour, targetAStarNode.F);
+					_nodeLookup.SetNodeValue(neighbour, targetAStarNode);
 				}
 				else
 				{
-					var newHeuristic = calculateHeuristic(neighbour);
+					var newHeuristic = _calculateHeuristic(neighbour);
 					var newAStarNode = new AStarNode<TNode>(nodeId, gCost, newHeuristic, CellStatus.Open);
-					openQueue.Enqueue(neighbour, newAStarNode.F);
-					nodeLookup.SetNodeValue(neighbour, newAStarNode);
+					_openQueue.Enqueue(neighbour, newAStarNode.F);
+					_nodeLookup.SetNodeValue(neighbour, newAStarNode);
 				}
 			}
 		}
@@ -155,15 +164,15 @@ namespace HPASharp.Search
 		/// TODO: Maybe I should guard this with some kind of safetyGuard to prevent
 		/// possible infinite loops in case of bugs, but meh...
 		/// </summary>
-		private Path<TNode> ReconstructPath(Id<TNode> destination, NodeLookup<TNode> nodeLookup)
+		private Path<TNode> ReconstructPathFrom(Id<TNode> destination)
 		{
 			var pathNodes = new List<Id<TNode>>();
-			var pathCost = nodeLookup.GetNodeValue(destination).F;
+			var pathCost = _nodeLookup.GetNodeValue(destination).F;
 			var currentNode = destination;
-			while (nodeLookup.GetNodeValue(currentNode).Parent != currentNode)
+			while (_nodeLookup.GetNodeValue(currentNode).Parent != currentNode)
 			{
 				pathNodes.Add(currentNode);
-				currentNode = nodeLookup.GetNodeValue(currentNode).Parent;
+				currentNode = _nodeLookup.GetNodeValue(currentNode).Parent;
 			}
 
 			pathNodes.Add(currentNode);

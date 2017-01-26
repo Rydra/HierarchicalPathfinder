@@ -93,11 +93,11 @@ namespace HPASharp
 			
 			if (_distanceCalculated.ContainsKey(tuple))
                 return;
-
-            var search = new AStar<ConcreteNode>();
+			
 			var startNodeId = Id<ConcreteNode>.From(GetEntrancePositionIndex(e1));
 			var targetNodeId = Id<ConcreteNode>.From(GetEntrancePositionIndex(e2));
-			var path = search.FindPath(SubConcreteMap, startNodeId, targetNodeId);
+			var search = new AStar<ConcreteNode>(SubConcreteMap, startNodeId, targetNodeId);
+			var path = search.FindPath();
 			
 	        if (path.PathCost != -1)
 	        {

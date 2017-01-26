@@ -133,8 +133,8 @@ namespace HPASharp.Smoother
 
         private List<Id<ConcreteNode>> GenerateIntermediateNodes(Id<ConcreteNode> nodeid1, Id<ConcreteNode> nodeid2)
         {
-            var search = new AStar<ConcreteNode>();
-            var path = search.FindPath(_concreteMap, nodeid1, nodeid2);
+            var search = new AStar<ConcreteNode>(_concreteMap, nodeid1, nodeid2);
+            var path = search.FindPath();
 	        return path.PathNodes;
         }
 

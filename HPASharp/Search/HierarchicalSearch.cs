@@ -22,7 +22,6 @@ namespace HPASharp.Search
 
         private List<AbstractPathNode> GetPath(HierarchicalMap map, Id<AbstractNode> startNodeId, Id<AbstractNode> targetNodeId, int level, bool mainSearch)
         {
-            var search = new AStar<AbstractNode>();
             map.SetCurrentLevelForSearches(level);
             var nodeInfo = map.AbstractGraph.GetNodeInfo(startNodeId);
 
@@ -37,7 +36,8 @@ namespace HPASharp.Search
 	        else
 	        {
                 map.SetAllMapAsCurrentCluster();
-                path = search.FindPath(map, startNodeId, targetNodeId);
+				var search = new AStar<AbstractNode>(map, startNodeId, targetNodeId);
+				path = search.FindPath();
 	        }
 
 	        if (path.PathCost == -1)
