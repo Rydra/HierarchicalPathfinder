@@ -163,6 +163,18 @@ namespace HPASharp
 
 			return result;
 		}
+		
+	    public void RemoveAbstractNode(Id<AbstractNode> abstractNodeId)
+	    {
+			var abstractNodeInfo = AbstractGraph.GetNodeInfo(abstractNodeId);
+
+			var cluster = Clusters[abstractNodeInfo.ClusterId.IdValue];
+			cluster.RemoveLastEntranceRecord();
+
+			ConcreteNodeIdToAbstractNodeIdMap.Remove(abstractNodeInfo.ConcreteNodeId);
+			AbstractGraph.RemoveEdgesFromAndToNode(abstractNodeId);
+			AbstractGraph.RemoveLastNode();
+		}
 
 	    private static bool IsValidEdgeForLevel(AbstractEdgeInfo edgeInfo, int level)
 	    {

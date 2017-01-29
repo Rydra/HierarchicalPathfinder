@@ -12,7 +12,7 @@ namespace HPAsharp.Tests
 		[Test]
 		public void CreateHierarchicalMap_WhenCreating_Return()
 		{
-			var abstractMapFactory = new AbstractMapFactory();
+			var abstractMapFactory = new HierarchicalMapFactory();
 
 			var passability = new Program.ExamplePassability();
 			var concreteMap = ConcreteMapFactory.CreateConcreteMap(40, 40, passability);

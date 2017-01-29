@@ -5,7 +5,7 @@ using HPASharp.Infrastructure;
 
 namespace HPASharp.Factories
 {
-    public class AbstractMapFactory
+    public class HierarchicalMapFactory
     {
         private const int MAX_ENTRANCE_WIDTH = 6;
 
@@ -14,10 +14,8 @@ namespace HPASharp.Factories
 	    private EntranceStyle _entranceStyle;
 	    private int _clusterSize;
 	    private int _maxLevel;
-		
-		int[] m_stalLevel = new int[2];
-		bool[] m_stalUsed = new bool[2];
-		List<AbstractEdge>[] m_stalEdges = new List<AbstractEdge>[2];
+
+	    readonly Dictionary<Id<AbstractNode>, NodeBackup> nodeBackups = new Dictionary<Id<AbstractNode>, NodeBackup>();
 
 		public HierarchicalMap CreateHierarchicalMap(ConcreteMap concreteMap, int clusterSize, int maxLevel, EntranceStyle style)
         {
@@ -39,74 +37,61 @@ namespace HPASharp.Factories
         }
 
 		#region Graph manipulation
-		public void RemoveAbstractNode(HierarchicalMap map, Id<AbstractNode> nodeId, int stal)
+		public void RemoveAbstractNode(HierarchicalMap map, Id<AbstractNode> nodeId)
 		{
-			var abstractGraph = map.AbstractGraph;
-
-			if (m_stalUsed[stal])
+			if (nodeBackups.ContainsKey(nodeId))
 			{
-				// The node was an existing entrance point in the graph. Restore it with
-				// the information we kept when inserting
-				var nodeInfo = abstractGraph.GetNodeInfo(nodeId);
-				nodeInfo.Level = m_stalLevel[stal];
-				abstractGraph.RemoveEdgesFromAndToNode(nodeId);
-				abstractGraph.AddNode(nodeId, nodeInfo);
-				foreach (var edge in m_stalEdges[stal])
-				{
-					var targetNodeId = edge.TargetNodeId;
-
-					map.AddEdge(nodeId, targetNodeId, edge.Info.Cost,
-							   edge.Info.Level, edge.Info.IsInterClusterEdge, edge.Info.InnerLowerLevelPath != null ? new List<Id<AbstractNode>>(edge.Info.InnerLowerLevelPath) : null);
-
-					edge.Info.InnerLowerLevelPath?.Reverse();
-
-					map.AddEdge(targetNodeId, nodeId, edge.Info.Cost,
-							   edge.Info.Level, edge.Info.IsInterClusterEdge, edge.Info.InnerLowerLevelPath);
-				}
+				RestoreNodeBackup(map, nodeId);
 			}
 			else
 			{
-				// Just delete the node from the graph
-				var currentNodeInfo = abstractGraph.GetNodeInfo(nodeId);
-				var clusterId = currentNodeInfo.ClusterId;
-				var cluster = map.Clusters[clusterId.IdValue];
-				cluster.RemoveLastEntranceRecord();
-				map.ConcreteNodeIdToAbstractNodeIdMap.Remove(currentNodeInfo.ConcreteNodeId);
-				abstractGraph.RemoveEdgesFromAndToNode(nodeId);
-				abstractGraph.RemoveLastNode();
+				map.RemoveAbstractNode(nodeId);
 			}
 		}
-
-		public Id<AbstractNode> InsertAbstractNode(HierarchicalMap map, Position pos, int start)
+		
+	    public Id<AbstractNode> InsertAbstractNode(HierarchicalMap map, Position pos)
 		{
 			var nodeId = Id<ConcreteNode>.From(pos.Y * map.Width + pos.X);
-			var abstractNodeId = InsertNodeIntoHierarchicalMap(map, nodeId, pos, start);
+			var abstractNodeId = InsertNodeIntoHierarchicalMap(map, nodeId, pos);
 			map.AddHierarchicalEdgesForAbstractNode(abstractNodeId);
 			return abstractNodeId;
 		}
 
-        // insert a new node, such as start or target, to the abstract graph and
+	    private class NodeBackup
+	    {
+			public int Level { get; private set; }
+			public List<AbstractEdge> Edges { get; private set; }
+
+		    public NodeBackup(int level, List<AbstractEdge> edges)
+		    {
+			    Level = level;
+			    Edges = edges;
+		    }
+	    }
+
+	    // insert a new node, such as start or target, to the abstract graph and
 		// returns the id of the newly created node in the abstract graph
 		// x and y are the positions where I want to put the node
-		private Id<AbstractNode> InsertNodeIntoHierarchicalMap(HierarchicalMap map, Id<ConcreteNode> concreteNodeId, Position pos, int start)
+		private Id<AbstractNode> InsertNodeIntoHierarchicalMap(HierarchicalMap map, Id<ConcreteNode> concreteNodeId, Position pos)
 		{
 			// If the node already existed (for instance, it was the an entrance point already
 			// existing in the graph, we need to keep track of the previous status in order
 			// to be able to restore it once we delete this STAL
 			if (map.ConcreteNodeIdToAbstractNodeIdMap.ContainsKey(concreteNodeId))
 			{
-				m_stalLevel[start] = map.AbstractGraph.GetNodeInfo(map.ConcreteNodeIdToAbstractNodeIdMap[concreteNodeId]).Level;
-				m_stalEdges[start] = map.GetNodeEdges(concreteNodeId);
-				m_stalUsed[start] = true;
+				var existingAbstractNodeId = map.ConcreteNodeIdToAbstractNodeIdMap[concreteNodeId];
+				var nodeBackup = new NodeBackup(
+					map.AbstractGraph.GetNodeInfo(existingAbstractNodeId).Level, 
+					map.GetNodeEdges(concreteNodeId));
+				nodeBackups[existingAbstractNodeId] = nodeBackup;
 				return map.ConcreteNodeIdToAbstractNodeIdMap[concreteNodeId];
 			}
-
-			m_stalUsed[start] = false;
-
+			
 			var cluster = map.FindClusterForPosition(pos);
 
 			// create global entrance
 			var abstractNodeId = Id<AbstractNode>.From(map.NrNodes);
+			
 			var entrance = cluster.AddEntrance(abstractNodeId, new Position(pos.X - cluster.Origin.X, pos.Y - cluster.Origin.Y));
 			cluster.UpdatePathsForLocalEntrance(entrance);
 
@@ -140,7 +125,31 @@ namespace HPASharp.Factories
 			return abstractNodeId;
 		}
 		#endregion
+		
+		private void RestoreNodeBackup(HierarchicalMap map, Id<AbstractNode> nodeId)
+		{
+			var abstractGraph = map.AbstractGraph;
+			var nodeBackup = nodeBackups[nodeId];
+			var nodeInfo = abstractGraph.GetNodeInfo(nodeId);
+			nodeInfo.Level = nodeBackup.Level;
+			abstractGraph.RemoveEdgesFromAndToNode(nodeId);
+			abstractGraph.AddNode(nodeId, nodeInfo);
+			foreach (var edge in nodeBackup.Edges)
+			{
+				var targetNodeId = edge.TargetNodeId;
 
+				map.AddEdge(nodeId, targetNodeId, edge.Info.Cost,
+					edge.Info.Level, edge.Info.IsInterClusterEdge,
+					edge.Info.InnerLowerLevelPath != null ? new List<Id<AbstractNode>>(edge.Info.InnerLowerLevelPath) : null);
+
+				edge.Info.InnerLowerLevelPath?.Reverse();
+
+				map.AddEdge(targetNodeId, nodeId, edge.Info.Cost,
+					edge.Info.Level, edge.Info.IsInterClusterEdge, edge.Info.InnerLowerLevelPath);
+			}
+
+			nodeBackups.Remove(nodeId);
+		}
 
 		private void CreateEdges(List<Entrance> entrances, List<Cluster> clusters)
 		{
@@ -447,10 +456,9 @@ namespace HPASharp.Factories
 
 				abstractNodeId++;
 			}
-			else
+			else if (level > abstractNodeInfo.Level)
 			{
-				if (level > abstractNodeInfo.Level)
-					abstractNodeInfo.Level = level;
+				abstractNodeInfo.Level = level;
 			}
 		}
 		#endregion

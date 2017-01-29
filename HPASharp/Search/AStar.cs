@@ -84,9 +84,7 @@ namespace HPASharp.Search
 		private readonly IMap<TNode> _map;
 		private readonly SimplePriorityQueue<Id<TNode>> _openQueue;
 		private readonly NodeLookup<TNode> _nodeLookup;
-
-		private bool CanExpand => _openQueue.Count != 0;
-
+		
 		public AStar(IMap<TNode> map, Id<TNode> startNodeId, Id<TNode> targetNodeId)
 		{
 			_isGoal = nodeId => nodeId == targetNodeId;
@@ -102,7 +100,62 @@ namespace HPASharp.Search
 			_nodeLookup = new NodeLookup<TNode>(map.NrNodes);
 			_nodeLookup.SetNodeValue(startNodeId, startNode);
 		}
-		
+
+		public bool NodeIsClosed(Id<TNode> nodeId)
+		{
+			return _nodeLookup.NodeIsVisited(nodeId) && _nodeLookup.GetNodeValue(nodeId).Status == CellStatus.Closed;
+		}
+
+		public bool CanExpand
+		{
+			get { return _openQueue != null && _openQueue.Count != 0; }
+		}
+
+		public static Path<TNode> FindBidiPath(IMap<TNode> map, Id<TNode> startNodeId, Id<TNode> targetNodeId)
+		{
+			var search1 = new AStar<TNode>(map, startNodeId, targetNodeId);
+			var search2 = new AStar<TNode>(map, targetNodeId, startNodeId);
+			var expand = 0;
+
+			while (search1.CanExpand && search2.CanExpand)
+			{
+				var frontier = search1.Expand();
+				expand++;
+				if (search2.NodeIsClosed(frontier)) //TODO: Need to add a condition to tell that the node was reachable
+				{
+					return ReconstructPath(search1, search2, frontier);
+				}
+
+				frontier = search2.Expand();
+				expand++;
+				if (search1.NodeIsClosed(frontier)) //TODO: Need to add a condition to tell that the node was reachable
+				{
+					return ReconstructPath(search1, search2, frontier);
+				}
+			}
+
+			return new Path<TNode>(new List<Id<TNode>>(), -1);
+		}
+
+		private static Path<TNode> ReconstructPath(AStar<TNode> search1, AStar<TNode> search2, Id<TNode> frontier)
+		{
+			var halfPath1 = search1.ReconstructPathFrom(frontier);
+			var halfPath2 = search2.ReconstructPathFrom(frontier);
+
+			halfPath2.PathNodes.Reverse();
+			var p = halfPath2.PathNodes;
+			if (p.Count > 0)
+			{
+				for (int i = 1; i < p.Count; i++)
+				{
+					halfPath1.PathNodes.Add(p[i]);
+				}
+
+			}
+
+			return halfPath1;
+		}
+
 		public Path<TNode> FindPath()
 		{
             while (CanExpand)

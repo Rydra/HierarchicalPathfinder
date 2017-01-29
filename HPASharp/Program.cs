@@ -20,7 +20,7 @@ namespace HPASharp
 		//private static readonly Position StartPosition = new Position(1, 0);
 		//private static readonly Position EndPosition = new Position(15, 15);
         
-		public static void Main(string[] args)
+		public static void Main6(string[] args)
         {
             const int clusterSize = 8;
             const int maxLevel = 2;
@@ -33,7 +33,7 @@ namespace HPASharp
             // Prepare the abstract graph beforehand
             IPassability passability = new FakePassability(width, height);
             var concreteMap = ConcreteMapFactory.CreateConcreteMap(width, height, passability);
-            var abstractMapFactory = new AbstractMapFactory();
+            var abstractMapFactory = new HierarchicalMapFactory();
 			var absTiling = abstractMapFactory.CreateHierarchicalMap(concreteMap, clusterSize, maxLevel, EntranceStyle.EndEntrance);
             //var edges = absTiling.AbstractGraph.Nodes.SelectMany(x => x.Edges.Values)
             //    .GroupBy(x => x.Info.Level)
@@ -100,7 +100,7 @@ namespace HPASharp
             // Prepare the abstract graph beforehand
             IPassability passability = new FakePassability(width, height);
             var concreteMap = ConcreteMapFactory.CreateConcreteMap(width, height, passability);
-            var abstractMapFactory = new AbstractMapFactory();
+            var abstractMapFactory = new HierarchicalMapFactory();
             var absTiling = abstractMapFactory.CreateHierarchicalMap(concreteMap, clusterSize, maxLevel, EntranceStyle.EndEntrance);
 
             var watch = Stopwatch.StartNew();
@@ -151,7 +151,7 @@ namespace HPASharp
 
         }
 
-        public static void Main3(string[] args)
+        public static void Main(string[] args)
         {
             const int clusterSize = 8;
             const int maxLevel = 2;
@@ -164,7 +164,7 @@ namespace HPASharp
 
             var concreteMap = ConcreteMapFactory.CreateConcreteMap(width, height, passability);
 
-            var abstractMapFactory = new AbstractMapFactory();
+            var abstractMapFactory = new HierarchicalMapFactory();
 			var absTiling = abstractMapFactory.CreateHierarchicalMap(concreteMap, clusterSize, maxLevel, EntranceStyle.EndEntrance);
             //var edges = absTiling.AbstractGraph.Nodes.SelectMany(x => x.Edges.Values)
             //    .GroupBy(x => x.Info.Level)
@@ -224,10 +224,9 @@ namespace HPASharp
 
         private static List<IPathNode> HierarchicalSearch(HierarchicalMap hierarchicalMap, int maxLevel, ConcreteMap concreteMap, Position startPosition, Position endPosition)
 	    {
-			// Hierarchical pathfinding
-			var factory = new AbstractMapFactory();
-			var startAbsNode = factory.InsertAbstractNode(hierarchicalMap, startPosition, 0);
-	        var targetAbsNode = factory.InsertAbstractNode(hierarchicalMap, endPosition, 1);
+			var factory = new HierarchicalMapFactory();
+			var startAbsNode = factory.InsertAbstractNode(hierarchicalMap, startPosition);
+	        var targetAbsNode = factory.InsertAbstractNode(hierarchicalMap, endPosition);
 	        var maxPathsToRefine = int.MaxValue;
             var hierarchicalSearch = new HierarchicalSearch();
             var abstractPath = hierarchicalSearch.DoHierarchicalSearch(hierarchicalMap, startAbsNode, targetAbsNode, maxLevel, maxPathsToRefine);
@@ -236,8 +235,8 @@ namespace HPASharp
             var smoother = new SmoothWizard(concreteMap, path);
             path = smoother.SmoothPath();
 
-            factory.RemoveAbstractNode(hierarchicalMap, targetAbsNode, 1);
-			factory.RemoveAbstractNode(hierarchicalMap, startAbsNode, 0);
+            factory.RemoveAbstractNode(hierarchicalMap, targetAbsNode);
+			factory.RemoveAbstractNode(hierarchicalMap, startAbsNode);
 
 			return path;
 	    }

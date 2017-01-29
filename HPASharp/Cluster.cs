@@ -148,9 +148,9 @@ namespace HPASharp
         public void RemoveLastEntranceRecord()
         {
             var entrancePoint = EntrancePoints[EntrancePoints.Count - 1];
-            EntrancePoints.Remove(entrancePoint);
-            var abstractNodeToRemove = entrancePoint.AbstractNodeId;
             
+            var abstractNodeToRemove = entrancePoint.AbstractNodeId;
+            EntrancePoints.RemoveAt(EntrancePoints.Count - 1);
             var keysToRemove = new List<Tuple<Id<AbstractNode>, Id<AbstractNode>>>();
             foreach (var key in _distanceCalculated.Keys)
             {

@@ -36,8 +36,8 @@ namespace HPASharp.Search
 	        else
 	        {
                 map.SetAllMapAsCurrentCluster();
-				var search = new AStar<AbstractNode>(map, startNodeId, targetNodeId);
-				path = search.FindPath();
+		        var search = new AStar<AbstractNode>(map, startNodeId, targetNodeId);
+		        path = search.FindPath();
 	        }
 
 	        if (path.PathCost == -1)
